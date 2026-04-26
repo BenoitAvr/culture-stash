@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'DM Sans', sans-serif;
+  --font-serif: 'Fraunces', serif;
+
+  --color-canvas: #0e0e0e;
+  --color-surface: #161616;
+  --color-elevated: #1e1e1e;
+  --color-outline: #2a2a2a;
+  --color-lime: #c8f55a;
+  --color-amber: #f5a623;
+  --color-violet: #7c6df0;
+  --color-coral: #f57c7c;
+  --color-ink: #f0f0f0;
+  --color-dim: #777777;
+  --color-chip: #242424;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  background: #0e0e0e;
+  color: #f0f0f0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* prose content from DB */
+.prose-content h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  margin-top: 24px;
+  color: #f0f0f0;
+}
+.prose-content h2:first-child { margin-top: 0; }
+.prose-content p { color: #bbb; line-height: 1.75; margin-bottom: 12px; }
+.prose-content strong { color: #f0f0f0; }
+.prose-content em { color: #ddd; }
+
+/* personal topic note markdown */
+.prose-note p { margin-bottom: 10px; }
+.prose-note p:last-child { margin-bottom: 0; }
+.prose-note h1, .prose-note h2, .prose-note h3 {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  color: #e0e0e0;
+  margin: 14px 0 6px;
+}
+.prose-note h1 { font-size: 20px; }
+.prose-note h2 { font-size: 17px; }
+.prose-note h3 { font-size: 15px; }
+.prose-note h1:first-child, .prose-note h2:first-child, .prose-note h3:first-child { margin-top: 0; }
+.prose-note strong { color: #f0f0f0; font-weight: 600; }
+.prose-note em { color: #bbb; font-style: italic; }
+.prose-note ul, .prose-note ol { padding-left: 20px; margin-bottom: 10px; }
+.prose-note li { margin-bottom: 4px; color: #ccc; }
+.prose-note code { background: #1e1e1e; border: 1px solid #333; border-radius: 4px; padding: 1px 5px; font-size: 12px; color: #c8f55a; }
+.prose-note pre { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 7px; padding: 12px; margin-bottom: 12px; overflow-x: auto; }
+.prose-note pre code { background: none; border: none; padding: 0; color: #ccc; font-size: 13px; }
+.prose-note blockquote { border-left: 3px solid #2a2a2a; padding-left: 12px; color: #777; margin: 10px 0; font-style: italic; }
+.prose-note a { color: #c8f55a; text-decoration: none; }
+.prose-note a:hover { text-decoration: underline; }

@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String?
+  googleId     String?    @unique
+  createdAt    DateTime   @default(now())
+  notes        Note[]
+  ratings      Rating[]
+  likes        Like[]
+  resources    Resource[]
+  userLists    UserList[]
+  entries         Entry[]
+  userEntries     UserEntry[]
+  userEntryLists  UserEntryList[]
+  userTopicNotes  UserTopicNote[]
+}
+
+model Topic {
+  id        String     @id @default(cuid())
+  slug      String     @unique
+  emoji     String
+  badge     String
+  title     String
+  desc      String
+  prose     String
+  diffLevel Int        @default(3)
+  diffNote  String
+  rankable  Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  parentId  String?
+  parent    Topic?     @relation("SubTopics", fields: [parentId], references: [id])
+  children  Topic[]    @relation("SubTopics")
+  concepts      Concept[]
+  related       Related[]
+  resources     Resource[]
+  notes         Note[]
+  userLists       UserList[]
+  translations    TopicTranslation[]
+  entries         Entry[]
+  userEntryLists  UserEntryList[]
+  userTopicNotes  UserTopicNote[]
+}
+
+model Concept {
+  id      String @id @default(cuid())
+  topicId String
+  name    String
+  topic   Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+}
+
+model Related {
+  id      String @id @default(cuid())
+  topicId String
+  name    String
+  topic   Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+}
+
+model Resource {
+  id        String   @id @default(cuid())
+  topicId   String
+  addedById String?
+  title     String
+  sub       String
+  type      String
+  emoji     String
+  url       String?
+  createdAt DateTime @default(now())
+  topic         Topic                @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  addedBy       User?                @relation(fields: [addedById], references: [id])
+  ratings       Rating[]
+  userListItems UserListItem[]
+  translations  ResourceTranslation[]
+}
+
+model Rating {
+  id         String   @id @default(cuid())
+  resourceId String
+  userId     String
+  stars      Int
+  createdAt  DateTime @default(now())
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, userId])
+}
+
+model Note {
+  id        String    @id @default(cuid())
+  topicId   String
+  authorId  String
+  title     String
+  excerpt   String
+  content   String
+  createdAt DateTime  @default(now())
+  topic     Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tags      NoteTag[]
+  likes     Like[]
+}
+
+model NoteTag {
+  id     String @id @default(cuid())
+  noteId String
+  name   String
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  noteId    String
+  userId    String
+  createdAt DateTime @default(now())
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, userId])
+}
+
+model TopicTranslation {
+  id       String @id @default(cuid())
+  topicId  String
+  lang     String
+  badge    String
+  title    String
+  desc     String
+  prose    String
+  diffNote String
+  topic    Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([topicId, lang])
+}
+
+model ResourceTranslation {
+  id         String   @id @default(cuid())
+  resourceId String
+  lang       String
+  title      String
+  sub        String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, lang])
+}
+
+model Entry {
+  id          String      @id @default(cuid())
+  topicId     String
+  addedById   String?
+  title       String
+  year        Int?
+  cover       String?
+  createdAt   DateTime    @default(now())
+  topic              Topic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  addedBy            User?           @relation(fields: [addedById], references: [id])
+  userEntries        UserEntry[]
+  userEntryListItems UserEntryItem[]
+}
+
+model UserEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  entryId   String
+  stars     Int?
+  note      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entryId])
+}
+
+model UserEntryList {
+  id        String          @id @default(cuid())
+  userId    String
+  topicId   String
+  type      String
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     Topic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  items     UserEntryItem[]
+
+  @@unique([userId, topicId, type])
+}
+
+model UserEntryItem {
+  id        String        @id @default(cuid())
+  listId    String
+  entryId   String
+  position  Int?
+  tier      String?
+  note      String?
+  list      UserEntryList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  entry     Entry         @relation(fields: [entryId], references: [id], onDelete: Cascade)
+}
+
+model UserList {
+  id        String         @id @default(cuid())
+  userId    String
+  topicId   String
+  type      String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     Topic          @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  items     UserListItem[]
+
+  @@unique([userId, topicId])
+}
+
+model UserListItem {
+  id         String   @id @default(cuid())
+  listId     String
+  resourceId String
+  position   Int?
+  tier       String?
+  note       String?
+  list       UserList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model UserTopicNote {
+  id        String   @id @default(cuid())
+  userId    String
+  topicId   String
+  content   String
+  public    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+}
