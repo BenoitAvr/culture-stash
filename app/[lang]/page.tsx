@@ -23,7 +23,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
       <div style={{ textAlign: 'center', padding: '64px 0 48px' }}>
         <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 64, fontWeight: 900, letterSpacing: -2, marginBottom: 16, lineHeight: 1.05 }}>
-          Tot<span style={{ color: 'var(--accent-fg)' }}>an</span>tia
+          Culture <span style={{ color: 'var(--accent-fg)' }}>Stash</span>
         </h1>
         <p style={{ color: 'var(--fg-3)', fontSize: 16, maxWidth: 420, margin: '0 auto', lineHeight: 1.65 }}>
           {t.home.tagline}

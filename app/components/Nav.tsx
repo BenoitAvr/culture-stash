@@ -22,7 +22,7 @@ export async function Nav({ lang }: { lang: string }) {
     }}>
       <div style={{ flex: 1 }}>
         <Link href={`/${lang}`} style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 900, textDecoration: 'none', color: 'var(--fg)' }}>
-          Tot<span style={{ color: 'var(--accent-fg)' }}>an</span>tia
+          Culture <span style={{ color: 'var(--accent-fg)' }}>Stash</span>
         </Link>
       </div>
 

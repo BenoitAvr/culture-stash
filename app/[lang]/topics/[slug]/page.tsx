@@ -101,6 +101,7 @@ export default async function TopicPage({
     userId: l.user.id,
     userName: l.user.name,
     type: l.type as 'RANKED' | 'TIER',
+    rankedTiers: l.rankedTiers,
     items: l.items.map(i => ({
       resourceId: i.resourceId,
       position: i.position,

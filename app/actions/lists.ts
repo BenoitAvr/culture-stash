@@ -14,7 +14,8 @@ type ItemInput = {
 export async function saveUserList(
   topicSlug: string,
   type: 'RANKED' | 'TIER',
-  items: ItemInput[]
+  items: ItemInput[],
+  rankedTiers: string[] = []
 ) {
   const session = await getSession()
   if (!session) return { error: 'Non connecté' }
@@ -26,17 +27,19 @@ export async function saveUserList(
     where: { userId_topicId: { userId: session.userId, topicId: topic.id } },
   })
 
+  const rankedTiersStr = rankedTiers.join(',') || null
+
   if (items.length === 0) {
     if (existing) await prisma.userList.delete({ where: { id: existing.id } })
   } else if (existing) {
     await prisma.userListItem.deleteMany({ where: { listId: existing.id } })
     await prisma.userList.update({
       where: { id: existing.id },
-      data: { type, items: { create: items } },
+      data: { type, rankedTiers: rankedTiersStr, items: { create: items } },
     })
   } else {
     await prisma.userList.create({
-      data: { userId: session.userId, topicId: topic.id, type, items: { create: items } },
+      data: { userId: session.userId, topicId: topic.id, type, rankedTiers: rankedTiersStr, items: { create: items } },
     })
   }
 
