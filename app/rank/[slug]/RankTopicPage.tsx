@@ -14,34 +14,16 @@ type Entry = {
   cover: string | null
   avgRank: number | null
   rankCount: number
-  userStars: number | null
   userNote: string | null
 }
 
-function StarPicker({ value, onChange }: { value: number | null; onChange: (s: number) => void }) {
-  const [hover, setHover] = useState<number | null>(null)
-  return (
-    <span style={{ display: 'inline-flex', gap: 1 }}>
-      {[1, 2, 3, 4, 5].map(s => (
-        <button key={s} type="button" onClick={() => onChange(s)} onMouseEnter={() => setHover(s)} onMouseLeave={() => setHover(null)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '1px', fontSize: 15, color: s <= (hover ?? value ?? 0) ? 'var(--accent-fg)' : 'var(--border)', transition: 'color .1s', lineHeight: 1 }}>
-          ★
-        </button>
-      ))}
-    </span>
-  )
-}
-
-function EntryRow({ entry, rank, showStars, isLoggedIn, t }: { entry: Entry; rank: number; showStars: boolean; isLoggedIn: boolean; t: ReturnType<typeof getDict>['rank'] }) {
+function EntryRow({ entry, rank, isLoggedIn, t }: { entry: Entry; rank: number; isLoggedIn: boolean; t: ReturnType<typeof getDict>['rank'] }) {
   const [isPending, startTransition] = useTransition()
   const [editingNote, setEditingNote] = useState(false)
   const [noteVal, setNoteVal] = useState(entry.userNote ?? '')
 
-  function handleStars(stars: number) {
-    startTransition(async () => { await saveUserEntry(entry.id, stars, entry.userNote) })
-  }
   function handleSaveNote() {
-    startTransition(async () => { await saveUserEntry(entry.id, entry.userStars, noteVal.trim() || null) })
+    startTransition(async () => { await saveUserEntry(entry.id, null, noteVal.trim() || null) })
     setEditingNote(false)
   }
 
@@ -76,7 +58,6 @@ function EntryRow({ entry, rank, showStars, isLoggedIn, t }: { entry: Entry; ran
               {' '}<span style={{ color: 'var(--fg-8)' }}>({entry.rankCount} {entry.rankCount === 1 ? 'liste' : 'listes'})</span>
             </span>
           )}
-          {showStars && isLoggedIn && <StarPicker value={entry.userStars} onChange={handleStars} />}
         </div>
 
         {isLoggedIn && (
@@ -123,7 +104,6 @@ export function RankTopicPage({
   const boundAddEntry = addEntry.bind(null, topicSlug)
   const [state, formAction, pending] = useActionState(boundAddEntry, null)
   const [showForm, setShowForm] = useState(false)
-  const [showStars, setShowStars] = useState(false)
 
   const sorted = [...entries].sort((a, b) => {
     if (a.avgRank === null && b.avgRank === null) return 0
@@ -216,19 +196,13 @@ export function RankTopicPage({
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
           <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--fg-6)', whiteSpace: 'nowrap' }}>{t.communityRanking}</span>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          {isLoggedIn && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--fg-7)', cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>
-              <input type="checkbox" checked={showStars} onChange={e => setShowStars(e.target.checked)} style={{ accentColor: 'var(--accent-fg)', cursor: 'pointer' }} />
-              Étoiles
-            </label>
-          )}
         </div>
         {sorted.length === 0 ? (
           <p style={{ color: 'var(--fg-7)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
         ) : (
           <div>
             {sorted.map((entry, i) => (
-              <EntryRow key={entry.id} entry={entry} rank={i + 1} showStars={showStars} isLoggedIn={isLoggedIn} t={t} />
+              <EntryRow key={entry.id} entry={entry} rank={i + 1} isLoggedIn={isLoggedIn} t={t} />
             ))}
           </div>
         )}

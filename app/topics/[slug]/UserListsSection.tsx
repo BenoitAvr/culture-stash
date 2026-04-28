@@ -24,9 +24,12 @@ export type UserListData = {
   items: ListItemData[]
 }
 
-const TIERS = ['S', 'A', 'B', 'C', 'D']
+const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
+const TIER_LABEL: Record<string, string> = {
+  EX: 'Excellent', TB: 'Très bon', BO: 'Bon', AB: 'Assez bien', PA: 'Passable', IN: 'Insuffisant', MA: 'Mauvais',
+}
 const TIER_COLOR: Record<string, string> = {
-  S: '#f5a623', A: '#7c6df0', B: '#c8f55a', C: '#f57c7c', D: '#777',
+  EX: '#5b8dee', TB: '#388e3c', BO: '#66bb6a', AB: '#a3c940', PA: '#f9c933', IN: '#f5a623', MA: '#e05555',
 }
 const AVATAR_COLORS = ['#7c6df0', '#f5a623', '#c8f55a', '#f57c7c']
 
@@ -97,7 +100,7 @@ export function UserListsSection({
           const tItems = list.items.filter(i => i.tier === tier).sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
           return (
             <div key={tier} style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden' }}>
-              <span style={{ width: 20, height: 20, borderRadius: 4, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 10, color: TIER_COLOR[tier], flexShrink: 0 }}>{tier}</span>
+              <span style={{ width: 20, height: 20, borderRadius: 4, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 7.5, color: TIER_COLOR[tier], flexShrink: 0 }}>{tier}</span>
               <span style={{ fontSize: 12, color: 'var(--fg-6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {tItems.map(i => `${i.resource.emoji} ${i.resource.title}`).join('  ·  ')}
               </span>
@@ -128,7 +131,7 @@ export function UserListsSection({
 
   return (
     <div style={{ marginTop: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isOpen ? 20 : 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isOpen ? 20 : userLists.length > 0 ? 10 : 0 }}>
         <button onClick={() => setIsOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: 0, fontFamily: 'inherit' }}>
           <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', flexShrink: 0 }} />
           <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--fg-5)', fontWeight: 600 }}>{t.personalRankings}</span>
@@ -136,12 +139,16 @@ export function UserListsSection({
           <span style={{ fontSize: 10, color: 'var(--fg-7)', transition: 'transform .15s', display: 'inline-block', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </button>
         <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-        {isLoggedIn && isOpen && (
-          <button onClick={() => setIsEditing(true)} style={{ padding: '6px 16px', borderRadius: 8, border: '1px dashed var(--fg-8)', background: 'none', color: 'var(--fg-6)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>
+        {isLoggedIn && (
+          <button onClick={() => setIsEditing(true)} style={{ padding: '5px 14px', borderRadius: 7, border: '1px dashed var(--fg-8)', background: 'none', color: 'var(--fg-6)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>
             {myList ? t.editList : t.createList}
           </button>
         )}
       </div>
+
+      {!isOpen && userLists.length > 0 && (
+        <div style={{ marginBottom: 4 }}>{renderPreview(myList ?? userLists[0])}</div>
+      )}
 
       {isOpen && ([...(myList ? [myList] : []), ...otherLists].length === 0 ? (
         <p style={{ color: 'var(--fg-7)', fontSize: 13 }}>
@@ -177,7 +184,6 @@ export function UserListsSection({
                           <span style={{ fontSize: idx === 0 ? 20 : 16 }}>{item.resource.emoji}</span>
                           <span style={{ fontSize: 13, color: idx < 3 ? 'var(--fg)' : 'var(--fg-3)', fontWeight: idx < 3 ? 500 : 400, flex: 1 }}>{item.resource.title}</span>
                         </div>
-                        {item.note && <p style={{ margin: '3px 0 4px 46px', fontSize: 12, color: 'var(--fg-6)', fontStyle: 'italic' }}>{item.note}</p>}
                       </div>
                     ))}
                   </div>
@@ -191,7 +197,7 @@ export function UserListsSection({
                       const viewOffset = TIERS.slice(0, TIERS.indexOf(tier)).reduce((sum, t) => sum + list.items.filter(i => i.tier === t).length, 0)
                       return (
                         <div key={tier} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                          <div style={{ width: 32, height: 32, borderRadius: 8, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 16, color: TIER_COLOR[tier], flexShrink: 0 }}>{tier}</div>
+                          <div style={{ minWidth: 72, height: 32, borderRadius: 8, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 9.5, color: TIER_COLOR[tier], flexShrink: 0, padding: '0 6px' }}>{TIER_LABEL[tier]}</div>
                           {isRanked ? (
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                               {tItems.map((item, idx) => (
@@ -201,7 +207,6 @@ export function UserListsSection({
                                     <span style={{ fontSize: 14 }}>{item.resource.emoji}</span>
                                     <span style={{ fontSize: 13, color: 'var(--fg-2)', flex: 1 }}>{item.resource.title}</span>
                                   </div>
-                                  {item.note && <p style={{ margin: '2px 0 2px 24px', fontSize: 12, color: 'var(--fg-6)', fontStyle: 'italic' }}>{item.note}</p>}
                                 </div>
                               ))}
                             </div>
@@ -213,7 +218,6 @@ export function UserListsSection({
                                     <span>{item.resource.emoji}</span>
                                     <span>{item.resource.title}</span>
                                   </div>
-                                  {item.note && <p style={{ margin: '2px 0 0 4px', fontSize: 11, color: 'var(--fg-6)', fontStyle: 'italic' }}>{item.note}</p>}
                                 </div>
                               ))}
                             </div>

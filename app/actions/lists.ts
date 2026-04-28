@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, refresh } from 'next/cache'
 
 type ItemInput = {
   resourceId: string
@@ -45,5 +45,6 @@ export async function saveUserList(
 
   revalidatePath(`/fr/topics/${topicSlug}`)
   revalidatePath(`/en/topics/${topicSlug}`)
+  refresh()
   return { success: true }
 }

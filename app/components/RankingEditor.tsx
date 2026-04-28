@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import type { Dict } from '@/dictionaries/client'
 
 export type RankableItem = {
@@ -17,9 +17,20 @@ export type RankEditItem = {
   note?: string
 }
 
-const TIERS = ['S', 'A', 'B', 'C', 'D']
+const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
+const TIER_LABEL: Record<string, string> = {
+  EX: 'Excellent', TB: 'Très bon', BO: 'Bon', AB: 'Assez bien', PA: 'Passable', IN: 'Insuffisant', MA: 'Mauvais',
+}
 const TIER_COLOR: Record<string, string> = {
-  S: '#f5a623', A: '#7c6df0', B: '#c8f55a', C: '#f57c7c', D: '#777',
+  EX: '#5b8dee', TB: '#388e3c', BO: '#66bb6a', AB: '#a3c940', PA: '#f9c933', IN: '#f5a623', MA: '#e05555',
+}
+
+function normalizeTitle(s: string) {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export function RankingEditor({
@@ -50,7 +61,7 @@ export function RankingEditor({
   const [tierItems, setTierItems] = useState<RankEditItem[]>(initialTierItems)
   const [tierRankedTiers, setTierRankedTiers] = useState(new Set<string>(initialRankedTiers))
   const [expandedNote, setExpandedNote] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
 
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
@@ -58,7 +69,93 @@ export function RankingEditor({
   const [dragOverTier, setDragOverTier] = useState<string | null>(null)
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null)
 
+  const [isImporting, setIsImporting] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importResult, setImportResult] = useState<{ matched: RankEditItem[]; unmatched: string[] } | null>(null)
+
+  const currentListEmpty = mode === 'RANKED' ? rankItems.length === 0 : tierItems.length === 0
+
   const getItem = (id: string) => items.find(e => e.id === id)
+
+  function findItem(title: string): RankableItem | null {
+    const norm = normalizeTitle(title)
+    const exact = items.find(e => normalizeTitle(e.label) === norm)
+    if (exact) return exact
+    return items.find(e => {
+      const en = normalizeTitle(e.label)
+      if (en.length < 4 || norm.length < 4) return false
+      return en.includes(norm) || norm.includes(en)
+    }) ?? null
+  }
+
+  function findTierFromLine(line: string): string | null {
+    const stripped = line.replace(/\s*:\s*$/, '').trim()
+    if (!stripped) return null
+    if (TIERS.includes(stripped.toUpperCase())) return stripped.toUpperCase()
+    const norm = normalizeTitle(stripped)
+    for (const tier of TIERS) {
+      const labelNorm = normalizeTitle(TIER_LABEL[tier])
+      if (norm === labelNorm) return tier
+      if (norm.length >= 3 && labelNorm.startsWith(norm)) return tier
+    }
+    return null
+  }
+
+  function handleAnalyze() {
+    const lines = importText.split('\n').map(l => l.trim()).filter(Boolean)
+
+    if (mode === 'RANKED') {
+      const matched: RankEditItem[] = []
+      const unmatched: string[] = []
+      let pos = 0
+      for (const line of lines) {
+        const numMatch = line.match(/^(\d+)\s*[:.)\-]\s*(.+)$/)
+        const title = numMatch ? numMatch[2].trim() : line
+        pos = numMatch ? parseInt(numMatch[1]) : pos + 1
+        const item = findItem(title)
+        if (item && !matched.find(i => i.id === item.id)) {
+          matched.push({ id: item.id, position: pos })
+        } else if (!item) {
+          unmatched.push(title)
+        }
+      }
+      setImportResult({ matched, unmatched })
+    } else {
+      const matched: RankEditItem[] = []
+      const unmatched: string[] = []
+      let currentTier: string | null = null
+      let tierPos = 0
+      for (const line of lines) {
+        if (/:\s*$/.test(line)) {
+          const tier = findTierFromLine(line)
+          if (tier) { currentTier = tier; tierPos = 0; continue }
+        }
+        if (!currentTier) continue
+        tierPos++
+        const numMatch = line.match(/^(\d+)\s*[:.)\-]\s*(.+)$/)
+        const title = numMatch ? numMatch[2].trim() : line
+        const item = findItem(title)
+        if (item && !matched.find(i => i.id === item.id)) {
+          matched.push({ id: item.id, tier: currentTier, position: tierPos })
+        } else if (!item) {
+          unmatched.push(title)
+        }
+      }
+      setImportResult({ matched, unmatched })
+    }
+  }
+
+  function handleConfirmImport() {
+    if (!importResult) return
+    if (mode === 'RANKED') {
+      setRankItems(importResult.matched.map((item, i) => ({ ...item, position: i + 1 })))
+    } else {
+      setTierItems(importResult.matched)
+    }
+    setIsImporting(false)
+    setImportText('')
+    setImportResult(null)
+  }
 
   function addRanked(id: string) {
     if (rankItems.some(i => i.id === id)) return
@@ -137,10 +234,14 @@ export function RankingEditor({
   }
 
   function handleSave() {
-    startTransition(async () => { await onSave(mode, rankItems, tierItems, [...tierRankedTiers]) })
+    setIsPending(true)
+    onSave(mode, rankItems, tierItems, [...tierRankedTiers]).finally(() => setIsPending(false))
   }
   function handleDelete() {
-    if (onDelete) startTransition(async () => { await onDelete() })
+    if (onDelete) {
+      setIsPending(true)
+      onDelete().finally(() => setIsPending(false))
+    }
   }
 
   return (
@@ -153,7 +254,7 @@ export function RankingEditor({
         <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         <div style={{ display: 'flex', borderRadius: 7, border: '1px solid var(--border)', overflow: 'hidden' }}>
           {(['RANKED', 'TIER'] as const).map((m, i) => (
-            <button key={m} onClick={() => setMode(m)} style={{
+            <button key={m} onClick={() => { setMode(m); setIsImporting(false); setImportResult(null); setImportText('') }} style={{
               padding: '5px 13px', border: 'none',
               borderRight: i === 0 ? '1px solid var(--border)' : 'none',
               background: mode === m ? 'var(--accent-faint)' : 'none',
@@ -164,11 +265,99 @@ export function RankingEditor({
             </button>
           ))}
         </div>
+        {currentListEmpty && !isImporting && (
+          <button onClick={() => setIsImporting(true)} style={{ padding: '5px 11px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-6)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer' }}>
+            ↑ Importer
+          </button>
+        )}
         <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--fg-7)', fontFamily: 'inherit' }}>{t.cancel}</button>
         <button onClick={handleSave} disabled={isPending} style={{ padding: '6px 18px', borderRadius: 8, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', cursor: isPending ? 'default' : 'pointer', opacity: isPending ? 0.6 : 1 }}>
           {isPending ? t.saving : t.save}
         </button>
       </div>
+
+      {/* Import panel */}
+      {isImporting && (
+        <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 18px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-4)' }}>
+              {mode === 'RANKED' ? 'Importer une liste classée' : 'Importer une tier list'}
+            </span>
+            <button onClick={() => { setIsImporting(false); setImportText(''); setImportResult(null) }} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--fg-7)', lineHeight: 1 }}>×</button>
+          </div>
+
+          {!importResult ? (
+            <>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--fg-6)', lineHeight: 1.6 }}>
+                {mode === 'RANKED'
+                  ? <>Liste numérotée — <code style={{ background: 'var(--bg-subtle)', padding: '1px 5px', borderRadius: 4 }}>1. Titre</code>, un par ligne.</>
+                  : <>
+                    Écris le code du niveau sur sa propre ligne suivi de <code style={{ background: 'var(--bg-subtle)', padding: '1px 5px', borderRadius: 4 }}>:</code>, puis les titres en dessous.{' '}
+                    Niveaux disponibles :{' '}
+                    {TIERS.map((t, i) => (
+                      <span key={t}>
+                        <code style={{ background: 'var(--bg-subtle)', padding: '1px 5px', borderRadius: 4 }}>{t}</code>
+                        {' '}({TIER_LABEL[t]}){i < TIERS.length - 1 ? ', ' : ''}
+                      </span>
+                    ))}
+                  </>
+                }
+              </p>
+              <textarea
+                value={importText}
+                onChange={e => setImportText(e.target.value)}
+                placeholder={mode === 'RANKED'
+                  ? '1. Mon film préféré\n2. Deuxième film\n3. Troisième film'
+                  : 'EX:\nFilm A\nFilm B\n\nTB:\nFilm C\nFilm D\n\nBO:\nFilm E'
+                }
+                autoFocus
+                style={{ height: 240, padding: '10px 13px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 12, fontFamily: 'monospace', resize: 'vertical', lineHeight: 1.6, outline: 'none' }}
+              />
+              <button
+                onClick={handleAnalyze}
+                disabled={!importText.trim()}
+                style={{ alignSelf: 'flex-start', padding: '7px 18px', borderRadius: 7, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 12, fontFamily: 'inherit', cursor: importText.trim() ? 'pointer' : 'not-allowed', opacity: importText.trim() ? 1 : 0.5 }}
+              >
+                Analyser
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--bg-subtle)', borderRadius: 8 }}>
+                <div style={{ fontSize: 13, color: 'var(--fg-3)' }}>
+                  <span style={{ color: '#4caf50', fontWeight: 600 }}>✓ </span>
+                  {importResult.matched.length} entrée{importResult.matched.length !== 1 ? 's' : ''} trouvée{importResult.matched.length !== 1 ? 's' : ''}
+                </div>
+                {importResult.unmatched.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <div style={{ fontSize: 13, color: 'var(--fg-5)' }}>
+                      <span style={{ color: '#f5a623', fontWeight: 600 }}>⚠ </span>
+                      {importResult.unmatched.length} non trouvée{importResult.unmatched.length !== 1 ? 's' : ''} (absentes du topic) :
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, paddingLeft: 18 }}>
+                      {importResult.unmatched.map(u => (
+                        <span key={u} style={{ fontSize: 11, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 9px', color: 'var(--fg-6)' }}>{u}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={handleConfirmImport}
+                  disabled={importResult.matched.length === 0}
+                  style={{ padding: '7px 18px', borderRadius: 7, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 12, fontFamily: 'inherit', cursor: importResult.matched.length > 0 ? 'pointer' : 'not-allowed', opacity: importResult.matched.length > 0 ? 1 : 0.5 }}
+                >
+                  Charger dans l&apos;éditeur
+                </button>
+                <button onClick={() => setImportResult(null)} style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-6)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>
+                  Réessayer
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* RANKED mode */}
       {mode === 'RANKED' && (
@@ -242,7 +431,7 @@ export function RankingEditor({
             const tierOffset = TIERS.slice(0, TIERS.indexOf(tier)).reduce((sum, t) => sum + tierItems.filter(i => i.tier === t).length, 0)
             return (
               <div key={tier} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
-                <div style={{ width: 38, minHeight: 44, borderRadius: 7, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 17, color: TIER_COLOR[tier], flexShrink: 0 }}>{tier}</div>
+                <div style={{ width: 80, minHeight: 44, borderRadius: 7, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 9.5, color: TIER_COLOR[tier], flexShrink: 0, textAlign: 'center', padding: '0 6px' }}>{TIER_LABEL[tier]}</div>
                 <div
                   onDragOver={ev => { ev.preventDefault(); setDragOverTier(tier) }}
                   onDragLeave={ev => { if (!ev.currentTarget.contains(ev.relatedTarget as Node)) setDragOverTier(null) }}

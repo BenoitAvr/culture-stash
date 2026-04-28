@@ -26,6 +26,7 @@ export default async function RankSlugPage({
         orderBy: { createdAt: 'asc' },
       },
       userEntryLists: {
+        where: { NOT: { type: 'BOTH' } },
         include: {
           user: { select: { id: true, name: true } },
           items: {
@@ -67,7 +68,6 @@ export default async function RankSlugPage({
       cover: e.cover ?? coverMap.get(e.id) ?? null,
       avgRank: rd && rd.count > 0 ? rd.total / rd.count : null,
       rankCount: rd?.count ?? 0,
-      userStars: userEntry?.stars ?? null,
       userNote: userEntry?.note ?? null,
     }
   })
