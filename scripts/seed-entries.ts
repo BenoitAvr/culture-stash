@@ -35,10 +35,10 @@ async function insertBatch(entries: { topicId: string; addedById: string; title:
   return count
 }
 
-async function seedMovies(topicId: string, userId: string) {
-  console.log('\n🎬 Films (50 pages = ~1000 films)...')
+async function seedMovies(topicId: string, userId: string, startPage = 1, endPage = 50) {
+  console.log(`\n🎬 Films (pages ${startPage}–${endPage} = ~${(endPage - startPage + 1) * 20} films)...`)
   let total = 0
-  for (let page = 1; page <= 50; page++) {
+  for (let page = startPage; page <= endPage; page++) {
     const data = await tmdb(`/movie/top_rated?language=fr-FR&page=${page}`)
     const entries = (data.results ?? [])
       .filter((m: any) => m.title)
@@ -50,7 +50,7 @@ async function seedMovies(topicId: string, userId: string) {
         cover: m.poster_path ? `${IMG}${m.poster_path}` : null,
       }))
     total += await insertBatch(entries)
-    process.stdout.write(`\r  page ${page}/50 — ${total} insérés`)
+    process.stdout.write(`\r  page ${page}/${endPage} — ${total} insérés`)
     await sleep(260)
   }
   console.log()
@@ -115,7 +115,7 @@ async function main() {
   const series = topics.find(t => t.slug === 'series')
   const animes = topics.find(t => t.slug === 'animes')
 
-  if (films)  await seedMovies(films.id,  user.id)
+  if (films)  await seedMovies(films.id,  user.id, 51, 100)
   if (series) await seedSeries(series.id, user.id)
   if (animes) await seedAnime(animes.id,  user.id)
 
