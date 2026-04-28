@@ -47,24 +47,19 @@ export function UserEntryListSection({
   const [lists, setLists] = useState<UserEntryListData[]>(userEntryLists)
   const [isOpen, setIsOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [mode, setMode] = useState<'RANKED' | 'TIER'>('TIER')
   const [copied, setCopied] = useState(false)
 
-  const myRankedList = lists.find(l => l.userId === currentUserId && l.type === 'RANKED') ?? null
   const myTierList = lists.find(l => l.userId === currentUserId && (l.type === 'TIER' || l.type === 'BOTH')) ?? null
-
-  // Pour la vue : grouper par userId (un user peut avoir deux listes)
-  const userIds = [...new Set(lists.map(l => l.userId))]
-  // currentUser en premier
+  const tierUserIds = [...new Set(lists.filter(l => l.type === 'TIER' || l.type === 'BOTH').map(l => l.userId))]
   const sortedUserIds = [
-    ...userIds.filter(id => id === currentUserId),
-    ...userIds.filter(id => id !== currentUserId),
+    ...tierUserIds.filter(id => id === currentUserId),
+    ...tierUserIds.filter(id => id !== currentUserId),
   ]
 
-  async function handleSave(_mode: 'RANKED' | 'TIER', rank: RankEditItem[], tier: RankEditItem[], rankedTiers: string[]) {
+  async function handleSave(tier: RankEditItem[], rankedTiers: string[]) {
     const updated = await saveUserEntryLists(
       topicSlug,
-      rank.map(i => ({ entryId: i.id, position: i.position, note: i.note })),
+      [],
       tier.map(i => ({ entryId: i.id, tier: i.tier, position: i.position, note: i.note })),
       rankedTiers
     )
@@ -79,31 +74,21 @@ export function UserEntryListSection({
   }
 
   function buildMarkdown() {
-    const lines: string[] = []
-    if (myRankedList && mode === 'RANKED') {
-      lines.push(`# ${topicTitle} — Mon classement\n`)
-      ;[...myRankedList.items]
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-        .forEach((item, idx) => {
+    if (!myTierList) return ''
+    const rts = (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
+    const lines = [`# ${topicTitle} — Ma tier list\n`]
+    TIERS.filter(tier => myTierList.items.some(i => i.tier === tier)).forEach(tier => {
+      const tItems = myTierList.items.filter(i => i.tier === tier).sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+      if (rts.includes(tier)) {
+        lines.push(`\n**${TIER_LABEL[tier]}** (classé)`)
+        tItems.forEach((item, idx) => {
           lines.push(`${idx + 1}. ${item.entry.title}${item.entry.year ? ` (${item.entry.year})` : ''}`)
           if (item.note) lines.push(`   > ${item.note}`)
         })
-    } else if (myTierList) {
-      const rts = (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
-      lines.push(`# ${topicTitle} — Ma tier list\n`)
-      TIERS.filter(tier => myTierList.items.some(i => i.tier === tier)).forEach(tier => {
-        const tItems = myTierList.items.filter(i => i.tier === tier).sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
-        if (rts.includes(tier)) {
-          lines.push(`\n**${tier}** (classé)`)
-          tItems.forEach((item, idx) => {
-            lines.push(`${idx + 1}. ${item.entry.title}${item.entry.year ? ` (${item.entry.year})` : ''}`)
-            if (item.note) lines.push(`   > ${item.note}`)
-          })
-        } else {
-          lines.push(`**${tier}** — ${tItems.map(i => i.entry.title).join(', ')}`)
-        }
-      })
-    }
+      } else {
+        lines.push(`**${TIER_LABEL[tier]}** — ${tItems.map(i => i.entry.title).join(', ')}`)
+      }
+    })
     return lines.join('\n')
   }
 
@@ -116,10 +101,6 @@ export function UserEntryListSection({
 
   /* ─────────────── Edit mode ─────────────── */
   if (isEditing) {
-    const initMode = myTierList ? 'TIER' : 'RANKED'
-    const initRankItems = myRankedList
-      ? [...myRankedList.items].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map(i => ({ id: i.entryId, position: i.position ?? undefined, note: i.note ?? undefined }))
-      : []
     const initTierItems = myTierList
       ? myTierList.items.map(i => ({ id: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined, note: i.note ?? undefined }))
       : []
@@ -127,14 +108,12 @@ export function UserEntryListSection({
     return (
       <RankingEditor
         items={entries.map(e => ({ id: e.id, label: e.title, suffix: e.year?.toString() }))}
-        initialRankItems={initRankItems}
         initialTierItems={initTierItems}
-        initialMode={initMode}
         initialRankedTiers={initRankedTiers}
-        hasExisting={!!(myRankedList || myTierList)}
+        hasExisting={!!myTierList}
         onSave={handleSave}
         onCancel={() => setIsEditing(false)}
-        onDelete={(myRankedList || myTierList) ? handleDelete : undefined}
+        onDelete={myTierList ? handleDelete : undefined}
         t={t}
       />
     )
@@ -142,21 +121,6 @@ export function UserEntryListSection({
 
   /* ─────────────── View mode ─────────────── */
   function renderPreview(list: UserEntryListData) {
-    if (list.type === 'RANKED') {
-      const top = [...list.items].filter(i => i.position !== null).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).slice(0, 5)
-      return (
-        <div onClick={() => setIsOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          {top.map((item, idx) => (
-            <span key={item.entryId} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 7px', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 20, fontSize: 12, color: 'var(--fg-5)' }}>
-              <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 11, color: idx < 3 ? 'var(--accent-fg)' : 'var(--fg-8)' }}>{idx + 1}</span>
-              <span style={{ color: 'var(--fg-4)' }}>{item.entry.title}</span>
-              {item.entry.year && <span style={{ color: 'var(--fg-8)', fontSize: 10 }}>{item.entry.year}</span>}
-            </span>
-          ))}
-          {list.items.filter(i => i.position !== null).length > 5 && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>+{list.items.filter(i => i.position !== null).length - 5}</span>}
-        </div>
-      )
-    }
     const activeTiers = TIERS.filter(t => list.items.some(i => i.tier === t))
     return (
       <div onClick={() => setIsOpen(true)} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -176,30 +140,6 @@ export function UserEntryListSection({
     )
   }
 
-  const previewList = myTierList ?? myRankedList ?? lists[0] ?? null
-
-  const hasBoth = sortedUserIds.some(uid => {
-    const ranked = lists.find(l => l.userId === uid && l.type === 'RANKED')
-    const tier = lists.find(l => l.userId === uid && (l.type === 'TIER' || l.type === 'BOTH'))
-    return ranked && tier
-  })
-
-  function renderRankedItems(items: ListItemData[]) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-        {[...items].filter(i => i.position !== null).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((item, idx) => (
-          <div key={item.entryId}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-              <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 15, color: idx < 3 ? 'var(--accent-fg)' : 'var(--fg-8)', minWidth: 20, textAlign: 'right', flexShrink: 0 }}>{idx + 1}</span>
-              <span style={{ fontSize: 13, color: 'var(--fg-2)', flex: 1 }}>{item.entry.title}</span>
-              {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>{item.entry.year}</span>}
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
   function renderTierItems(items: ListItemData[], rts: string[]) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -213,21 +153,17 @@ export function UserEntryListSection({
               {isRanked ? (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {tItems.map((item, idx) => (
-                    <div key={item.entryId}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                        <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13, color: (viewOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-8)', minWidth: 16, textAlign: 'right' }}>{viewOffset + idx + 1}</span>
-                        <span style={{ fontSize: 13, color: 'var(--fg-2)', flex: 1 }}>{item.entry.title}</span>
-                        {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>{item.entry.year}</span>}
-                      </div>
+                    <div key={item.entryId} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13, color: (viewOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-8)', minWidth: 16, textAlign: 'right' }}>{viewOffset + idx + 1}</span>
+                      <span style={{ fontSize: 13, color: 'var(--fg-2)', flex: 1 }}>{item.entry.title}</span>
+                      {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>{item.entry.year}</span>}
                     </div>
                   ))}
                 </div>
               ) : (
                 <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 5, paddingTop: 4 }}>
                   {tItems.map(item => (
-                    <div key={item.entryId} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <span style={{ background: 'var(--bg-subtle)', borderRadius: 5, padding: '2px 9px', fontSize: 12, color: 'var(--fg-2)' }}>{item.entry.title}</span>
-                    </div>
+                    <span key={item.entryId} style={{ background: 'var(--bg-subtle)', borderRadius: 5, padding: '2px 9px', fontSize: 12, color: 'var(--fg-2)' }}>{item.entry.title}</span>
                   ))}
                 </div>
               )}
@@ -240,31 +176,16 @@ export function UserEntryListSection({
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isOpen ? 20 : previewList ? 10 : 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isOpen ? 20 : myTierList ? 10 : 0 }}>
         <button onClick={() => setIsOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, padding: 0, fontFamily: 'inherit' }}>
           <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--fg-6)' }}>{t.personalRankings}</span>
           <span style={{ fontSize: 9, color: 'var(--fg-7)', transition: 'transform .15s', display: 'inline-block', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
           {sortedUserIds.length > 0 && <span style={{ fontSize: 11, color: 'var(--fg-8)', fontFamily: 'inherit' }}>({sortedUserIds.length})</span>}
         </button>
         <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-        {isOpen && hasBoth && (
-          <div style={{ display: 'flex', borderRadius: 7, border: '1px solid var(--border)', overflow: 'hidden' }}>
-            {(['RANKED', 'TIER'] as const).map((m, i) => (
-              <button key={m} onClick={() => setMode(m)} style={{
-                padding: '4px 11px', border: 'none',
-                borderRight: i === 0 ? '1px solid var(--border)' : 'none',
-                background: mode === m ? 'var(--accent-faint)' : 'none',
-                color: mode === m ? 'var(--accent-fg)' : 'var(--fg-7)',
-                fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
-              }}>
-                {m === 'RANKED' ? '🏅' : '🎯'}
-              </button>
-            ))}
-          </div>
-        )}
         {isLoggedIn && (
           <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            {(myRankedList || myTierList) && (
+            {myTierList && (
               <button onClick={copyMarkdown} title="Copier ma liste" style={{ padding: '4px 7px', borderRadius: 6, border: 'none', background: 'none', color: copied ? 'var(--accent-fg)' : 'var(--fg-8)', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer' }}>
                 {copied ? '✓' : '⎘'}
               </button>
@@ -274,14 +195,14 @@ export function UserEntryListSection({
               onClick={() => setIsEditing(true)}
               style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-5)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer' }}
             >
-              {(myRankedList || myTierList) ? 'Modifier ma liste' : '+ Ma liste'}
+              {myTierList ? 'Modifier ma liste' : '+ Ma liste'}
             </button>
           </div>
         )}
       </div>
 
-      {!isOpen && previewList && (
-        <div style={{ marginBottom: 4 }}>{renderPreview(previewList)}</div>
+      {!isOpen && myTierList && (
+        <div style={{ marginBottom: 4 }}>{renderPreview(myTierList)}</div>
       )}
 
       {isOpen && (sortedUserIds.length === 0 ? (
@@ -289,26 +210,20 @@ export function UserEntryListSection({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {sortedUserIds.map(uid => {
-            const rankedList = lists.find(l => l.userId === uid && l.type === 'RANKED') ?? null
-            const tierList = lists.find(l => l.userId === uid && (l.type === 'TIER' || l.type === 'BOTH')) ?? null
-            const anyList = rankedList ?? tierList!
-            const ac = AVATAR_COLORS[anyList.userName.charCodeAt(0) % 4]
+            const tierList = lists.find(l => l.userId === uid && (l.type === 'TIER' || l.type === 'BOTH'))!
+            const ac = AVATAR_COLORS[tierList.userName.charCodeAt(0) % 4]
             const isMe = uid === currentUserId
-            const rts = (tierList?.rankedTiers ?? '').split(',').filter(Boolean)
-            const userHasBoth = rankedList !== null && tierList !== null
-            const displayMode = userHasBoth ? mode : rankedList ? 'RANKED' : 'TIER'
+            const rts = (tierList.rankedTiers ?? '').split(',').filter(Boolean)
             return (
               <div key={uid} style={{ background: 'var(--bg-card)', border: `1px solid ${isMe ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 12, boxShadow: 'var(--shadow)', padding: '18px 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                   <div style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, background: `${ac}22`, color: ac, fontFamily: "'Fraunces', serif", flexShrink: 0 }}>
-                    {anyList.userName[0].toUpperCase()}
+                    {tierList.userName[0].toUpperCase()}
                   </div>
-                  <span style={{ fontSize: 14, color: 'var(--fg)', fontWeight: 500, flex: 1 }}>{anyList.userName}</span>
+                  <span style={{ fontSize: 14, color: 'var(--fg)', fontWeight: 500, flex: 1 }}>{tierList.userName}</span>
                   {isMe && <span style={{ fontSize: 11, color: 'var(--fg-7)', fontStyle: 'italic' }}>{t.me}</span>}
                 </div>
-
-                {displayMode === 'RANKED' && rankedList && renderRankedItems(rankedList.items)}
-                {displayMode === 'TIER' && tierList && renderTierItems(tierList.items, rts)}
+                {renderTierItems(tierList.items, rts)}
               </div>
             )
           })}

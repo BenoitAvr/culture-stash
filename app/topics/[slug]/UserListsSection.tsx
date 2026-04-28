@@ -51,28 +51,23 @@ export function UserListsSection({
 
   const rankableItems = resources.map(r => ({ id: r.id, label: r.title, prefix: r.emoji }))
 
-  const initialMode: 'RANKED' | 'TIER' = myList?.type ?? 'TIER'
-  const initialRankItems: RankEditItem[] = myList?.type === 'RANKED'
-    ? [...myList.items].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map(i => ({ id: i.resourceId, position: i.position ?? undefined, note: i.note ?? undefined }))
-    : []
   const initialTierItems: RankEditItem[] = myList?.type === 'TIER'
     ? myList.items.map(i => ({ id: i.resourceId, tier: i.tier ?? undefined, position: i.position ?? undefined, note: i.note ?? undefined }))
     : []
   const initialRankedTiers = (myList?.rankedTiers ?? '').split(',').filter(Boolean)
 
-  async function handleSave(mode: 'RANKED' | 'TIER', rank: RankEditItem[], tier: RankEditItem[], rankedTiers: string[]) {
-    const items = mode === 'RANKED' ? rank : tier
+  async function handleSave(tier: RankEditItem[], rankedTiers: string[]) {
     await saveUserList(
       topicSlug,
-      mode,
-      items.map(i => ({ resourceId: i.id, position: i.position, tier: i.tier, note: i.note })),
+      'TIER',
+      tier.map(i => ({ resourceId: i.id, position: i.position, tier: i.tier, note: i.note })),
       rankedTiers
     )
     setIsEditing(false)
   }
 
   async function handleDelete() {
-    await saveUserList(topicSlug, myList!.type, [], [])
+    await saveUserList(topicSlug, 'TIER', [], [])
     setIsEditing(false)
   }
 
@@ -116,9 +111,7 @@ export function UserListsSection({
     return (
       <RankingEditor
         items={rankableItems}
-        initialRankItems={initialRankItems}
         initialTierItems={initialTierItems}
-        initialMode={initialMode}
         initialRankedTiers={initialRankedTiers}
         hasExisting={!!myList}
         onSave={handleSave}

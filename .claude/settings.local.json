@@ -35,7 +35,9 @@
       "Bash(python *)",
       "Bash(grep *)",
       "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && head -5 \"{}\"')",
-      "Bash(find /c/Users/User/culture-stash/app/topics/[slug] -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\))"
+      "Bash(find /c/Users/User/culture-stash/app/topics/[slug] -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\))",
+      "Bash(sqlite3 dev.db \"SELECT title FROM Entry ORDER BY title;\")",
+      "Bash(PowerShell -Command \"npx tsx lib/prisma.ts 2>&1 | head -5; npx prisma studio --port 5555 --browser none 2>&1 | head -3\")"
     ]
   }
 }
