@@ -119,20 +119,22 @@ export default async function RankSlugPage({
     }
   })
 
-  const userEntryLists = topic.userEntryLists.map(l => ({
-    id: l.id,
-    userId: l.user.id,
-    userName: l.user.name,
-    type: l.type as 'RANKED' | 'TIER' | 'BOTH',
-    rankedTiers: l.rankedTiers,
-    items: l.items.map(i => ({
-      entryId: i.entryId,
-      position: i.position,
-      tier: i.tier,
-      note: i.note,
-      entry: i.entry,
-    })),
-  }))
+  const userEntryLists = topic.userEntryLists
+    .filter(l => userId && l.user.id === userId)
+    .map(l => ({
+      id: l.id,
+      userId: l.user.id,
+      userName: l.user.name,
+      type: l.type as 'RANKED' | 'TIER' | 'BOTH',
+      rankedTiers: l.rankedTiers,
+      items: l.items.map(i => ({
+        entryId: i.entryId,
+        position: i.position,
+        tier: i.tier,
+        note: i.note,
+        entry: i.entry,
+      })),
+    }))
 
   return (
     <RankTopicPage

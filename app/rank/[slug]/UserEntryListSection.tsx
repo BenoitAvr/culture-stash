@@ -83,11 +83,6 @@ export function UserEntryListSection({
   const [copied, setCopied] = useState(false)
 
   const myTierList = lists.find(l => l.userId === currentUserId && (l.type === 'TIER' || l.type === 'BOTH')) ?? null
-  const tierUserIds = [...new Set(lists.filter(l => l.type === 'TIER' || l.type === 'BOTH').map(l => l.userId))]
-  const sortedUserIds = [
-    ...tierUserIds.filter(id => id === currentUserId),
-    ...tierUserIds.filter(id => id !== currentUserId),
-  ]
 
   async function handleSave(tier: RankEditItem[], rankedTiers: string[]) {
     const updated = await saveUserEntryLists(
@@ -213,62 +208,54 @@ export function UserEntryListSection({
     )
   }
 
+  if (!isLoggedIn) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 0' }}>
+        <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--fg-6)' }}>{t.personalRankings}</span>
+        <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+        <Link href={`/${lang}/auth/login`} style={{ fontSize: 12, color: 'var(--accent-fg)', textDecoration: 'none' }}>
+          Connecte-toi pour voir ta liste →
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isOpen ? 20 : myTierList ? 10 : 0 }}>
         <button onClick={() => setIsOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, padding: 0, fontFamily: 'inherit' }}>
           <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--fg-6)' }}>{t.personalRankings}</span>
           <span style={{ fontSize: 9, color: 'var(--fg-7)', transition: 'transform .15s', display: 'inline-block', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
-          {sortedUserIds.length > 0 && <span style={{ fontSize: 11, color: 'var(--fg-8)', fontFamily: 'inherit' }}>({sortedUserIds.length})</span>}
         </button>
         <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-        {isLoggedIn && (
-          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            {myTierList && currentUserId && (
-              <>
-                <button onClick={copyMarkdown} title="Copier ma liste (markdown)" style={{ padding: '4px 7px', borderRadius: 6, border: 'none', background: 'none', color: copied ? 'var(--accent-fg)' : 'var(--fg-8)', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer' }}>
-                  {copied ? '✓' : '⎘'}
-                </button>
-                <CopyLinkButton lang={lang} topicSlug={topicSlug} userId={currentUserId} />
-              </>
-            )}
-            <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 4px' }} />
-            <button
-              onClick={() => setIsEditing(true)}
-              style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-5)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer' }}
-            >
-              {myTierList ? 'Modifier ma liste' : '+ Ma liste'}
-            </button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          {myTierList && currentUserId && (
+            <>
+              <button onClick={copyMarkdown} title="Copier ma liste (markdown)" style={{ padding: '4px 7px', borderRadius: 6, border: 'none', background: 'none', color: copied ? 'var(--accent-fg)' : 'var(--fg-8)', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer' }}>
+                {copied ? '✓' : '⎘'}
+              </button>
+              <CopyLinkButton lang={lang} topicSlug={topicSlug} userId={currentUserId} />
+            </>
+          )}
+          <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 4px' }} />
+          <button
+            onClick={() => setIsEditing(true)}
+            style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-5)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer' }}
+          >
+            {myTierList ? 'Modifier ma liste' : '+ Ma liste'}
+          </button>
+        </div>
       </div>
 
       {!isOpen && myTierList && (
         <div style={{ marginBottom: 4 }}>{renderPreview(myTierList)}</div>
       )}
 
-      {isOpen && (sortedUserIds.length === 0 ? (
-        <p style={{ color: 'var(--fg-7)', fontSize: 13, padding: '20px 0' }}>{isLoggedIn ? t.beFirst : t.noPersRankings}</p>
+      {isOpen && (!myTierList ? (
+        <p style={{ color: 'var(--fg-7)', fontSize: 13, padding: '20px 0' }}>{t.beFirst}</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {sortedUserIds.map(uid => {
-            const tierList = lists.find(l => l.userId === uid && (l.type === 'TIER' || l.type === 'BOTH'))!
-            const ac = AVATAR_COLORS[tierList.userName.charCodeAt(0) % 4]
-            const isMe = uid === currentUserId
-            const rts = (tierList.rankedTiers ?? '').split(',').filter(Boolean)
-            return (
-              <div key={uid} style={{ background: 'var(--bg-card)', border: `1px solid ${isMe ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 12, boxShadow: 'var(--shadow)', padding: '18px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, background: `${ac}22`, color: ac, fontFamily: "'Fraunces', serif", flexShrink: 0 }}>
-                    {tierList.userName[0].toUpperCase()}
-                  </div>
-                  <span style={{ fontSize: 14, color: 'var(--fg)', fontWeight: 500, flex: 1 }}>{tierList.userName}</span>
-                  {isMe && <span style={{ fontSize: 11, color: 'var(--fg-7)', fontStyle: 'italic' }}>{t.me}</span>}
-                </div>
-                {renderTierItems(tierList.items, rts)}
-              </div>
-            )
-          })}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--accent-muted)', borderRadius: 12, boxShadow: 'var(--shadow)', padding: '18px 20px' }}>
+          {renderTierItems(myTierList.items, (myTierList.rankedTiers ?? '').split(',').filter(Boolean))}
         </div>
       ))}
     </div>
