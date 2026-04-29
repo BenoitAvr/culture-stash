@@ -22,7 +22,7 @@ execSync(
 const sql = readFileSync("prisma/push.sql", "utf8");
 
 async function main() {
-  const client = createClient({ url, authToken });
+  const client = createClient({ url: url!, authToken: authToken! });
 
   const statements = sql
     .split(/;\s*\n/)
