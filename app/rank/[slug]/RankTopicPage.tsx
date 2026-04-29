@@ -145,11 +145,12 @@ function QuickAddPanel({
   )
 }
 
-function EntryRow({ entry, rank, sortMode, isLoggedIn, isOpen, onAdd }: {
+function EntryRow({ entry, rank, sortMode, isLoggedIn, isInMyList, isOpen, onAdd }: {
   entry: Entry
   rank: number
   sortMode: SortMode
   isLoggedIn: boolean
+  isInMyList: boolean
   isOpen: boolean
   onAdd: () => void
 }) {
@@ -209,7 +210,7 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, isOpen, onAdd }: {
               ★ <span style={{ fontWeight: 600, color: 'var(--fg-3)' }}>{entry.favoriteCount}</span> fav
             </span>
           )}
-          {isLoggedIn && (
+          {isLoggedIn && !isInMyList && (
             <button
               onClick={onAdd}
               title="Ajouter à ma liste"
@@ -421,6 +422,7 @@ export function RankTopicPage({
                   rank={i + 1}
                   sortMode={sortMode}
                   isLoggedIn={isLoggedIn}
+                  isInMyList={!!myTierList?.items.some(i => i.entryId === entry.id)}
                   isOpen={quickAddId === entry.id}
                   onAdd={() => setQuickAddId(prev => prev === entry.id ? null : entry.id)}
                 />
