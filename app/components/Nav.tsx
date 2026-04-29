@@ -7,6 +7,7 @@ import { NavSearch } from './NavSearch'
 import { LangSwitcher } from './LangSwitcher'
 import { NavModes } from './NavModes'
 import { ThemeToggle } from './ThemeToggle'
+import { NavLoginLink } from './NavLoginLink'
 
 export async function Nav({ lang }: { lang: string }) {
   const session = await getSession()
@@ -47,9 +48,7 @@ export async function Nav({ lang }: { lang: string }) {
           </>
         ) : (
           <>
-            <Link href={`/${lang}/auth/login`} style={{ padding: '7px 12px', borderRadius: 7, border: '1px solid var(--border)', color: 'var(--fg-5)', fontSize: 13, textDecoration: 'none' }}>
-              {t.nav.login}
-            </Link>
+            <NavLoginLink lang={lang} label={t.nav.login} />
             <Link href={`/${lang}/auth/signup`} style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
               {t.nav.contribute}
             </Link>

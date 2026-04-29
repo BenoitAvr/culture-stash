@@ -57,5 +57,8 @@ export async function GET(req: NextRequest) {
 
   await createSession({ userId: user.id, name: user.name, email: user.email })
 
-  return NextResponse.redirect(appUrl)
+  const redirectTo = req.cookies.get('auth_redirect')?.value || '/fr/rank'
+  const res = NextResponse.redirect(`${appUrl}${redirectTo}`)
+  res.cookies.delete('auth_redirect')
+  return res
 }

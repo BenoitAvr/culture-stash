@@ -1,12 +1,14 @@
-import { redirect } from 'next/navigation'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID
   const appUrl = process.env.APP_URL ?? 'http://localhost:3000'
 
   if (!clientId) {
-    redirect('/auth/login?error=google_not_configured')
+    return NextResponse.redirect(`${appUrl}/auth/login?error=google_not_configured`)
   }
+
+  const redirectTo = req.nextUrl.searchParams.get('redirect') || '/fr/rank'
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -16,5 +18,7 @@ export async function GET() {
     prompt: 'select_account',
   })
 
-  redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`)
+  const res = NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`)
+  res.cookies.set('auth_redirect', redirectTo, { httpOnly: true, maxAge: 300, path: '/' })
+  return res
 }

@@ -6,7 +6,7 @@ import { login } from '@/app/actions/auth'
 import { getDict } from '@/dictionaries/client'
 import Link from 'next/link'
 
-export function LoginForm() {
+export function LoginForm({ redirectTo }: { redirectTo: string }) {
   const { lang } = useParams() as { lang: string }
   const t = getDict(lang).auth
   const [state, action, pending] = useActionState(login, null)
@@ -28,6 +28,7 @@ export function LoginForm() {
         )}
 
         <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <input type="hidden" name="redirectTo" value={redirectTo} />
           <div>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--fg-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>{t.emailLabel}</label>
             <input name="email" type="email" required placeholder="you@example.com" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--fg)', fontSize: 14, outline: 'none', fontFamily: 'inherit' }} />
@@ -47,7 +48,7 @@ export function LoginForm() {
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         </div>
 
-        <a href="/api/auth/google" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '11px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, textDecoration: 'none', fontFamily: 'inherit', fontWeight: 500 }}>
+        <a href={`/api/auth/google?redirect=${encodeURIComponent(redirectTo)}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '11px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, textDecoration: 'none', fontFamily: 'inherit', fontWeight: 500 }}>
           <svg width="18" height="18" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
             <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>

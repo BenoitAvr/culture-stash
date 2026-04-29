@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
 import { RankingEditor, type RankEditItem } from '@/app/components/RankingEditor'
@@ -78,6 +78,7 @@ export function UserEntryListSection({
   t: Dict['rankings']
 }) {
   const { lang } = useParams() as { lang: string }
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -220,7 +221,7 @@ export function UserEntryListSection({
           </p>
         </div>
         <Link
-          href={`/${lang}/auth/login`}
+          href={`/${lang}/auth/login?redirect=${encodeURIComponent(pathname)}`}
           style={{ display: 'inline-block', padding: '10px 22px', borderRadius: 9, background: 'var(--btn)', color: 'var(--btn-text)', fontWeight: 600, fontSize: 14, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
         >
           Se connecter
