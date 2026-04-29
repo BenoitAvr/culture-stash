@@ -30,7 +30,7 @@ export default async function RankSlugPage({
         include: {
           user: { select: { id: true, name: true } },
           items: {
-            include: { entry: { select: { id: true, title: true, year: true } } },
+            include: { entry: { select: { id: true, title: true, year: true, cover: true } } },
             orderBy: { position: 'asc' },
           },
         },

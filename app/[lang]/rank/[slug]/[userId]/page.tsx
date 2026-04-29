@@ -1,3 +1,4 @@
+import React from 'react'
 import { prisma } from '@/lib/prisma'
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
@@ -103,16 +104,20 @@ export default async function ShareListPage({
                 </div>
 
                 {isRanked ? (
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, paddingTop: 4 }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, paddingTop: 2 }}>
                     {tItems.map((item, idx) => (
-                      <div key={item.entryId} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <div key={item.entryId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{
                           fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13,
                           color: (viewOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-8)',
-                          minWidth: 18, textAlign: 'right',
+                          minWidth: 18, textAlign: 'right', flexShrink: 0,
                         }}>
                           {viewOffset + idx + 1}
                         </span>
+                        {item.entry.cover
+                          ? <img src={item.entry.cover} alt="" style={{ width: 34, height: 50, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
+                          : <div style={{ width: 34, height: 50, borderRadius: 3, flexShrink: 0, background: `${TIER_COLOR[tier]}18`, border: `1px solid ${TIER_COLOR[tier]}33` }} />
+                        }
                         <span style={{ fontSize: 14, color: 'var(--fg-2)', flex: 1 }}>{item.entry.title}</span>
                         {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>{item.entry.year}</span>}
                         {item.note && <span style={{ fontSize: 11, color: 'var(--fg-7)', fontStyle: 'italic' }}>— {item.note}</span>}
@@ -120,19 +125,17 @@ export default async function ShareListPage({
                     ))}
                   </div>
                 ) : (
-                  <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 5 }}>
+                  <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 10, paddingTop: 2 }}>
                     {tItems.map(item => (
-                      <span key={item.entryId} style={{
-                        background: 'var(--bg-subtle)', border: '1px solid var(--border)',
-                        borderRadius: 6, padding: '3px 10px', fontSize: 13, color: 'var(--fg-2)',
-                        display: 'flex', alignItems: 'center', gap: 5,
-                      }}>
-                        {item.entry.cover && (
-                          <img src={item.entry.cover} alt="" style={{ width: 14, height: 20, objectFit: 'cover', borderRadius: 2 }} />
-                        )}
-                        {item.entry.title}
-                        {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>{item.entry.year}</span>}
-                      </span>
+                      <div key={item.entryId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 74 }}>
+                        {item.entry.cover
+                          ? <img src={item.entry.cover} alt={item.entry.title} style={{ width: 68, height: 98, objectFit: 'cover', borderRadius: 4 }} />
+                          : <div style={{ width: 68, height: 98, borderRadius: 4, background: `${TIER_COLOR[tier]}18`, border: `1px solid ${TIER_COLOR[tier]}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 24, color: TIER_COLOR[tier] }}>{item.entry.title[0]?.toUpperCase()}</div>
+                        }
+                        <span style={{ fontSize: 10, color: 'var(--fg-5)', textAlign: 'center', lineHeight: 1.25, width: '100%', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>
+                          {item.entry.title}{item.entry.year ? ` (${item.entry.year})` : ''}
+                        </span>
+                      </div>
                     ))}
                   </div>
                 )}

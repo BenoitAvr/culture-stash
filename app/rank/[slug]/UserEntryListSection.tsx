@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
@@ -14,7 +14,7 @@ type ListItemData = {
   position: number | null
   tier: string | null
   note: string | null
-  entry: EntryItem
+  entry: { id: string; title: string; year: number | null; cover: string | null }
 }
 
 export type UserEntryListData = {
@@ -34,6 +34,16 @@ const TIER_COLOR: Record<string, string> = {
   EX: '#5b8dee', TB: '#388e3c', BO: '#66bb6a', AB: '#a3c940', PA: '#f9c933', IN: '#f5a623', MA: '#e05555',
 }
 const AVATAR_COLORS = ['#7c6df0', '#f5a623', '#c8f55a', '#f57c7c']
+
+function Poster({ src, title, tier, w }: { src: string | null; title: string; tier: string; w: number }) {
+  const h = Math.round(w * 1.45)
+  if (src) return <img src={src} alt={title} style={{ width: w, height: h, objectFit: 'cover', borderRadius: 3, flexShrink: 0, display: 'block' }} />
+  return (
+    <div style={{ width: w, height: h, borderRadius: 3, flexShrink: 0, background: `${TIER_COLOR[tier]}18`, border: `1px solid ${TIER_COLOR[tier]}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: w * 0.35, color: TIER_COLOR[tier] }}>
+      {title[0]?.toUpperCase()}
+    </div>
+  )
+}
 
 function CopyLinkButton({ lang, topicSlug, userId }: { lang: string; topicSlug: string; userId: string }) {
   const [state, setState] = useState<'idle' | 'copied'>('idle')
@@ -146,15 +156,18 @@ export function UserEntryListSection({
   function renderPreview(list: UserEntryListData) {
     const activeTiers = TIERS.filter(t => list.items.some(i => i.tier === t))
     return (
-      <div onClick={() => setIsOpen(true)} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div onClick={() => setIsOpen(true)} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {activeTiers.slice(0, 3).map(tier => {
           const tItems = list.items.filter(i => i.tier === tier).sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
           return (
-            <div key={tier} style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden' }}>
-              <span style={{ width: 20, height: 20, borderRadius: 4, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 7.5, color: TIER_COLOR[tier], flexShrink: 0 }}>{tier}</span>
-              <span style={{ fontSize: 12, color: 'var(--fg-6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {tItems.map(i => i.entry.title).join('  ·  ')}
-              </span>
+            <div key={tier} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ width: 20, height: 20, borderRadius: 3, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 7.5, color: TIER_COLOR[tier], flexShrink: 0 }}>{tier}</span>
+              <div style={{ display: 'flex', gap: 3 }}>
+                {tItems.slice(0, 8).map(item => (
+                  <Poster key={item.entryId} src={item.entry.cover} title={item.entry.title} tier={tier} w={28} />
+                ))}
+                {tItems.length > 8 && <span style={{ fontSize: 10, color: 'var(--fg-8)', alignSelf: 'center', paddingLeft: 2 }}>+{tItems.length - 8}</span>}
+              </div>
             </div>
           )
         })}
@@ -165,28 +178,32 @@ export function UserEntryListSection({
 
   function renderTierItems(items: ListItemData[], rts: string[]) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {TIERS.filter(tier => items.some(i => i.tier === tier)).map(tier => {
           const tItems = items.filter(i => i.tier === tier).sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
           const isRanked = rts.includes(tier)
           const viewOffset = TIERS.slice(0, TIERS.indexOf(tier)).reduce((sum, t) => sum + items.filter(i => i.tier === t).length, 0)
           return (
             <div key={tier} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{ minWidth: 72, height: 26, borderRadius: 5, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 9, color: TIER_COLOR[tier], flexShrink: 0, padding: '0 6px' }}>{TIER_LABEL[tier]}</div>
+              <div style={{ minWidth: 72, height: 30, borderRadius: 5, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 9, color: TIER_COLOR[tier], flexShrink: 0, padding: '0 6px' }}>{TIER_LABEL[tier]}</div>
               {isRanked ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {tItems.map((item, idx) => (
-                    <div key={item.entryId} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                      <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13, color: (viewOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-8)', minWidth: 16, textAlign: 'right' }}>{viewOffset + idx + 1}</span>
+                    <div key={item.entryId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 12, color: (viewOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-8)', minWidth: 16, textAlign: 'right', flexShrink: 0 }}>{viewOffset + idx + 1}</span>
+                      <Poster src={item.entry.cover} title={item.entry.title} tier={tier} w={32} />
                       <span style={{ fontSize: 13, color: 'var(--fg-2)', flex: 1 }}>{item.entry.title}</span>
-                      {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>{item.entry.year}</span>}
+                      {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-8)', flexShrink: 0 }}>{item.entry.year}</span>}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 5, paddingTop: 4 }}>
+                <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 2 }}>
                   {tItems.map(item => (
-                    <span key={item.entryId} style={{ background: 'var(--bg-subtle)', borderRadius: 5, padding: '2px 9px', fontSize: 12, color: 'var(--fg-2)' }}>{item.entry.title}</span>
+                    <div key={item.entryId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 64 }}>
+                      <Poster src={item.entry.cover} title={item.entry.title} tier={tier} w={58} />
+                      <span style={{ fontSize: 10, color: 'var(--fg-5)', textAlign: 'center', lineHeight: 1.25, width: '100%', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{item.entry.title}</span>
+                    </div>
                   ))}
                 </div>
               )}
