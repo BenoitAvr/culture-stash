@@ -91,6 +91,13 @@ export function UserEntryListSection({
   const myTierList = lists.find(l => l.userId === currentUserId && (l.type === 'TIER' || l.type === 'BOTH')) ?? null
 
   async function handleSave(tier: RankEditItem[], rankedTiers: string[]) {
+    if (tier.length === 0) {
+      if (myTierList) {
+        console.log('[UserEntryListSection] saving empty ranking → deleting list', myTierList.id)
+        await handleDelete()
+      } else setIsEditing(false)
+      return
+    }
     const updated = await saveUserEntryLists(
       topicSlug,
       [],
@@ -135,7 +142,9 @@ export function UserEntryListSection({
   /* ─────────────── Edit mode ─────────────── */
   if (isEditing) {
     const initTierItems = myTierList
-      ? myTierList.items.map(i => ({ id: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined, note: i.note ?? undefined }))
+      ? myTierList.items
+          .filter(i => i.tier && TIERS.includes(i.tier))
+          .map(i => ({ id: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined, note: i.note ?? undefined }))
       : []
     const initRankedTiers = (myTierList?.rankedTiers ?? '').split(',').filter(Boolean)
     return (
