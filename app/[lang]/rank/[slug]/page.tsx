@@ -75,6 +75,7 @@ export default async function RankSlugPage({
   const rankData: Record<string, { total: number; count: number }> = {}
   const tierData: Record<string, { totalScore: number; count: number }> = {}
   const favoriteData: Record<string, number> = {}
+  const tierDistData: Record<string, Record<string, number>> = {}
 
   for (const list of topic.userEntryLists) {
     if (list.type !== 'TIER') continue
@@ -85,6 +86,9 @@ export default async function RankSlugPage({
       if (!tierData[item.entryId]) tierData[item.entryId] = { totalScore: 0, count: 0 }
       tierData[item.entryId].totalScore += TIER_SCORE[item.tier]
       tierData[item.entryId].count += 1
+
+      if (!tierDistData[item.entryId]) tierDistData[item.entryId] = {}
+      tierDistData[item.entryId][item.tier] = (tierDistData[item.entryId][item.tier] ?? 0) + 1
 
       if (item.position !== null && rts.includes(item.tier)) {
         if (!rankData[item.entryId]) rankData[item.entryId] = { total: 0, count: 0 }
@@ -122,6 +126,7 @@ export default async function RankSlugPage({
       avgTierScore: td && td.count > 0 ? td.totalScore / td.count : null,
       tierCount: td?.count ?? 0,
       favoriteCount: favoriteData[e.id] ?? 0,
+      tierDistribution: tierDistData[e.id] ?? {},
     }
   })
 

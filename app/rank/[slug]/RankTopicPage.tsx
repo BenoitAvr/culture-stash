@@ -32,6 +32,7 @@ type Entry = {
   avgTierScore: number | null
   tierCount: number
   favoriteCount: number
+  tierDistribution: Record<string, number>
 }
 
 type ListItemData = {
@@ -144,6 +145,23 @@ function QuickAddPanel({
   )
 }
 
+function TierBar({ distribution }: { distribution: Record<string, number> }) {
+  const total = Object.values(distribution).reduce((s, n) => s + n, 0)
+  if (total === 0) return null
+  const segs = TIERS.filter(t => distribution[t])
+  return (
+    <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden' }}>
+      {segs.map(tier => (
+        <div
+          key={tier}
+          title={`${TIER_LABEL[tier]} : ${distribution[tier]}`}
+          style={{ flex: distribution[tier], background: TIER_COLOR[tier], opacity: 0.85 }}
+        />
+      ))}
+    </div>
+  )
+}
+
 function EntryRow({ entry, rank, sortMode, isLoggedIn, myTier, isOpen, onAdd }: {
   entry: Entry
   rank: number
@@ -154,8 +172,6 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, myTier, isOpen, onAdd }: 
   onAdd: () => void
 }) {
   const isTop3 = rank <= 3
-  const tierLabel = entry.avgTierScore !== null ? scoreTierLabel(entry.avgTierScore) : null
-  const color = tierLabel ? TIER_COLOR[tierLabel] : 'var(--fg-8)'
   const myTierColor = myTier ? TIER_COLOR[myTier] : null
 
   return (
@@ -178,37 +194,55 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, myTier, isOpen, onAdd }: 
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {tierLabel && (
-            <span style={{
-              fontSize: 11, fontWeight: 700, fontFamily: "'Fraunces', serif",
-              color, background: `${color}18`, border: `1px solid ${color}44`,
-              borderRadius: 5, padding: '2px 8px',
-              outline: sortMode === 'tier' ? `2px solid ${color}66` : 'none',
+          {entry.tierCount > 0 && (
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: 4,
+              background: 'var(--bg-subtle)', border: '1px solid var(--border)',
+              borderRadius: 5, padding: '4px 8px',
+              outline: sortMode === 'tier' ? '2px solid var(--accent-muted)' : 'none',
             }}>
-              {TIER_LABEL[tierLabel]}
-              <span style={{ fontFamily: 'inherit', fontWeight: 400, fontSize: 10, color, opacity: 0.7 }}> ×{entry.tierCount}</span>
-            </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 76, flexShrink: 0 }}><TierBar distribution={entry.tierDistribution} /></div>
+                <span style={{ fontSize: 10, color: 'var(--fg-7)' }}>×{entry.tierCount}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {TIERS.filter(t => entry.tierDistribution[t]).map(t => (
+                  <span key={t} style={{ fontSize: 9, fontWeight: 600, color: TIER_COLOR[t] }}>
+                    {TIER_LABEL[t]}<span style={{ fontWeight: 400, opacity: 0.75 }}>·{entry.tierDistribution[t]}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
           )}
           {entry.avgRank !== null && (
-            <span style={{
-              fontSize: 11, color: 'var(--fg-6)',
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: 3,
               background: 'var(--bg-subtle)', border: '1px solid var(--border)',
-              borderRadius: 5, padding: '2px 8px',
+              borderRadius: 5, padding: '4px 8px',
               outline: sortMode === 'rank' ? '2px solid var(--accent-muted)' : 'none',
             }}>
-              rang <span style={{ fontWeight: 600, color: 'var(--fg-3)' }}>#{entry.avgRank.toFixed(1)}</span>
-              <span style={{ fontSize: 10, color: 'var(--fg-8)' }}> /{entry.rankCount}</span>
-            </span>
+              <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13, color: 'var(--fg-2)', lineHeight: 1 }}>
+                #{entry.avgRank.toFixed(1)}
+              </span>
+              <span style={{ fontSize: 9, color: 'var(--fg-7)' }}>
+                rang moyen · {entry.rankCount} {entry.rankCount > 1 ? 'classements' : 'classement'}
+              </span>
+            </div>
           )}
           {entry.favoriteCount > 0 && (
-            <span style={{
-              fontSize: 11, color: 'var(--fg-6)',
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: 3,
               background: 'var(--bg-subtle)', border: '1px solid var(--border)',
-              borderRadius: 5, padding: '2px 8px',
+              borderRadius: 5, padding: '4px 8px',
               outline: sortMode === 'favorite' ? '2px solid var(--accent-muted)' : 'none',
             }}>
-              ★ <span style={{ fontWeight: 600, color: 'var(--fg-3)' }}>{entry.favoriteCount}</span> fav
-            </span>
+              <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13, color: 'var(--fg-2)', lineHeight: 1 }}>
+                ★ {entry.favoriteCount}
+              </span>
+              <span style={{ fontSize: 9, color: 'var(--fg-7)' }}>
+                en tête de {entry.favoriteCount} {entry.favoriteCount > 1 ? 'listes' : 'liste'}
+              </span>
+            </div>
           )}
           {myTierColor && myTier && (
             <button
