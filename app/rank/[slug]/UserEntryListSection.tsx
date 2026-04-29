@@ -66,18 +66,18 @@ function CopyLinkButton({ lang, topicSlug, userId }: { lang: string; topicSlug: 
 }
 
 export function UserEntryListSection({
-  topicSlug, topicTitle, entries, userEntryLists, currentUserId, isLoggedIn, t,
+  topicSlug, topicTitle, entries, lists, onListsChange, currentUserId, isLoggedIn, t,
 }: {
   topicSlug: string
   topicTitle: string
   entries: EntryItem[]
-  userEntryLists: UserEntryListData[]
+  lists: UserEntryListData[]
+  onListsChange: (l: UserEntryListData[]) => void
   currentUserId: string | null
   isLoggedIn: boolean
   t: Dict['rankings']
 }) {
   const { lang } = useParams() as { lang: string }
-  const [lists, setLists] = useState<UserEntryListData[]>(userEntryLists)
   const [isOpen, setIsOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -96,13 +96,13 @@ export function UserEntryListSection({
       tier.map(i => ({ entryId: i.id, tier: i.tier, position: i.position, note: i.note })),
       rankedTiers
     )
-    setLists(prev => [...prev.filter(l => l.userId !== currentUserId), ...updated])
+    onListsChange([...lists.filter(l => l.userId !== currentUserId), ...updated])
     setIsEditing(false)
   }
 
   async function handleDelete() {
     await saveUserEntryLists(topicSlug, [], [], [])
-    setLists(prev => prev.filter(l => l.userId !== currentUserId))
+    onListsChange(lists.filter(l => l.userId !== currentUserId))
     setIsEditing(false)
   }
 
