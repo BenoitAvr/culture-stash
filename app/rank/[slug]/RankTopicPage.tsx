@@ -145,18 +145,19 @@ function QuickAddPanel({
   )
 }
 
-function EntryRow({ entry, rank, sortMode, isLoggedIn, isInMyList, isOpen, onAdd }: {
+function EntryRow({ entry, rank, sortMode, isLoggedIn, myTier, isOpen, onAdd }: {
   entry: Entry
   rank: number
   sortMode: SortMode
   isLoggedIn: boolean
-  isInMyList: boolean
+  myTier: string | null
   isOpen: boolean
   onAdd: () => void
 }) {
   const isTop3 = rank <= 3
   const tierLabel = entry.avgTierScore !== null ? scoreTierLabel(entry.avgTierScore) : null
   const color = tierLabel ? TIER_COLOR[tierLabel] : 'var(--fg-8)'
+  const myTierColor = myTier ? TIER_COLOR[myTier] : null
 
   return (
     <div style={{ display: 'flex', gap: 14, padding: '14px 0', borderBottom: isOpen ? 'none' : '1px solid var(--border)', alignItems: 'flex-start' }}>
@@ -210,7 +211,23 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, isInMyList, isOpen, onAdd
               ★ <span style={{ fontWeight: 600, color: 'var(--fg-3)' }}>{entry.favoriteCount}</span> fav
             </span>
           )}
-          {isLoggedIn && !isInMyList && (
+          {myTierColor && myTier && (
+            <button
+              onClick={onAdd}
+              title="Modifier dans ma liste"
+              style={{
+                marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5,
+                fontSize: 10, fontWeight: 700, fontFamily: "'Fraunces', serif",
+                color: myTierColor, background: isOpen ? `${myTierColor}28` : `${myTierColor}18`,
+                border: `1px solid ${isOpen ? myTierColor : myTierColor + '55'}`,
+                borderRadius: 5, padding: '2px 7px', cursor: 'pointer',
+              }}
+            >
+              {myTier}
+              <span style={{ fontSize: 9, opacity: 0.7 }}>✏︎</span>
+            </button>
+          )}
+          {isLoggedIn && !myTier && (
             <button
               onClick={onAdd}
               title="Ajouter à ma liste"
@@ -422,7 +439,7 @@ export function RankTopicPage({
                   rank={i + 1}
                   sortMode={sortMode}
                   isLoggedIn={isLoggedIn}
-                  isInMyList={!!myTierList?.items.some(i => i.entryId === entry.id)}
+                  myTier={myTierList?.items.find(item => item.entryId === entry.id)?.tier ?? null}
                   isOpen={quickAddId === entry.id}
                   onAdd={() => setQuickAddId(prev => prev === entry.id ? null : entry.id)}
                 />
