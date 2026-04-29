@@ -419,7 +419,7 @@ export function RankingEditor({
             />
           </div>
           {(() => {
-            const unclassified = items.filter(item => !search.trim() || normalizeTitle(item.label).includes(normalizeTitle(search)))
+            const unclassified = items.filter(item => !tierItems.some(i => i.id === item.id) && (!search.trim() || normalizeTitle(item.label).includes(normalizeTitle(search))))
             const visibleUnclassified = search.trim() ? unclassified : unclassified.slice(0, unclassifiedLimit)
             return (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
