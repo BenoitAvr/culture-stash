@@ -6,8 +6,8 @@ const LANGS = ['fr', 'en']
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [topics, rankableTopics] = await Promise.all([
-    prisma.topic.findMany({ select: { slug: true, updatedAt: true } }),
-    prisma.topic.findMany({ where: { rankable: true }, select: { slug: true, updatedAt: true } }),
+    prisma.topic.findMany({ select: { slug: true, createdAt: true } }),
+    prisma.topic.findMany({ where: { rankable: true }, select: { slug: true, createdAt: true } }),
   ])
 
   const staticRoutes = LANGS.flatMap(lang => [
@@ -19,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const topicRoutes = topics.flatMap(t =>
     LANGS.map(lang => ({
       url: `${SITE_URL}/${lang}/topics/${t.slug}`,
-      lastModified: t.updatedAt,
+      lastModified: t.createdAt,
       changeFrequency: 'weekly' as const,
       priority: 0.8,
     }))
@@ -28,7 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const rankRoutes = rankableTopics.flatMap(t =>
     LANGS.map(lang => ({
       url: `${SITE_URL}/${lang}/rank/${t.slug}`,
-      lastModified: t.updatedAt,
+      lastModified: t.createdAt,
       changeFrequency: 'daily' as const,
       priority: 0.9,
     }))
