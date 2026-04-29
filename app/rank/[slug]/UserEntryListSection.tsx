@@ -210,11 +210,20 @@ export function UserEntryListSection({
 
   if (!isLoggedIn) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 0' }}>
-        <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--fg-6)' }}>{t.personalRankings}</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-        <Link href={`/${lang}/auth/login`} style={{ fontSize: 12, color: 'var(--accent-fg)', textDecoration: 'none' }}>
-          Connecte-toi pour voir ta liste →
+      <div style={{ borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '28px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 900, color: 'var(--fg)', marginBottom: 6 }}>
+            Crée mon classement
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--fg-5)', margin: 0, lineHeight: 1.5 }}>
+            Classe tes {topicTitle.toLowerCase()}, compare tes goûts avec la communauté.
+          </p>
+        </div>
+        <Link
+          href={`/${lang}/auth/login`}
+          style={{ display: 'inline-block', padding: '10px 22px', borderRadius: 9, background: 'var(--btn)', color: 'var(--btn-text)', fontWeight: 600, fontSize: 14, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
+        >
+          Se connecter
         </Link>
       </div>
     )
@@ -228,36 +237,51 @@ export function UserEntryListSection({
           <span style={{ fontSize: 9, color: 'var(--fg-7)', transition: 'transform .15s', display: 'inline-block', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </button>
         <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-        <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          {myTierList && currentUserId && (
-            <>
-              <button onClick={copyMarkdown} title="Copier ma liste (markdown)" style={{ padding: '4px 7px', borderRadius: 6, border: 'none', background: 'none', color: copied ? 'var(--accent-fg)' : 'var(--fg-8)', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer' }}>
-                {copied ? '✓' : '⎘'}
-              </button>
-              <CopyLinkButton lang={lang} topicSlug={topicSlug} userId={currentUserId} />
-            </>
-          )}
-          <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 4px' }} />
+        {myTierList && currentUserId && (
+          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <button onClick={copyMarkdown} title="Copier ma liste (markdown)" style={{ padding: '4px 7px', borderRadius: 6, border: 'none', background: 'none', color: copied ? 'var(--accent-fg)' : 'var(--fg-8)', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer' }}>
+              {copied ? '✓' : '⎘'}
+            </button>
+            <CopyLinkButton lang={lang} topicSlug={topicSlug} userId={currentUserId} />
+            <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 4px' }} />
+            <button
+              onClick={() => setIsEditing(true)}
+              style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-5)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer' }}
+            >
+              Modifier ma liste
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!myTierList && (
+        <div style={{ borderRadius: 14, border: '1px dashed var(--border)', padding: '28px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 900, color: 'var(--fg)', marginBottom: 6 }}>
+              Crée mon classement
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--fg-5)', margin: 0, lineHeight: 1.5 }}>
+              Classe tes {topicTitle.toLowerCase()} par tier, avec un rang optionnel.
+            </p>
+          </div>
           <button
             onClick={() => setIsEditing(true)}
-            style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-5)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer' }}
+            style={{ padding: '10px 22px', borderRadius: 9, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontWeight: 600, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
           >
-            {myTierList ? 'Modifier ma liste' : '+ Ma liste'}
+            Commencer
           </button>
         </div>
-      </div>
+      )}
 
       {!isOpen && myTierList && (
         <div style={{ marginBottom: 4 }}>{renderPreview(myTierList)}</div>
       )}
 
-      {isOpen && (!myTierList ? (
-        <p style={{ color: 'var(--fg-7)', fontSize: 13, padding: '20px 0' }}>{t.beFirst}</p>
-      ) : (
+      {isOpen && myTierList && (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--accent-muted)', borderRadius: 12, boxShadow: 'var(--shadow)', padding: '18px 20px' }}>
           {renderTierItems(myTierList.items, (myTierList.rankedTiers ?? '').split(',').filter(Boolean))}
         </div>
-      ))}
+      )}
     </div>
   )
 }

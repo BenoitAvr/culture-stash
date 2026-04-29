@@ -15,7 +15,7 @@ export function SignupForm() {
     <div style={{ width: '100%', maxWidth: 400, margin: '0 auto' }}>
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <Link href={`/${lang}`} style={{ fontFamily: "'Fraunces', serif", fontSize: 28, fontWeight: 900, textDecoration: 'none', color: 'var(--fg)' }}>
-          kn<span style={{ color: 'var(--accent-fg)' }}>ow</span>base
+          Culture <span style={{ color: 'var(--accent-fg)' }}>Stash</span>
         </Link>
         <p style={{ color: 'var(--fg-6)', fontSize: 14, marginTop: 8 }}>{t.signupTitle}</p>
       </div>
