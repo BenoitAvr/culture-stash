@@ -22,7 +22,6 @@ export default async function RankSlugPage({
     include: {
       translations: { where: { lang } },
       entries: {
-        include: { userEntries: true },
         orderBy: { createdAt: 'asc' },
       },
       userEntryLists: {
@@ -45,22 +44,43 @@ export default async function RankSlugPage({
   const title = tr?.title ?? topic.title
   const badge = tr?.badge ?? topic.badge
 
+  const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
+  const TIER_SCORE: Record<string, number> = { EX: 7, TB: 6, BO: 5, AB: 4, PA: 3, IN: 2, MA: 1 }
+
   const rankData: Record<string, { total: number; count: number }> = {}
+  const tierData: Record<string, { totalScore: number; count: number }> = {}
+  const favoriteData: Record<string, number> = {}
+
   for (const list of topic.userEntryLists) {
-    if (list.type !== 'RANKED') continue
+    if (list.type !== 'TIER') continue
+    const rts = (list.rankedTiers ?? '').split(',').filter(Boolean)
+
     for (const item of list.items) {
-      if (item.position === null) continue
-      if (!rankData[item.entryId]) rankData[item.entryId] = { total: 0, count: 0 }
-      rankData[item.entryId].total += item.position
-      rankData[item.entryId].count += 1
+      if (!item.tier || TIER_SCORE[item.tier] === undefined) continue
+      if (!tierData[item.entryId]) tierData[item.entryId] = { totalScore: 0, count: 0 }
+      tierData[item.entryId].totalScore += TIER_SCORE[item.tier]
+      tierData[item.entryId].count += 1
+
+      if (item.position !== null && rts.includes(item.tier)) {
+        if (!rankData[item.entryId]) rankData[item.entryId] = { total: 0, count: 0 }
+        rankData[item.entryId].total += item.position
+        rankData[item.entryId].count += 1
+      }
+    }
+
+    // favorite = position 1 in the highest ranked tier for this user
+    for (const tier of TIERS) {
+      if (!rts.includes(tier)) continue
+      const top = list.items.find(i => i.tier === tier && i.position === 1)
+      if (top) { favoriteData[top.entryId] = (favoriteData[top.entryId] ?? 0) + 1; break }
     }
   }
 
   const coverMap = await backfillMissingCovers(topic.entries)
 
   const entries = topic.entries.map(e => {
-    const userEntry = userId ? e.userEntries.find(ue => ue.userId === userId) : null
     const rd = rankData[e.id]
+    const td = tierData[e.id]
     return {
       id: e.id,
       title: e.title,
@@ -68,7 +88,9 @@ export default async function RankSlugPage({
       cover: e.cover ?? coverMap.get(e.id) ?? null,
       avgRank: rd && rd.count > 0 ? rd.total / rd.count : null,
       rankCount: rd?.count ?? 0,
-      userNote: userEntry?.note ?? null,
+      avgTierScore: td && td.count > 0 ? td.totalScore / td.count : null,
+      tierCount: td?.count ?? 0,
+      favoriteCount: favoriteData[e.id] ?? 0,
     }
   })
 

@@ -7,6 +7,21 @@ import { addEntry } from '@/app/actions/entries'
 import { UserEntryListSection, type UserEntryListData } from './UserEntryListSection'
 import Link from 'next/link'
 
+const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
+const TIER_LABEL: Record<string, string> = {
+  EX: 'Excellent', TB: 'Très bon', BO: 'Bon', AB: 'Assez bien', PA: 'Passable', IN: 'Insuffisant', MA: 'Mauvais',
+}
+const TIER_COLOR: Record<string, string> = {
+  EX: '#5b8dee', TB: '#388e3c', BO: '#66bb6a', AB: '#a3c940', PA: '#f9c933', IN: '#f5a623', MA: '#e05555',
+}
+
+function scoreTierLabel(score: number): string {
+  const rounded = Math.round(score)
+  return { 7: 'EX', 6: 'TB', 5: 'BO', 4: 'AB', 3: 'PA', 2: 'IN', 1: 'MA' }[rounded] ?? 'AB'
+}
+
+type SortMode = 'combined' | 'tier' | 'rank' | 'favorite'
+
 type Entry = {
   id: string
   title: string
@@ -14,39 +29,71 @@ type Entry = {
   cover: string | null
   avgRank: number | null
   rankCount: number
-  userNote: string | null
+  avgTierScore: number | null
+  tierCount: number
+  favoriteCount: number
 }
 
-function EntryRow({ entry, rank, t }: { entry: Entry; rank: number; t: ReturnType<typeof getDict>['rank'] }) {
+function EntryRow({ entry, rank, sortMode }: { entry: Entry; rank: number; sortMode: SortMode }) {
   const isTop3 = rank <= 3
+  const tierLabel = entry.avgTierScore !== null ? scoreTierLabel(entry.avgTierScore) : null
+  const color = tierLabel ? TIER_COLOR[tierLabel] : 'var(--fg-8)'
 
   return (
     <div style={{ display: 'flex', gap: 14, padding: '14px 0', borderBottom: '1px solid var(--border)', alignItems: 'flex-start' }}>
-      {/* Rank number */}
       <span style={{
         fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 900, lineHeight: 1,
         color: isTop3 ? 'var(--accent-fg)' : 'var(--fg-8)',
         width: 30, flexShrink: 0, textAlign: 'right', paddingTop: 3,
       }}>{rank}</span>
 
-      {/* Cover */}
       {entry.cover
         ? <img src={entry.cover} alt={entry.title} style={{ width: 38, height: 54, objectFit: 'cover', borderRadius: 4, flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,.12)' }} />
         : <div style={{ width: 38, height: 54, borderRadius: 4, background: 'var(--bg-subtle)', flexShrink: 0 }} />
       }
 
-      {/* Body */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
           <span style={{ fontFamily: "'Fraunces', serif", fontSize: 16, fontWeight: 700, color: 'var(--fg)', lineHeight: 1.2 }}>{entry.title}</span>
           {entry.year && <span style={{ fontSize: 12, color: 'var(--fg-7)' }}>{entry.year}</span>}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Tier badge */}
+          {tierLabel && (
+            <span style={{
+              fontSize: 11, fontWeight: 700, fontFamily: "'Fraunces', serif",
+              color, background: `${color}18`, border: `1px solid ${color}44`,
+              borderRadius: 5, padding: '2px 8px',
+              outline: sortMode === 'tier' ? `2px solid ${color}66` : 'none',
+            }}>
+              {TIER_LABEL[tierLabel]}
+              <span style={{ fontFamily: 'inherit', fontWeight: 400, fontSize: 10, color, opacity: 0.7 }}> ×{entry.tierCount}</span>
+            </span>
+          )}
+
+          {/* Rang moyen */}
           {entry.avgRank !== null && (
-            <span style={{ fontSize: 12, color: 'var(--fg-6)' }}>
-              <span style={{ fontWeight: 600, color: 'var(--fg-4)' }}>#{entry.avgRank.toFixed(1)}</span>
-              {' '}<span style={{ color: 'var(--fg-8)' }}>({entry.rankCount} {entry.rankCount === 1 ? 'liste' : 'listes'})</span>
+            <span style={{
+              fontSize: 11, color: 'var(--fg-6)',
+              background: 'var(--bg-subtle)', border: `1px solid var(--border)`,
+              borderRadius: 5, padding: '2px 8px',
+              outline: sortMode === 'rank' ? '2px solid var(--accent-muted)' : 'none',
+            }}>
+              rang <span style={{ fontWeight: 600, color: 'var(--fg-3)' }}>#{entry.avgRank.toFixed(1)}</span>
+              <span style={{ fontSize: 10, color: 'var(--fg-8)' }}> /{entry.rankCount}</span>
+            </span>
+          )}
+
+          {/* Favoris */}
+          {entry.favoriteCount > 0 && (
+            <span style={{
+              fontSize: 11, color: 'var(--fg-6)',
+              background: 'var(--bg-subtle)', border: `1px solid var(--border)`,
+              borderRadius: 5, padding: '2px 8px',
+              outline: sortMode === 'favorite' ? '2px solid var(--accent-muted)' : 'none',
+            }}>
+              ★ <span style={{ fontWeight: 600, color: 'var(--fg-3)' }}>{entry.favoriteCount}</span> fav
             </span>
           )}
         </div>
@@ -74,12 +121,34 @@ export function RankTopicPage({
   const boundAddEntry = addEntry.bind(null, topicSlug)
   const [state, formAction, pending] = useActionState(boundAddEntry, null)
   const [showForm, setShowForm] = useState(false)
+  const [sortMode, setSortMode] = useState<SortMode>('combined')
 
   const sorted = [...entries].sort((a, b) => {
-    if (a.avgRank === null && b.avgRank === null) return 0
-    if (a.avgRank === null) return 1
-    if (b.avgRank === null) return -1
-    return a.avgRank - b.avgRank || b.rankCount - a.rankCount
+    const hasA = a.avgTierScore !== null || a.avgRank !== null || a.favoriteCount > 0
+    const hasB = b.avgTierScore !== null || b.avgRank !== null || b.favoriteCount > 0
+    if (!hasA && !hasB) return 0
+    if (!hasA) return 1
+    if (!hasB) return -1
+
+    if (sortMode === 'tier') {
+      if (a.avgTierScore === null && b.avgTierScore === null) return 0
+      if (a.avgTierScore === null) return 1
+      if (b.avgTierScore === null) return -1
+      return b.avgTierScore - a.avgTierScore || (a.avgRank ?? 999) - (b.avgRank ?? 999)
+    }
+    if (sortMode === 'rank') {
+      if (a.avgRank === null && b.avgRank === null) return (b.avgTierScore ?? 0) - (a.avgTierScore ?? 0)
+      if (a.avgRank === null) return 1
+      if (b.avgRank === null) return -1
+      return a.avgRank - b.avgRank
+    }
+    if (sortMode === 'favorite') {
+      return b.favoriteCount - a.favoriteCount || (b.avgTierScore ?? 0) - (a.avgTierScore ?? 0)
+    }
+    // combined: tier score weighted + rank bonus + favorite bonus
+    const scoreA = (a.avgTierScore ?? 0) * 4 + (a.avgRank ? 1 / a.avgRank * 8 : 0) + a.favoriteCount
+    const scoreB = (b.avgTierScore ?? 0) * 4 + (b.avgRank ? 1 / b.avgRank * 8 : 0) + b.favoriteCount
+    return scoreB - scoreA
   })
   const entryItems = entries.map(e => ({ id: e.id, title: e.title, year: e.year }))
 
@@ -163,16 +232,27 @@ export function RankTopicPage({
 
       {/* Community ranking */}
       <div style={{ paddingTop: 36 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--fg-6)', whiteSpace: 'nowrap' }}>{t.communityRanking}</span>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          {(['combined', 'tier', 'rank', 'favorite'] as SortMode[]).map(mode => (
+            <button key={mode} onClick={() => setSortMode(mode)} style={{
+              padding: '4px 11px', borderRadius: 20, fontFamily: 'inherit', cursor: 'pointer', fontSize: 11,
+              border: `1px solid ${sortMode === mode ? 'var(--accent-muted)' : 'var(--border)'}`,
+              background: sortMode === mode ? 'var(--accent-faint)' : 'none',
+              color: sortMode === mode ? 'var(--accent-fg)' : 'var(--fg-6)',
+              transition: 'all .12s',
+            }}>
+              {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Tier' : mode === 'rank' ? 'Rang' : 'Favoris'}
+            </button>
+          ))}
         </div>
         {sorted.length === 0 ? (
           <p style={{ color: 'var(--fg-7)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
         ) : (
           <div>
             {sorted.map((entry, i) => (
-              <EntryRow key={entry.id} entry={entry} rank={i + 1} t={t} />
+              <EntryRow key={entry.id} entry={entry} rank={i + 1} sortMode={sortMode} />
             ))}
           </div>
         )}
