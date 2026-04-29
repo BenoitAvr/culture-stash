@@ -346,7 +346,7 @@ export function RankingEditor({
                 }}
                 style={{ flex: 1, minHeight: 44, background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 7, padding: '6px 10px', transition: 'background .12s, border-color .12s' }}
               >
-                {inTier.length === 0 && <span style={{ color: 'var(--fg-9)', fontSize: 12, fontStyle: 'italic' }}>← glisser ici</span>}
+                {inTier.length === 0 && <span style={{ color: 'var(--fg-6)', fontSize: 12, fontStyle: 'italic' }}>← glisser ici</span>}
                 {isRankedTier ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {inTier.map((rankItem, idx) => {
@@ -373,10 +373,10 @@ export function RankingEditor({
                           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 5, background: isOver ? 'var(--accent-faint)' : 'transparent', opacity: isDragging ? 0.35 : 1, cursor: 'grab', transition: 'background .1s' }}
                         >
                           <span style={{ color: 'var(--fg-7)', fontSize: 11, userSelect: 'none', flexShrink: 0 }}>⠿</span>
-                          <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 14, color: (tierOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-8)', minWidth: 20, textAlign: 'center', flexShrink: 0 }}>{tierOffset + idx + 1}</span>
+                          <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 14, color: (tierOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-5)', minWidth: 20, textAlign: 'center', flexShrink: 0 }}>{tierOffset + idx + 1}</span>
                           {item.prefix && <span style={{ fontSize: 16 }}>{item.prefix}</span>}
                           <span style={{ fontSize: 13, color: 'var(--fg-2)', flex: 1 }}>{item.label}</span>
-                          {item.suffix && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>{item.suffix}</span>}
+                          {item.suffix && <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>{item.suffix}</span>}
                           <button onClick={() => setTierItems(prev => { const r = prev.filter(i => i.id !== rankItem.id); let pos = 1; return r.map(i => i.tier === tier ? { ...i, position: pos++ } : i) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-7)', fontSize: 14, padding: '0 2px', flexShrink: 0 }}>×</button>
                         </div>
                       )
@@ -421,9 +421,9 @@ export function RankingEditor({
           onDrop={() => { if (tierDragId) dropOnUnclassified(tierDragId); setTierDragId(null); setDragOverTier(null) }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--fg-8)', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--fg-5)', whiteSpace: 'nowrap' }}>
               {t.noTier}
-              <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--fg-9)', textTransform: 'none', letterSpacing: 0 }}>— glisser vers un tier</span>
+              <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--fg-7)', textTransform: 'none', letterSpacing: 0 }}>— glisser vers un tier</span>
             </div>
             <input
               value={search}
@@ -476,7 +476,7 @@ export function RankingEditor({
                       <span style={{ fontSize: 11, color: 'var(--fg-7)', lineHeight: 1 }}>⠿</span>
                       {item.prefix && <span style={{ fontSize: 16 }}>{item.prefix}</span>}
                       <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>{item.label}</span>
-                      {item.suffix && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>{item.suffix}</span>}
+                      {item.suffix && <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>{item.suffix}</span>}
                       <button
                         onClick={() => setQuickAddId(prev => prev === item.id ? null : item.id)}
                         style={{ marginLeft: 2, background: quickAddId === item.id ? 'var(--accent-faint)' : 'none', border: 'none', cursor: 'pointer', color: quickAddId === item.id ? 'var(--accent-fg)' : 'var(--fg-7)', fontSize: 14, lineHeight: 1, padding: '0 2px', borderRadius: 3, flexShrink: 0 }}
@@ -498,7 +498,7 @@ export function RankingEditor({
                 {unclassified.length === 0 && (
                   search.trim() && addFormAction ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ color: 'var(--fg-7)', fontSize: 12 }}>"{search}" n'est pas encore dans la liste.</span>
+                      <span style={{ color: 'var(--fg-4)', fontSize: 12 }}>"{search}" n'est pas encore dans la liste.</span>
                       <button
                         onClick={() => setShowAddForm(true)}
                         style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--accent-fg)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}
@@ -507,7 +507,7 @@ export function RankingEditor({
                       </button>
                     </div>
                   ) : (
-                    <span style={{ color: 'var(--fg-8)', fontSize: 12 }}>{search.trim() ? 'Aucun résultat' : t.allClassified}</span>
+                    <span style={{ color: 'var(--fg-5)', fontSize: 12 }}>{search.trim() ? 'Aucun résultat' : t.allClassified}</span>
                   )
                 )}
                 {!search.trim() && unclassified.length > unclassifiedLimit && (

@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { createSession, deleteSession } from '@/lib/session'
+import { generateUsername } from '@/lib/username'
 import bcrypt from 'bcryptjs'
 import { redirect } from 'next/navigation'
 
@@ -20,7 +21,14 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   const valid = await bcrypt.compare(password, user.passwordHash)
   if (!valid) return { error: 'Email ou mot de passe incorrect' }
 
-  await createSession({ userId: user.id, name: user.name, email: user.email })
+  // Backfill username for existing users
+  let { username } = user
+  if (!username) {
+    username = await generateUsername(user.name, user.id)
+    await prisma.user.update({ where: { id: user.id }, data: { username } })
+  }
+
+  await createSession({ userId: user.id, name: user.name, username, email: user.email })
   const redirectTo = (formData.get('redirectTo') as string) || '/fr/rank'
   redirect(redirectTo)
 }
@@ -37,9 +45,10 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
   if (existing) return { error: 'Un compte existe déjà avec cet email' }
 
   const passwordHash = await bcrypt.hash(password, 12)
-  const user = await prisma.user.create({ data: { name, email, passwordHash } })
+  const username = await generateUsername(name)
+  const user = await prisma.user.create({ data: { name, email, passwordHash, username } })
 
-  await createSession({ userId: user.id, name: user.name, email: user.email })
+  await createSession({ userId: user.id, name: user.name, username, email: user.email })
   const redirectTo = (formData.get('redirectTo') as string) || '/fr/rank'
   redirect(redirectTo)
 }

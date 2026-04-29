@@ -17,7 +17,7 @@ export function ThemeToggle() {
   }
 
   return (
-    <button onClick={toggle} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 10px', color: 'var(--fg-6)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
+    <button onClick={toggle} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 10px', color: 'var(--fg-3)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
       {theme === 'light' ? '🌙' : '☀️'}
     </button>
   )

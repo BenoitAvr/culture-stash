@@ -23,7 +23,7 @@ export function NavModes({ lang, labelLearn, labelRank }: { lang: string; labelL
         style={{
           ...base,
           background: !isRank ? 'var(--border)' : 'transparent',
-          color: !isRank ? 'var(--fg)' : 'var(--fg-7)',
+          color: !isRank ? 'var(--fg)' : 'var(--fg-3)',
         }}
       >
         {labelLearn}
@@ -33,7 +33,7 @@ export function NavModes({ lang, labelLearn, labelRank }: { lang: string; labelL
         style={{
           ...base,
           background: isRank ? 'var(--btn)' : 'transparent',
-          color: isRank ? 'var(--btn-text)' : 'var(--fg-7)',
+          color: isRank ? 'var(--btn-text)' : 'var(--fg-3)',
         }}
       >
         {labelRank}

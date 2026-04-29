@@ -79,12 +79,12 @@ export function UserListsSection({
         <div onClick={() => setIsOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {top.map((item, idx) => (
             <span key={item.resourceId} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 7px', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 20, fontSize: 12, color: 'var(--fg-5)' }}>
-              <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 11, color: idx < 3 ? 'var(--accent-fg)' : 'var(--fg-8)' }}>{idx + 1}</span>
+              <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 11, color: idx < 3 ? 'var(--accent-fg)' : 'var(--fg-5)' }}>{idx + 1}</span>
               <span>{item.resource.emoji}</span>
               <span style={{ color: 'var(--fg-4)' }}>{item.resource.title}</span>
             </span>
           ))}
-          {list.items.length > 5 && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>+{list.items.length - 5}</span>}
+          {list.items.length > 5 && <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>+{list.items.length - 5}</span>}
         </div>
       )
     }
@@ -102,7 +102,7 @@ export function UserListsSection({
             </div>
           )
         })}
-        {activeTiers.length > 3 && <span style={{ fontSize: 11, color: 'var(--fg-8)', paddingLeft: 27 }}>…</span>}
+        {activeTiers.length > 3 && <span style={{ fontSize: 11, color: 'var(--fg-5)', paddingLeft: 27 }}>…</span>}
       </div>
     )
   }
@@ -144,7 +144,7 @@ export function UserListsSection({
       )}
 
       {isOpen && ([...(myList ? [myList] : []), ...otherLists].length === 0 ? (
-        <p style={{ color: 'var(--fg-7)', fontSize: 13 }}>
+        <p style={{ color: 'var(--fg-5)', fontSize: 13 }}>
           {isLoggedIn ? t.beFirst : t.noPersRankings}
         </p>
       ) : (
@@ -173,7 +173,7 @@ export function UserListsSection({
                     {[...list.items].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((item, idx) => (
                       <div key={item.resourceId}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, background: idx === 0 ? 'var(--accent-faint)' : idx < 3 ? 'var(--bg-subtle)' : 'transparent', border: `1px solid ${idx === 0 ? 'var(--accent-muted)' : idx < 3 ? 'var(--border)' : 'transparent'}` }}>
-                          <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: idx === 0 ? 20 : idx === 1 ? 17 : idx === 2 ? 15 : 13, color: idx === 0 ? 'var(--accent-fg)' : idx < 3 ? 'var(--fg-4)' : 'var(--fg-8)', minWidth: 26, textAlign: 'center', lineHeight: 1 }}>{idx + 1}</span>
+                          <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: idx === 0 ? 20 : idx === 1 ? 17 : idx === 2 ? 15 : 13, color: idx === 0 ? 'var(--accent-fg)' : idx < 3 ? 'var(--fg-4)' : 'var(--fg-5)', minWidth: 26, textAlign: 'center', lineHeight: 1 }}>{idx + 1}</span>
                           <span style={{ fontSize: idx === 0 ? 20 : 16 }}>{item.resource.emoji}</span>
                           <span style={{ fontSize: 13, color: idx < 3 ? 'var(--fg)' : 'var(--fg-3)', fontWeight: idx < 3 ? 500 : 400, flex: 1 }}>{item.resource.title}</span>
                         </div>
@@ -196,7 +196,7 @@ export function UserListsSection({
                               {tItems.map((item, idx) => (
                                 <div key={item.resourceId}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13, color: (viewOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-8)', minWidth: 16, textAlign: 'right' }}>{viewOffset + idx + 1}</span>
+                                    <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13, color: (viewOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-5)', minWidth: 16, textAlign: 'right' }}>{viewOffset + idx + 1}</span>
                                     <span style={{ fontSize: 14 }}>{item.resource.emoji}</span>
                                     <span style={{ fontSize: 13, color: 'var(--fg-2)', flex: 1 }}>{item.resource.title}</span>
                                   </div>

@@ -32,7 +32,7 @@ export default async function RankHomePage({ params }: { params: Promise<{ lang:
       </div>
 
       {topics.length === 0 ? (
-        <p style={{ color: 'var(--fg-7)', textAlign: 'center', fontSize: 14 }}>{t.rank.noRankableTopics}</p>
+        <p style={{ color: 'var(--fg-5)', textAlign: 'center', fontSize: 14 }}>{t.rank.noRankableTopics}</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
           {topics.map(topic => {
@@ -55,7 +55,7 @@ export default async function RankHomePage({ params }: { params: Promise<{ lang:
                 <h2 className="group-hover:text-[var(--accent-fg)]" style={{ fontFamily: "'Fraunces', serif", fontSize: 24, fontWeight: 900, color: 'var(--fg)', marginBottom: 12, letterSpacing: -0.5, transition: 'color .2s' }}>
                   {title}
                 </h2>
-                <div style={{ fontSize: 12, color: 'var(--fg-7)' }}>
+                <div style={{ fontSize: 12, color: 'var(--fg-5)' }}>
                   {topic._count.entries} {topic._count.entries !== 1 ? t.rank.entries : t.rank.entry}
                 </div>
               </Link>

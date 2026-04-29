@@ -5,7 +5,6 @@ import { getDictionary, hasLocale } from '@/dictionaries'
 import { logout } from '@/app/actions/auth'
 import { NavSearch } from './NavSearch'
 import { LangSwitcher } from './LangSwitcher'
-import { NavModes } from './NavModes'
 import { ThemeToggle } from './ThemeToggle'
 import { NavLoginLink } from './NavLoginLink'
 
@@ -32,7 +31,6 @@ export async function Nav({ lang }: { lang: string }) {
       </Suspense>
 
       <div style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
-        <NavModes lang={lang} labelLearn={t.nav.explore} labelRank={t.nav.rank} />
         <ThemeToggle />
         <LangSwitcher lang={lang} />
         {session ? (

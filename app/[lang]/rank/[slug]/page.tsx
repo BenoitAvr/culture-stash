@@ -52,7 +52,7 @@ export default async function RankSlugPage({
       userEntryLists: {
         where: { NOT: { type: 'BOTH' } },
         include: {
-          user: { select: { id: true, name: true } },
+          user: { select: { id: true, name: true, username: true } },
           items: {
             include: { entry: { select: { id: true, title: true, year: true, cover: true } } },
             orderBy: { position: 'asc' },
@@ -136,6 +136,7 @@ export default async function RankSlugPage({
       id: l.id,
       userId: l.user.id,
       userName: l.user.name,
+      username: l.user.username ?? l.user.id,
       type: l.type as 'RANKED' | 'TIER' | 'BOTH',
       rankedTiers: l.rankedTiers,
       items: l.items.map(i => ({

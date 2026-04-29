@@ -20,7 +20,7 @@ export function NavSearch({ lang, placeholder }: { lang: string; placeholder: st
       background: 'var(--bg-input)', border: '1px solid var(--border)',
       borderRadius: 8, padding: '8px 14px', width: 260,
     }}>
-      <svg width="14" height="14" fill="none" stroke="var(--fg-6)" strokeWidth="2" viewBox="0 0 24 24">
+      <svg width="14" height="14" fill="none" stroke="var(--fg-4)" strokeWidth="2" viewBox="0 0 24 24">
         <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
       </svg>
       <input

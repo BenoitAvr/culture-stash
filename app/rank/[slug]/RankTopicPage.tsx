@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { getDict } from '@/dictionaries/client'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
-import { UserEntryListSection, type UserEntryListData } from './UserEntryListSection'
+import { type UserEntryListData } from './UserEntryListSection'
 import Link from 'next/link'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
@@ -13,11 +13,6 @@ const TIER_LABEL: Record<string, string> = {
 }
 const TIER_COLOR: Record<string, string> = {
   EX: '#5b8dee', TB: '#388e3c', BO: '#66bb6a', AB: '#a3c940', PA: '#f9c933', IN: '#f5a623', MA: '#e05555',
-}
-
-function scoreTierLabel(score: number): string {
-  const rounded = Math.round(score)
-  return ({ 7: 'EX', 6: 'TB', 5: 'BO', 4: 'AB', 3: 'PA', 2: 'IN', 1: 'MA' } as Record<number, string>)[rounded] ?? 'AB'
 }
 
 type SortMode = 'combined' | 'tier' | 'rank' | 'favorite'
@@ -178,7 +173,7 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, myTier, isOpen, onAdd }: 
     <div style={{ display: 'flex', gap: 14, padding: '14px 0', borderBottom: isOpen ? 'none' : '1px solid var(--border)', alignItems: 'flex-start' }}>
       <span style={{
         fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 900, lineHeight: 1,
-        color: isTop3 ? 'var(--accent-fg)' : 'var(--fg-8)',
+        color: isTop3 ? 'var(--accent-fg)' : 'var(--fg-3)',
         width: 30, flexShrink: 0, textAlign: 'right', paddingTop: 3,
       }}>{rank}</span>
 
@@ -190,7 +185,7 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, myTier, isOpen, onAdd }: 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
           <span style={{ fontFamily: "'Fraunces', serif", fontSize: 16, fontWeight: 700, color: 'var(--fg)', lineHeight: 1.2 }}>{entry.title}</span>
-          {entry.year && <span style={{ fontSize: 12, color: 'var(--fg-7)' }}>{entry.year}</span>}
+          {entry.year && <span style={{ fontSize: 12, color: 'var(--fg-4)' }}>{entry.year}</span>}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -203,12 +198,12 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, myTier, isOpen, onAdd }: 
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 76, flexShrink: 0 }}><TierBar distribution={entry.tierDistribution} /></div>
-                <span style={{ fontSize: 10, color: 'var(--fg-7)' }}>×{entry.tierCount}</span>
+                <span style={{ fontSize: 11, color: 'var(--fg-4)', fontWeight: 500 }}>×{entry.tierCount}</span>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {TIERS.filter(t => entry.tierDistribution[t]).map(t => (
-                  <span key={t} style={{ fontSize: 9, fontWeight: 600, color: TIER_COLOR[t] }}>
-                    {TIER_LABEL[t]}<span style={{ fontWeight: 400, opacity: 0.75 }}>·{entry.tierDistribution[t]}</span>
+                  <span key={t} style={{ fontSize: 10, fontWeight: 600, color: TIER_COLOR[t] }}>
+                    {TIER_LABEL[t]}<span style={{ fontWeight: 500, color: 'var(--fg-4)' }}>·{entry.tierDistribution[t]}</span>
                   </span>
                 ))}
               </div>
@@ -224,7 +219,7 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, myTier, isOpen, onAdd }: 
               <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13, color: 'var(--fg-2)', lineHeight: 1 }}>
                 #{entry.avgRank.toFixed(1)}
               </span>
-              <span style={{ fontSize: 9, color: 'var(--fg-7)' }}>
+              <span style={{ fontSize: 10, color: 'var(--fg-4)', fontWeight: 500 }}>
                 rang moyen · {entry.rankCount} {entry.rankCount > 1 ? 'classements' : 'classement'}
               </span>
             </div>
@@ -239,7 +234,7 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, myTier, isOpen, onAdd }: 
               <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13, color: 'var(--fg-2)', lineHeight: 1 }}>
                 ★ {entry.favoriteCount}
               </span>
-              <span style={{ fontSize: 9, color: 'var(--fg-7)' }}>
+              <span style={{ fontSize: 10, color: 'var(--fg-4)', fontWeight: 500 }}>
                 en tête de {entry.favoriteCount} {entry.favoriteCount > 1 ? 'listes' : 'liste'}
               </span>
             </div>
@@ -268,7 +263,7 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, myTier, isOpen, onAdd }: 
                 marginLeft: 'auto', padding: '2px 9px', borderRadius: 5, cursor: 'pointer',
                 border: `1px solid ${isOpen ? 'var(--accent-muted)' : 'var(--border)'}`,
                 background: isOpen ? 'var(--accent-faint)' : 'none',
-                color: isOpen ? 'var(--accent-fg)' : 'var(--fg-7)',
+                color: isOpen ? 'var(--accent-fg)' : 'var(--fg-3)',
                 fontSize: 13, fontFamily: 'inherit', transition: 'all .1s',
               }}
             >
@@ -280,6 +275,7 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, myTier, isOpen, onAdd }: 
     </div>
   )
 }
+
 
 export function RankTopicPage({
   topicSlug, topicEmoji, topicTitle, topicBadge,
@@ -360,19 +356,17 @@ export function RankTopicPage({
     const scoreB = (b.avgTierScore ?? 0) * 4 + (b.avgRank ? 1 / b.avgRank * 8 : 0) + b.favoriteCount
     return scoreB - scoreA
   })
-  const entryItems = entries.map(e => ({ id: e.id, title: e.title, year: e.year }))
-
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 24px 60px' }}>
 
       {/* Header */}
       <div style={{ padding: '32px 0 28px', borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}>
-          <Link href={`/${lang}/rank`} style={{ fontSize: 12, color: 'var(--fg-7)', textDecoration: 'none' }}>
+          <Link href={`/${lang}/rank`} style={{ fontSize: 12, color: 'var(--fg-3)', textDecoration: 'none' }}>
             {lang === 'fr' ? 'Classer' : 'Rank'}
           </Link>
           <span style={{ color: 'var(--fg-9)' }}>/</span>
-          <span style={{ fontSize: 12, color: 'var(--fg-5)', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 20, padding: '1px 9px' }}>{topicBadge}</span>
+          <span style={{ fontSize: 12, color: 'var(--fg-3)', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 20, padding: '1px 9px' }}>{topicBadge}</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
@@ -381,38 +375,64 @@ export function RankTopicPage({
               <span style={{ fontSize: 38 }}>{topicEmoji}</span>
               <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 38, fontWeight: 900, color: 'var(--fg)', letterSpacing: -1, lineHeight: 1 }}>{topicTitle}</h1>
             </div>
-            <Link href={`/${lang}/topics/${topicSlug}`} style={{ fontSize: 12, color: 'var(--fg-6)', textDecoration: 'none' }}>
-              {t.learnMore} →
-            </Link>
+          </div>
+
+          {/* Personal ranking controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 8 }}>
+            {isLoggedIn ? (
+              <>
+                <Link
+                  href={`/${lang}/rank/${topicSlug}/edit`}
+                  style={{
+                    padding: '8px 18px', borderRadius: 8,
+                    background: 'var(--btn)', color: 'var(--btn-text)',
+                    fontSize: 14, fontWeight: 600, textDecoration: 'none',
+                  }}
+                >
+                  {myTierList ? dict.rankings.editList : dict.rankings.createList}
+                </Link>
+                {myTierList && (
+                  <Link
+                    href={`/${lang}/rank/${topicSlug}/${encodeURIComponent(myTierList.username)}`}
+                    title={lang === 'fr' ? 'Voir ma liste publique' : 'View my public list'}
+                    style={{
+                      width: 34, height: 34, borderRadius: 7, border: '1px solid var(--border)',
+                      background: 'none', color: 'var(--fg-3)', fontSize: 14,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    ↗
+                  </Link>
+                )}
+              </>
+            ) : (
+              <Link
+                href={`/${lang}/auth/login`}
+                style={{
+                  padding: '8px 18px', borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'none',
+                  color: 'var(--fg-3)', fontSize: 13, textDecoration: 'none',
+                }}
+              >
+                {t.loginToRate}
+              </Link>
+            )}
           </div>
         </div>
-      </div>
-
-      {/* Personal rankings */}
-      <div style={{ padding: '28px 0 0' }}>
-        <UserEntryListSection
-          topicSlug={topicSlug}
-          topicTitle={topicTitle}
-          entries={entryItems}
-          lists={lists}
-          onListsChange={setLists}
-          currentUserId={currentUserId}
-          isLoggedIn={isLoggedIn}
-          t={dict.rankings}
-        />
       </div>
 
       {/* Community ranking */}
       <div style={{ paddingTop: 36 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--fg-6)', whiteSpace: 'nowrap' }}>{t.communityRanking}</span>
+          <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--fg-3)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t.communityRanking}</span>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
           {(['combined', 'tier', 'rank', 'favorite'] as SortMode[]).map(mode => (
             <button key={mode} onClick={() => { setSortMode(mode); setDisplayCount(100) }} style={{
               padding: '4px 11px', borderRadius: 20, fontFamily: 'inherit', cursor: 'pointer', fontSize: 11,
               border: `1px solid ${sortMode === mode ? 'var(--accent-muted)' : 'var(--border)'}`,
               background: sortMode === mode ? 'var(--accent-faint)' : 'none',
-              color: sortMode === mode ? 'var(--accent-fg)' : 'var(--fg-6)',
+              color: sortMode === mode ? 'var(--accent-fg)' : 'var(--fg-3)',
               transition: 'all .12s',
             }}>
               {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Tier' : mode === 'rank' ? 'Rang' : 'Favoris'}
@@ -420,7 +440,7 @@ export function RankTopicPage({
           ))}
         </div>
         {sorted.length === 0 ? (
-          <p style={{ color: 'var(--fg-7)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
+          <p style={{ color: 'var(--fg-5)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
         ) : (
           <div>
             {sorted.slice(0, displayCount).map((entry, i) => (

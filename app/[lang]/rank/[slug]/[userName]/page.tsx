@@ -5,10 +5,11 @@ import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
-export async function generateMetadata({ params }: { params: Promise<{ lang: string; slug: string; userId: string }> }): Promise<Metadata> {
-  const { lang, slug, userId } = await params
+export async function generateMetadata({ params }: { params: Promise<{ lang: string; slug: string; userName: string }> }): Promise<Metadata> {
+  const { lang, slug, userName } = await params
+  const decodedUsername = decodeURIComponent(userName)
   const list = await prisma.userEntryList.findFirst({
-    where: { topic: { slug }, userId, type: { in: ['TIER', 'BOTH'] } },
+    where: { topic: { slug }, user: { username: decodedUsername }, type: { in: ['TIER', 'BOTH'] } },
     include: {
       user: { select: { name: true } },
       topic: { include: { translations: { where: { lang } } } },
@@ -23,7 +24,6 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
     description: isFr
       ? `Découvre la tier list ${list.topic.emoji} ${topicTitle} de ${list.user.name}.`
       : `See ${list.user.name}'s ${list.topic.emoji} ${topicTitle} tier list.`,
-    robots: { index: false, follow: false },
   }
 }
 
@@ -35,14 +35,15 @@ const TIER_COLOR: Record<string, string> = {
   EX: '#5b8dee', TB: '#388e3c', BO: '#66bb6a', AB: '#a3c940', PA: '#f9c933', IN: '#f5a623', MA: '#e05555',
 }
 
-export default async function ShareListPage({
+export default async function UserListPage({
   params,
 }: {
-  params: Promise<{ lang: string; slug: string; userId: string }>
+  params: Promise<{ lang: string; slug: string; userName: string }>
 }) {
-  const { lang, slug, userId } = await params
+  const { lang, slug, userName } = await params
   if (!hasLocale(lang)) notFound()
 
+  const decodedUsername = decodeURIComponent(userName)
   const dict = getDictionary(lang)
 
   const topic = await prisma.topic.findUnique({
@@ -52,7 +53,7 @@ export default async function ShareListPage({
   if (!topic || !topic.rankable) notFound()
 
   const list = await prisma.userEntryList.findFirst({
-    where: { topicId: topic.id, userId, type: { in: ['TIER', 'BOTH'] } },
+    where: { topicId: topic.id, user: { username: decodedUsername }, type: { in: ['TIER', 'BOTH'] } },
     include: {
       user: { select: { name: true } },
       items: {
@@ -73,11 +74,11 @@ export default async function ShareListPage({
 
       {/* Breadcrumb */}
       <div style={{ padding: '28px 0 24px', display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Link href={`/${lang}/rank`} style={{ fontSize: 12, color: 'var(--fg-7)', textDecoration: 'none' }}>
+        <Link href={`/${lang}/rank`} style={{ fontSize: 12, color: 'var(--fg-5)', textDecoration: 'none' }}>
           {lang === 'fr' ? 'Classer' : 'Rank'}
         </Link>
         <span style={{ color: 'var(--fg-9)' }}>/</span>
-        <Link href={`/${lang}/rank/${slug}`} style={{ fontSize: 12, color: 'var(--fg-7)', textDecoration: 'none' }}>
+        <Link href={`/${lang}/rank/${slug}`} style={{ fontSize: 12, color: 'var(--fg-5)', textDecoration: 'none' }}>
           {topic.emoji} {topicTitle}
         </Link>
         <span style={{ color: 'var(--fg-9)' }}>/</span>
@@ -90,12 +91,9 @@ export default async function ShareListPage({
           <span style={{ fontSize: 40 }}>{topic.emoji}</span>
           <div>
             <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 28, fontWeight: 900, color: 'var(--fg)', letterSpacing: -0.5, lineHeight: 1.1, margin: 0 }}>{topicTitle}</h1>
-            <p style={{ fontSize: 13, color: 'var(--fg-6)', margin: '4px 0 0' }}>
+            <p style={{ fontSize: 13, color: 'var(--fg-5)', margin: '4px 0 0' }}>
               {lang === 'fr' ? 'Tier list de' : 'Tier list by'}{' '}
               <span style={{ color: 'var(--fg-3)', fontWeight: 600 }}>{list.user.name}</span>
-            </p>
-            <p style={{ fontSize: 11, color: 'var(--fg-8)', margin: '6px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
-              🔗 {lang === 'fr' ? 'Accessible uniquement via ce lien' : 'Only accessible via this link'}
             </p>
           </div>
         </div>
@@ -103,7 +101,7 @@ export default async function ShareListPage({
 
       {/* Tier list */}
       {activeTiers.length === 0 ? (
-        <p style={{ color: 'var(--fg-7)', fontSize: 14 }}>
+        <p style={{ color: 'var(--fg-5)', fontSize: 14 }}>
           {lang === 'fr' ? 'Cette liste est vide.' : 'This list is empty.'}
         </p>
       ) : (
@@ -132,7 +130,7 @@ export default async function ShareListPage({
                       <div key={item.entryId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{
                           fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13,
-                          color: (viewOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-8)',
+                          color: (viewOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-5)',
                           minWidth: 18, textAlign: 'right', flexShrink: 0,
                         }}>
                           {viewOffset + idx + 1}
@@ -142,7 +140,7 @@ export default async function ShareListPage({
                           : <div style={{ width: 34, height: 50, borderRadius: 3, flexShrink: 0, background: `${TIER_COLOR[tier]}18`, border: `1px solid ${TIER_COLOR[tier]}33` }} />
                         }
                         <span style={{ fontSize: 14, color: 'var(--fg-2)', flex: 1 }}>{item.entry.title}</span>
-                        {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>{item.entry.year}</span>}
+                        {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>{item.entry.year}</span>}
                       </div>
                     ))}
                   </div>
@@ -169,7 +167,7 @@ export default async function ShareListPage({
 
       {/* Footer link */}
       <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
-        <Link href={`/${lang}/rank/${slug}`} style={{ fontSize: 13, color: 'var(--fg-6)', textDecoration: 'none' }}>
+        <Link href={`/${lang}/rank/${slug}`} style={{ fontSize: 13, color: 'var(--fg-5)', textDecoration: 'none' }}>
           ← {lang === 'fr' ? 'Voir le classement communautaire' : 'See community ranking'}
         </Link>
       </div>

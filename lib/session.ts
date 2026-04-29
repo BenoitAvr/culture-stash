@@ -6,6 +6,7 @@ const SECRET = new TextEncoder().encode(process.env.SESSION_SECRET!)
 export interface SessionPayload {
   userId: string
   name: string
+  username: string
   email: string
 }
 
