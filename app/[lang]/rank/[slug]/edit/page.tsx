@@ -29,7 +29,7 @@ export default async function RankEditPage({
   const existingList = await prisma.userEntryList.findFirst({
     where: { topicId: topic.id, userId: session.userId, type: { in: ['TIER', 'BOTH'] } },
     include: {
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, name: true, username: true } },
       items: {
         include: { entry: { select: { id: true, title: true, year: true, cover: true } } },
         orderBy: { position: 'asc' },
@@ -42,6 +42,7 @@ export default async function RankEditPage({
         id: existingList.id,
         userId: existingList.userId,
         userName: existingList.user.name,
+        username: existingList.user.username ?? existingList.userId,
         type: existingList.type as 'RANKED' | 'TIER' | 'BOTH',
         rankedTiers: existingList.rankedTiers,
         items: existingList.items.map(i => ({
