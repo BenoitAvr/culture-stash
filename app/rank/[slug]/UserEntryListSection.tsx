@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
 import { RankingEditor, type RankEditItem } from '@/app/components/RankingEditor'
 import type { Dict } from '@/dictionaries/client'
@@ -33,6 +35,26 @@ const TIER_COLOR: Record<string, string> = {
 }
 const AVATAR_COLORS = ['#7c6df0', '#f5a623', '#c8f55a', '#f57c7c']
 
+function CopyLinkButton({ lang, topicSlug, userId }: { lang: string; topicSlug: string; userId: string }) {
+  const [state, setState] = useState<'idle' | 'copied'>('idle')
+  function handleCopy() {
+    const url = `${window.location.origin}/${lang}/rank/${topicSlug}/${userId}`
+    navigator.clipboard.writeText(url).then(() => {
+      setState('copied')
+      setTimeout(() => setState('idle'), 2000)
+    })
+  }
+  return (
+    <button
+      onClick={handleCopy}
+      title="Copier le lien de partage"
+      style={{ padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: state === 'copied' ? 'var(--accent-faint)' : 'none', color: state === 'copied' ? 'var(--accent-fg)' : 'var(--fg-6)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, transition: 'all .15s' }}
+    >
+      {state === 'copied' ? '✓ Lien copié' : '↗ Partager'}
+    </button>
+  )
+}
+
 export function UserEntryListSection({
   topicSlug, topicTitle, entries, userEntryLists, currentUserId, isLoggedIn, t,
 }: {
@@ -44,6 +66,7 @@ export function UserEntryListSection({
   isLoggedIn: boolean
   t: Dict['rankings']
 }) {
+  const { lang } = useParams() as { lang: string }
   const [lists, setLists] = useState<UserEntryListData[]>(userEntryLists)
   const [isOpen, setIsOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -185,10 +208,13 @@ export function UserEntryListSection({
         <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         {isLoggedIn && (
           <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            {myTierList && (
-              <button onClick={copyMarkdown} title="Copier ma liste" style={{ padding: '4px 7px', borderRadius: 6, border: 'none', background: 'none', color: copied ? 'var(--accent-fg)' : 'var(--fg-8)', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer' }}>
-                {copied ? '✓' : '⎘'}
-              </button>
+            {myTierList && currentUserId && (
+              <>
+                <button onClick={copyMarkdown} title="Copier ma liste (markdown)" style={{ padding: '4px 7px', borderRadius: 6, border: 'none', background: 'none', color: copied ? 'var(--accent-fg)' : 'var(--fg-8)', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer' }}>
+                  {copied ? '✓' : '⎘'}
+                </button>
+                <CopyLinkButton lang={lang} topicSlug={topicSlug} userId={currentUserId} />
+              </>
             )}
             <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 4px' }} />
             <button
