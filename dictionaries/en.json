@@ -142,6 +142,7 @@
     "tagline": "Rate and rank your favourite works.",
     "noRankableTopics": "No rankable topics yet.",
     "communityRanking": "Community favourites",
+    "communityTitle": "The community's favourite {topic}",
     "myRating": "My rating",
     "noEntries": "No entries yet. Be the first to add one!",
     "addEntry": "+ Add",

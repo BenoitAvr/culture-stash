@@ -360,25 +360,19 @@ export function RankTopicPage({
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 24px 60px' }}>
 
       {/* Header */}
-      <div style={{ padding: '32px 0 28px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}>
-          <Link href={`/${lang}/rank`} style={{ fontSize: 12, color: 'var(--fg-3)', textDecoration: 'none' }}>
-            {lang === 'fr' ? 'Classer' : 'Rank'}
-          </Link>
-          <span style={{ color: 'var(--fg-9)' }}>/</span>
-          <span style={{ fontSize: 12, color: 'var(--fg-3)', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 20, padding: '1px 9px' }}>{topicBadge}</span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-              <span style={{ fontSize: 38 }}>{topicEmoji}</span>
-              <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 38, fontWeight: 900, color: 'var(--fg)', letterSpacing: -1, lineHeight: 1 }}>{topicTitle}</h1>
-            </div>
+      <div style={{ padding: '20px 0 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+          {/* Breadcrumb */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Link href={`/${lang}/rank`} style={{ fontSize: 12, color: 'var(--fg-3)', textDecoration: 'none' }}>
+              {lang === 'fr' ? 'Classer' : 'Rank'}
+            </Link>
+            <span style={{ color: 'var(--fg-9)' }}>/</span>
+            <span style={{ fontSize: 12, color: 'var(--fg-3)', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 20, padding: '1px 9px' }}>{topicBadge}</span>
           </div>
 
           {/* Personal ranking controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {isLoggedIn ? (
               <>
                 <Link
@@ -420,12 +414,19 @@ export function RankTopicPage({
             )}
           </div>
         </div>
+
+        {/* Community ranking title — flush with content below */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+          <span style={{ fontSize: 44 }}>{topicEmoji}</span>
+          <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 32, fontWeight: 900, color: 'var(--fg)', letterSpacing: -0.5, lineHeight: 1.1 }}>
+            {t.communityTitle.replace('{topic}', topicTitle.toLowerCase())}
+          </h1>
+        </div>
       </div>
 
       {/* Community ranking */}
-      <div style={{ paddingTop: 36 }}>
+      <div style={{ paddingTop: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--fg-3)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t.communityRanking}</span>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
           {(['combined', 'tier', 'rank', 'favorite'] as SortMode[]).map(mode => (
             <button key={mode} onClick={() => { setSortMode(mode); setDisplayCount(100) }} style={{
