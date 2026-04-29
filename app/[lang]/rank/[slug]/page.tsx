@@ -1,9 +1,34 @@
+import type { Metadata } from 'next'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
 import { RankTopicPage } from '@/app/rank/[slug]/RankTopicPage'
 import { backfillMissingCovers } from '@/app/actions/entries'
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string; slug: string }> }): Promise<Metadata> {
+  const { lang, slug } = await params
+  const topic = await prisma.topic.findUnique({
+    where: { slug },
+    include: { translations: { where: { lang } } },
+  })
+  if (!topic) return {}
+  const tr = topic.translations[0]
+  const title = tr?.title ?? topic.title
+  const isFr = lang === 'fr'
+  const description = isFr
+    ? `Crée ta tier list ${title} et compare tes goûts avec la communauté.`
+    : `Create your ${title} tier list and compare your taste with the community.`
+  return {
+    title: `${topic.emoji} ${isFr ? 'Classer' : 'Rank'} ${title}`,
+    description,
+    openGraph: { title: `${topic.emoji} ${title} — Tier list`, description },
+    alternates: {
+      canonical: `/${lang}/rank/${slug}`,
+      languages: { fr: `/fr/rank/${slug}`, en: `/en/rank/${slug}` },
+    },
+  }
+}
 
 export default async function RankSlugPage({
   params,

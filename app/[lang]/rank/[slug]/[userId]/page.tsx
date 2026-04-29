@@ -1,8 +1,31 @@
 import React from 'react'
+import type { Metadata } from 'next'
 import { prisma } from '@/lib/prisma'
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string; slug: string; userId: string }> }): Promise<Metadata> {
+  const { lang, slug, userId } = await params
+  const list = await prisma.userEntryList.findFirst({
+    where: { topic: { slug }, userId, type: { in: ['TIER', 'BOTH'] } },
+    include: {
+      user: { select: { name: true } },
+      topic: { include: { translations: { where: { lang } } } },
+    },
+  })
+  if (!list) return {}
+  const tr = list.topic.translations[0]
+  const topicTitle = tr?.title ?? list.topic.title
+  const isFr = lang === 'fr'
+  return {
+    title: isFr ? `Tier list de ${list.user.name} — ${topicTitle}` : `${list.user.name}'s tier list — ${topicTitle}`,
+    description: isFr
+      ? `Découvre la tier list ${list.topic.emoji} ${topicTitle} de ${list.user.name}.`
+      : `See ${list.user.name}'s ${list.topic.emoji} ${topicTitle} tier list.`,
+    robots: { index: false, follow: false },
+  }
+}
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
 const TIER_LABEL: Record<string, string> = {

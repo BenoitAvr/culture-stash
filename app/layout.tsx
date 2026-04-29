@@ -2,9 +2,23 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://culturestash.com'
+
 export const metadata: Metadata = {
-  title: 'Culture Stash',
-  description: 'Apprends, classe et organise tes connaissances.',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'Culture Stash',
+    template: '%s — Culture Stash',
+  },
+  description: 'Apprends, classe et organise tes connaissances culturelles.',
+  openGraph: {
+    siteName: 'Culture Stash',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+  },
+  robots: { index: true, follow: true },
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,9 +1,31 @@
-﻿import { prisma } from '@/lib/prisma'
+﻿import type { Metadata } from 'next'
+import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
 import { TopicTabs } from '@/app/topics/[slug]/TopicTabs'
 import Link from 'next/link'
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string; slug: string }> }): Promise<Metadata> {
+  const { lang, slug } = await params
+  const topic = await prisma.topic.findUnique({
+    where: { slug },
+    include: { translations: { where: { lang } } },
+  })
+  if (!topic) return {}
+  const tr = topic.translations[0]
+  const title = tr?.title ?? topic.title
+  const desc = tr?.desc ?? topic.desc
+  return {
+    title: `${topic.emoji} ${title}`,
+    description: desc.slice(0, 160),
+    openGraph: { title: `${topic.emoji} ${title}`, description: desc.slice(0, 160) },
+    alternates: {
+      canonical: `/${lang}/topics/${slug}`,
+      languages: { fr: `/fr/topics/${slug}`, en: `/en/topics/${slug}` },
+    },
+  }
+}
 
 export default async function TopicPage({
   params,
