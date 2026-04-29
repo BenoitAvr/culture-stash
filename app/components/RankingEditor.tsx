@@ -69,7 +69,7 @@ export function RankingEditor({
 }) {
   const [tierItems, setTierItems] = useState<RankEditItem[]>(initialTierItems)
   const [tierRankedTiers, setTierRankedTiers] = useState(new Set<string>(initialRankedTiers))
-  const [expandedNote, setExpandedNote] = useState<string | null>(null)
+
   const [isPending, setIsPending] = useState(false)
 
   const [tierDragId, setTierDragId] = useState<string | null>(null)
@@ -201,10 +201,6 @@ export function RankingEditor({
     } else {
       setTierItems(prev => prev.map(i => i.tier === tier ? { ...i, position: undefined } : i))
     }
-  }
-
-  function updateTierNote(id: string, note: string) {
-    setTierItems(prev => prev.map(i => i.id === id ? { ...i, note: note || undefined } : i))
   }
 
   function handleSave() {
@@ -366,16 +362,10 @@ export function RankingEditor({
                           {item.prefix && <span style={{ fontSize: 16 }}>{item.prefix}</span>}
                           <span style={{ fontSize: 13, color: 'var(--fg-2)', flex: 1 }}>{item.label}</span>
                           {item.suffix && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>{item.suffix}</span>}
-                          <button onClick={() => setExpandedNote(expandedNote === rankItem.id ? null : rankItem.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: rankItem.note ? '#f5a623' : 'var(--fg-8)', padding: '0 2px', flexShrink: 0 }}>✏️</button>
                           <button onClick={() => setTierItems(prev => { const r = prev.filter(i => i.id !== rankItem.id); let pos = 1; return r.map(i => i.tier === tier ? { ...i, position: pos++ } : i) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-7)', fontSize: 14, padding: '0 2px', flexShrink: 0 }}>×</button>
                         </div>
                       )
                     })}
-                    {expandedNote && tierItems.find(i => i.id === expandedNote && i.tier === tier) && (
-                      <div style={{ paddingLeft: 26 }}>
-                        <input value={tierItems.find(i => i.id === expandedNote)?.note ?? ''} onChange={ev => updateTierNote(expandedNote, ev.target.value)} placeholder={t.addNoteHint} autoFocus style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', outline: 'none', color: 'var(--fg-2)', fontSize: 11, fontFamily: 'inherit', borderRadius: 4, padding: '3px 8px', width: '100%' }} />
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>

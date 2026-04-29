@@ -1,9 +1,9 @@
 'use client'
 
-import { useActionState, useTransition, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { getDict } from '@/dictionaries/client'
-import { addEntry, saveUserEntry } from '@/app/actions/entries'
+import { addEntry } from '@/app/actions/entries'
 import { UserEntryListSection, type UserEntryListData } from './UserEntryListSection'
 import Link from 'next/link'
 
@@ -17,16 +17,7 @@ type Entry = {
   userNote: string | null
 }
 
-function EntryRow({ entry, rank, isLoggedIn, t }: { entry: Entry; rank: number; isLoggedIn: boolean; t: ReturnType<typeof getDict>['rank'] }) {
-  const [isPending, startTransition] = useTransition()
-  const [editingNote, setEditingNote] = useState(false)
-  const [noteVal, setNoteVal] = useState(entry.userNote ?? '')
-
-  function handleSaveNote() {
-    startTransition(async () => { await saveUserEntry(entry.id, null, noteVal.trim() || null) })
-    setEditingNote(false)
-  }
-
+function EntryRow({ entry, rank, t }: { entry: Entry; rank: number; t: ReturnType<typeof getDict>['rank'] }) {
   const isTop3 = rank <= 3
 
   return (
@@ -51,7 +42,7 @@ function EntryRow({ entry, rank, isLoggedIn, t }: { entry: Entry; rank: number; 
           {entry.year && <span style={{ fontSize: 12, color: 'var(--fg-7)' }}>{entry.year}</span>}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', opacity: isPending ? 0.5 : 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {entry.avgRank !== null && (
             <span style={{ fontSize: 12, color: 'var(--fg-6)' }}>
               <span style={{ fontWeight: 600, color: 'var(--fg-4)' }}>#{entry.avgRank.toFixed(1)}</span>
@@ -59,27 +50,6 @@ function EntryRow({ entry, rank, isLoggedIn, t }: { entry: Entry; rank: number; 
             </span>
           )}
         </div>
-
-        {isLoggedIn && (
-          <div style={{ marginTop: 5 }}>
-            {editingNote ? (
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input value={noteVal} onChange={e => setNoteVal(e.target.value)} placeholder={t.yourNote} autoFocus
-                  style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 9px', color: 'var(--fg)', fontSize: 12, outline: 'none', fontFamily: 'inherit' }} />
-                <button onClick={handleSaveNote} disabled={isPending} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>OK</button>
-                <button onClick={() => { setEditingNote(false); setNoteVal(entry.userNote ?? '') }} style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-7)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
-              </div>
-            ) : entry.userNote ? (
-              <button onClick={() => setEditingNote(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, color: 'var(--fg-6)', fontStyle: 'italic', textAlign: 'left', fontFamily: 'inherit' }}>
-                &ldquo;{entry.userNote}&rdquo;
-              </button>
-            ) : (
-              <button onClick={() => setEditingNote(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, color: 'var(--fg-9)', textAlign: 'left', fontFamily: 'inherit' }}>
-                + {t.yourNote}
-              </button>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )
@@ -202,7 +172,7 @@ export function RankTopicPage({
         ) : (
           <div>
             {sorted.map((entry, i) => (
-              <EntryRow key={entry.id} entry={entry} rank={i + 1} isLoggedIn={isLoggedIn} t={t} />
+              <EntryRow key={entry.id} entry={entry} rank={i + 1} t={t} />
             ))}
           </div>
         )}

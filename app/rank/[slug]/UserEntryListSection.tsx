@@ -116,7 +116,6 @@ export function UserEntryListSection({
         lines.push(`\n**${TIER_LABEL[tier]}** (classé)`)
         tItems.forEach((item, idx) => {
           lines.push(`${idx + 1}. ${item.entry.title}${item.entry.year ? ` (${item.entry.year})` : ''}`)
-          if (item.note) lines.push(`   > ${item.note}`)
         })
       } else {
         lines.push(`**${TIER_LABEL[tier]}** — ${tItems.map(i => i.entry.title).join(', ')}`)

@@ -120,7 +120,6 @@ export default async function ShareListPage({
                         }
                         <span style={{ fontSize: 14, color: 'var(--fg-2)', flex: 1 }}>{item.entry.title}</span>
                         {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-8)' }}>{item.entry.year}</span>}
-                        {item.note && <span style={{ fontSize: 11, color: 'var(--fg-7)', fontStyle: 'italic' }}>— {item.note}</span>}
                       </div>
                     ))}
                   </div>
