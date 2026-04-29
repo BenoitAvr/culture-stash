@@ -13,7 +13,7 @@ export function LangSwitcher({ lang }: { lang: string }) {
       href={otherPath}
       style={{ padding: '7px 12px', borderRadius: 7, border: '1px solid var(--border)', color: 'var(--fg-5)', fontSize: 12, textDecoration: 'none', fontWeight: 600, letterSpacing: '.04em' }}
     >
-      {otherLang.toUpperCase()}
+      {lang.toUpperCase()}
     </Link>
   )
 }
