@@ -37,7 +37,7 @@ const AVATAR_COLORS = ['#7c6df0', '#f5a623', '#c8f55a', '#f57c7c']
 
 function Poster({ src, title, tier, w }: { src: string | null; title: string; tier: string; w: number }) {
   const h = Math.round(w * 1.45)
-  if (src) return <img src={src} alt={title} style={{ width: w, height: h, objectFit: 'cover', borderRadius: 3, flexShrink: 0, display: 'block' }} />
+  if (src) return <img src={src} alt={title} loading="lazy" style={{ width: w, height: h, objectFit: 'cover', borderRadius: 3, flexShrink: 0, display: 'block' }} />
   return (
     <div style={{ width: w, height: h, borderRadius: 3, flexShrink: 0, background: `${TIER_COLOR[tier]}18`, border: `1px solid ${TIER_COLOR[tier]}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: w * 0.35, color: TIER_COLOR[tier] }}>
       {title[0]?.toUpperCase()}

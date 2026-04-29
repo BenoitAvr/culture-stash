@@ -101,7 +101,13 @@ export default async function RankSlugPage({
     }
   }
 
-  const coverMap = await backfillMissingCovers(topic.entries)
+  const rankedEntryIds = new Set([
+    ...Object.keys(tierData),
+    ...Object.keys(rankData),
+    ...Object.keys(favoriteData),
+  ])
+  const rankedEntries = topic.entries.filter(e => rankedEntryIds.has(e.id))
+  const coverMap = await backfillMissingCovers(rankedEntries)
 
   const entries = topic.entries.map(e => {
     const rd = rankData[e.id]

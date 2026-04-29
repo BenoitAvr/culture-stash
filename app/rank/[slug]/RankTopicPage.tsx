@@ -166,7 +166,7 @@ function EntryRow({ entry, rank, sortMode, isLoggedIn, isOpen, onAdd }: {
       }}>{rank}</span>
 
       {entry.cover
-        ? <img src={entry.cover} alt={entry.title} style={{ width: 38, height: 54, objectFit: 'cover', borderRadius: 4, flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,.12)' }} />
+        ? <img src={entry.cover} alt={entry.title} loading="lazy" style={{ width: 38, height: 54, objectFit: 'cover', borderRadius: 4, flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,.12)' }} />
         : <div style={{ width: 38, height: 54, borderRadius: 4, background: 'var(--bg-subtle)', flexShrink: 0 }} />
       }
 
@@ -252,6 +252,7 @@ export function RankTopicPage({
   const [sortMode, setSortMode] = useState<SortMode>('combined')
   const [lists, setLists] = useState<UserEntryListData[]>(userEntryLists)
   const [quickAddId, setQuickAddId] = useState<string | null>(null)
+  const [displayCount, setDisplayCount] = useState(100)
 
   const myTierList = lists.find(l => l.userId === currentUserId && (l.type === 'TIER' || l.type === 'BOTH')) ?? null
 
@@ -291,11 +292,6 @@ export function RankTopicPage({
   }
 
   const sorted = [...entries].sort((a, b) => {
-    const hasA = a.avgTierScore !== null || a.avgRank !== null || a.favoriteCount > 0
-    const hasB = b.avgTierScore !== null || b.avgRank !== null || b.favoriteCount > 0
-    if (!hasA && !hasB) return 0
-    if (!hasA) return 1
-    if (!hasB) return -1
 
     if (sortMode === 'tier') {
       if (a.avgTierScore === null && b.avgTierScore === null) return 0
@@ -403,7 +399,7 @@ export function RankTopicPage({
           <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--fg-6)', whiteSpace: 'nowrap' }}>{t.communityRanking}</span>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
           {(['combined', 'tier', 'rank', 'favorite'] as SortMode[]).map(mode => (
-            <button key={mode} onClick={() => setSortMode(mode)} style={{
+            <button key={mode} onClick={() => { setSortMode(mode); setDisplayCount(100) }} style={{
               padding: '4px 11px', borderRadius: 20, fontFamily: 'inherit', cursor: 'pointer', fontSize: 11,
               border: `1px solid ${sortMode === mode ? 'var(--accent-muted)' : 'var(--border)'}`,
               background: sortMode === mode ? 'var(--accent-faint)' : 'none',
@@ -418,7 +414,7 @@ export function RankTopicPage({
           <p style={{ color: 'var(--fg-7)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
         ) : (
           <div>
-            {sorted.map((entry, i) => (
+            {sorted.slice(0, displayCount).map((entry, i) => (
               <React.Fragment key={entry.id}>
                 <EntryRow
                   entry={entry}
@@ -439,6 +435,14 @@ export function RankTopicPage({
                 {quickAddId === entry.id && <div style={{ borderBottom: '1px solid var(--border)', marginBottom: 0 }} />}
               </React.Fragment>
             ))}
+            {sorted.length > displayCount && (
+              <button
+                onClick={() => setDisplayCount(c => c + 100)}
+                style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 9, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-5)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}
+              >
+                Voir plus ({sorted.length - displayCount} restants)
+              </button>
+            )}
           </div>
         )}
       </div>
