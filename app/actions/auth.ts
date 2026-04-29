@@ -21,7 +21,8 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   if (!valid) return { error: 'Email ou mot de passe incorrect' }
 
   await createSession({ userId: user.id, name: user.name, email: user.email })
-  redirect('/')
+  const redirectTo = (formData.get('redirectTo') as string) || '/fr/rank'
+  redirect(redirectTo)
 }
 
 export async function signup(_prev: AuthState, formData: FormData): Promise<AuthState> {
@@ -39,7 +40,8 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
   const user = await prisma.user.create({ data: { name, email, passwordHash } })
 
   await createSession({ userId: user.id, name: user.name, email: user.email })
-  redirect('/')
+  const redirectTo = (formData.get('redirectTo') as string) || '/fr/rank'
+  redirect(redirectTo)
 }
 
 export async function logout() {

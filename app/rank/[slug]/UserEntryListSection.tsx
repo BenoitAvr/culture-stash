@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useActionState, useState } from 'react'
 import { useParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
+import { addEntry } from '@/app/actions/entries'
 import { RankingEditor, type RankEditItem } from '@/app/components/RankingEditor'
-import type { Dict } from '@/dictionaries/client'
+import { getDict, type Dict } from '@/dictionaries/client'
 
 type EntryItem = { id: string; title: string; year: number | null }
 
@@ -78,10 +79,14 @@ export function UserEntryListSection({
   t: Dict['rankings']
 }) {
   const { lang } = useParams() as { lang: string }
+  const tRank = getDict(lang).rank
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const boundAddEntry = addEntry.bind(null, topicSlug)
+  const [addState, addFormAction, addPending] = useActionState(boundAddEntry, null)
 
   const myTierList = lists.find(l => l.userId === currentUserId && (l.type === 'TIER' || l.type === 'BOTH')) ?? null
 
@@ -143,6 +148,10 @@ export function UserEntryListSection({
         onCancel={() => setIsEditing(false)}
         onDelete={myTierList ? handleDelete : undefined}
         t={t}
+        addFormAction={addFormAction}
+        addPending={addPending}
+        addError={addState?.error ?? null}
+        addEntryLabel={tRank.addEntryTitle}
       />
     )
   }

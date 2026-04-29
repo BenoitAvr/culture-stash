@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Dict } from '@/dictionaries/client'
 
 export type RankableItem = {
@@ -57,6 +57,10 @@ export function RankingEditor({
   onCancel,
   onDelete,
   t,
+  addFormAction,
+  addPending,
+  addError,
+  addEntryLabel,
 }: {
   items: RankableItem[]
   initialTierItems: RankEditItem[]
@@ -66,6 +70,10 @@ export function RankingEditor({
   onCancel: () => void
   onDelete?: () => Promise<void>
   t: Dict['rankings']
+  addFormAction?: (payload: FormData) => void
+  addPending?: boolean
+  addError?: string | null
+  addEntryLabel?: string
 }) {
   const [tierItems, setTierItems] = useState<RankEditItem[]>(initialTierItems)
   const [tierRankedTiers, setTierRankedTiers] = useState(new Set<string>(initialRankedTiers))
@@ -82,6 +90,12 @@ export function RankingEditor({
   const [search, setSearch] = useState('')
   const [quickAddId, setQuickAddId] = useState<string | null>(null)
   const [unclassifiedLimit, setUnclassifiedLimit] = useState(100)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const wasPendingRef = useRef(false)
+  useEffect(() => {
+    if (wasPendingRef.current && !addPending && !addError) setShowAddForm(false)
+    wasPendingRef.current = addPending ?? false
+  }, [addPending, addError])
 
   const getItem = (id: string) => items.find(e => e.id === id)
 
@@ -407,7 +421,7 @@ export function RankingEditor({
           onDrop={() => { if (tierDragId) dropOnUnclassified(tierDragId); setTierDragId(null); setDragOverTier(null) }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--fg-8)' }}>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--fg-8)', whiteSpace: 'nowrap' }}>
               {t.noTier}
               <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--fg-9)', textTransform: 'none', letterSpacing: 0 }}>— glisser vers un tier</span>
             </div>
@@ -415,9 +429,37 @@ export function RankingEditor({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Rechercher…"
-              style={{ marginLeft: 'auto', padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: 160 }}
+              style={{ flex: 1, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
             />
+            {addFormAction && (
+              <button
+                onClick={() => setShowAddForm(v => !v)}
+                style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: showAddForm ? 'var(--bg-subtle)' : 'none', color: 'var(--fg-5)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+              >
+                {showAddForm ? '× Annuler' : `+ ${addEntryLabel ?? 'Ajouter'}`}
+              </button>
+            )}
           </div>
+          {addFormAction && showAddForm && (
+            <div style={{ marginBottom: 12 }}>
+              {addError && (
+                <div style={{ background: 'var(--error-bg)', border: '1px solid var(--error-border)', borderRadius: 6, padding: '8px 12px', marginBottom: 10, color: 'var(--error-text)', fontSize: 13 }}>{addError}</div>
+              )}
+              <form action={addFormAction} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div style={{ flex: '2 1 160px' }}>
+                  <label style={{ display: 'block', fontSize: 10, color: 'var(--fg-6)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>Titre</label>
+                  <input name="title" required style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', color: 'var(--fg)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }} />
+                </div>
+                <div style={{ flex: '0 1 80px' }}>
+                  <label style={{ display: 'block', fontSize: 10, color: 'var(--fg-6)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>Année</label>
+                  <input name="year" type="number" min={1888} max={2099} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', color: 'var(--fg)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }} />
+                </div>
+                <button type="submit" disabled={addPending} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 12, fontWeight: 600, cursor: addPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: addPending ? 0.7 : 1, flexShrink: 0 }}>
+                  {addPending ? '…' : 'Ajouter'}
+                </button>
+              </form>
+            </div>
+          )}
           {(() => {
             const unclassified = items.filter(item => !tierItems.some(i => i.id === item.id) && (!search.trim() || normalizeTitle(item.label).includes(normalizeTitle(search))))
             const visibleUnclassified = search.trim() ? unclassified : unclassified.slice(0, unclassifiedLimit)
@@ -454,7 +496,19 @@ export function RankingEditor({
                   </div>
                 ))}
                 {unclassified.length === 0 && (
-                  <span style={{ color: 'var(--fg-8)', fontSize: 12 }}>{search.trim() ? 'Aucun résultat' : t.allClassified}</span>
+                  search.trim() && addFormAction ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ color: 'var(--fg-7)', fontSize: 12 }}>"{search}" n'est pas encore dans la liste.</span>
+                      <button
+                        onClick={() => setShowAddForm(true)}
+                        style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--accent-fg)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}
+                      >
+                        + Ajouter
+                      </button>
+                    </div>
+                  ) : (
+                    <span style={{ color: 'var(--fg-8)', fontSize: 12 }}>{search.trim() ? 'Aucun résultat' : t.allClassified}</span>
+                  )
                 )}
                 {!search.trim() && unclassified.length > unclassifiedLimit && (
                   <div style={{ width: '100%', marginTop: 8 }}>
