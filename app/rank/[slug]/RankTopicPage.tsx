@@ -15,7 +15,7 @@ const TIER_COLOR: Record<string, string> = {
   EX: '#5b8dee', TB: '#388e3c', BO: '#66bb6a', AB: '#a3c940', PA: '#f9c933', IN: '#f5a623', MA: '#e05555',
 }
 
-type SortMode = 'combined' | 'tier' | 'rank' | 'favorite'
+type SortMode = 'combined' | 'tier' | 'rank' | 'favorite' | 'popular'
 
 type Entry = {
   id: string
@@ -345,8 +345,11 @@ export function RankTopicPage({
     if (sortMode === 'favorite') {
       return b.favoriteCount - a.favoriteCount || (b.avgTierScore ?? 0) - (a.avgTierScore ?? 0)
     }
-    const scoreA = (a.avgTierScore ?? 0) * 4 + (a.avgRank ? 1 / a.avgRank * 8 : 0) + a.favoriteCount
-    const scoreB = (b.avgTierScore ?? 0) * 4 + (b.avgRank ? 1 / b.avgRank * 8 : 0) + b.favoriteCount
+    if (sortMode === 'popular') {
+      return b.tierCount - a.tierCount || (b.avgTierScore ?? 0) - (a.avgTierScore ?? 0)
+    }
+    const scoreA = (a.avgTierScore ?? 0) * 4 + (a.avgRank ? 1 / a.avgRank * 8 : 0) + a.favoriteCount + a.tierCount * 0.2
+    const scoreB = (b.avgTierScore ?? 0) * 4 + (b.avgRank ? 1 / b.avgRank * 8 : 0) + b.favoriteCount + b.tierCount * 0.2
     return scoreB - scoreA
   })
   return (
@@ -425,7 +428,7 @@ export function RankTopicPage({
       {/* Community ranking */}
       <div style={{ paddingTop: 10 }}>
         <div style={{ display: 'flex', gap: 2, paddingBottom: 12, flexWrap: 'wrap' }}>
-          {(['combined', 'tier', 'rank', 'favorite'] as SortMode[]).map(mode => (
+          {(['combined', 'tier', 'rank', 'favorite', 'popular'] as SortMode[]).map(mode => (
             <button key={mode} onClick={() => { setSortMode(mode); setDisplayCount(100) }} style={{
               padding: '6px 14px', borderRadius: 8, fontFamily: 'inherit', cursor: 'pointer', fontSize: 13,
               border: sortMode === mode ? '1px solid var(--border)' : '1px solid transparent',
@@ -433,7 +436,7 @@ export function RankTopicPage({
               color: sortMode === mode ? 'var(--fg)' : 'var(--fg-5)',
               fontWeight: sortMode === mode ? 500 : 400,
             }}>
-              {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Tier' : mode === 'rank' ? 'Rang' : 'Favoris'}
+              {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Tier' : mode === 'rank' ? 'Rang' : mode === 'favorite' ? 'Favoris' : 'Popularité'}
             </button>
           ))}
         </div>
