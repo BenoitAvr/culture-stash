@@ -120,7 +120,7 @@ export default async function RankSlugPage({
       id: e.id,
       title: e.title,
       year: e.year,
-      cover: e.cover ?? coverMap.get(e.id) ?? null,
+      cover: (e.cover || coverMap.get(e.id)) || null,
       avgRank: rd && rd.count > 0 ? rd.total / rd.count : null,
       rankCount: rd?.count ?? 0,
       avgTierScore: td && td.count > 0 ? td.totalScore / td.count : null,
