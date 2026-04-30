@@ -98,7 +98,7 @@ export async function saveUserEntryLists(
 
   revalidatePath(`/fr/rank/${topicSlug}`)
   revalidatePath(`/en/rank/${topicSlug}`)
-  revalidateTag(`rank-${topicSlug}`)
+  revalidateTag(`rank-${topicSlug}`, 'max')
 
   return fresh.map(l => ({
     id: l.id,
@@ -133,5 +133,5 @@ export async function saveUserEntryList(
 
   revalidatePath(`/fr/rank/${topicSlug}`)
   revalidatePath(`/en/rank/${topicSlug}`)
-  revalidateTag(`rank-${topicSlug}`)
+  revalidateTag(`rank-${topicSlug}`, 'max')
 }

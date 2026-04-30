@@ -53,7 +53,7 @@ export async function addEntry(
 
   revalidatePath(`/fr/rank/${topicSlug}`)
   revalidatePath(`/en/rank/${topicSlug}`)
-  revalidateTag(`rank-${topicSlug}`)
+  revalidateTag(`rank-${topicSlug}`, 'max')
   return null
 }
 
