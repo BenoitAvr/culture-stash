@@ -1,4 +1,4 @@
-﻿import Link from 'next/link'
+import Link from 'next/link'
 import { Suspense } from 'react'
 import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale } from '@/dictionaries'
@@ -8,8 +8,32 @@ import { LangSwitcher } from './LangSwitcher'
 import { ThemeToggle } from './ThemeToggle'
 import { NavLoginLink } from './NavLoginLink'
 
-export async function Nav({ lang }: { lang: string }) {
+type NavDict = ReturnType<typeof getDictionary>['nav']
+
+async function NavAuth({ lang, nav }: { lang: string; nav: NavDict }) {
   const session = await getSession()
+  return session ? (
+    <>
+      <Link href={`/${lang}/topics/new`} style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+        {nav.contribute}
+      </Link>
+      <form action={logout} style={{ display: 'inline' }}>
+        <button style={{ padding: '7px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-3)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+          {session.name.split(' ')[0]}
+        </button>
+      </form>
+    </>
+  ) : (
+    <>
+      <NavLoginLink lang={lang} label={nav.login} />
+      <Link href={`/${lang}/auth/signup`} style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+        {nav.contribute}
+      </Link>
+    </>
+  )
+}
+
+export function Nav({ lang }: { lang: string }) {
   const t = hasLocale(lang) ? getDictionary(lang) : getDictionary('fr')
 
   return (
@@ -33,25 +57,9 @@ export async function Nav({ lang }: { lang: string }) {
       <div style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
         <ThemeToggle />
         <LangSwitcher lang={lang} />
-        {session ? (
-          <>
-            <Link href={`/${lang}/topics/new`} style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-              {t.nav.contribute}
-            </Link>
-            <form action={logout} style={{ display: 'inline' }}>
-              <button style={{ padding: '7px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-3)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-                {session.name.split(' ')[0]}
-              </button>
-            </form>
-          </>
-        ) : (
-          <>
-            <NavLoginLink lang={lang} label={t.nav.login} />
-            <Link href={`/${lang}/auth/signup`} style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-              {t.nav.contribute}
-            </Link>
-          </>
-        )}
+        <Suspense fallback={<div style={{ width: 180 }} />}>
+          <NavAuth lang={lang} nav={t.nav} />
+        </Suspense>
       </div>
     </nav>
   )

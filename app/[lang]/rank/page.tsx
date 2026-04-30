@@ -3,13 +3,25 @@ import { getDictionary, hasLocale } from '@/dictionaries'
 import { getSession } from '@/lib/session'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Suspense } from 'react'
+
+async function NewTopicButton({ lang }: { lang: string }) {
+  const session = await getSession()
+  if (!session) return null
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
+      <Link href={`/${lang}/topics/new?rankable=true`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 22px', borderRadius: 9, border: '1px dashed var(--border)', color: 'var(--fg-6)', fontSize: 13, textDecoration: 'none' }}>
+        + Nouveau thème
+      </Link>
+    </div>
+  )
+}
 
 export default async function RankHomePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
   if (!hasLocale(lang)) notFound()
 
   const t = getDictionary(lang)
-  const session = await getSession()
 
   const topics = await prisma.topic.findMany({
     where: { rankable: true },
@@ -63,13 +75,9 @@ export default async function RankHomePage({ params }: { params: Promise<{ lang:
           })}
         </div>
       )}
-      {session && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-          <Link href={`/${lang}/topics/new?rankable=true`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 22px', borderRadius: 9, border: '1px dashed var(--border)', color: 'var(--fg-6)', fontSize: 13, textDecoration: 'none' }}>
-            + Nouveau thème
-          </Link>
-        </div>
-      )}
+      <Suspense fallback={null}>
+        <NewTopicButton lang={lang} />
+      </Suspense>
       <div style={{ height: 80 }} />
     </div>
   )
