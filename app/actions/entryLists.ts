@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 type EntryListItem = { entryId: string; position?: number; tier?: string; note?: string }
 
@@ -98,6 +98,7 @@ export async function saveUserEntryLists(
 
   revalidatePath(`/fr/rank/${topicSlug}`)
   revalidatePath(`/en/rank/${topicSlug}`)
+  revalidateTag(`rank-${topicSlug}`)
 
   return fresh.map(l => ({
     id: l.id,
@@ -132,4 +133,5 @@ export async function saveUserEntryList(
 
   revalidatePath(`/fr/rank/${topicSlug}`)
   revalidatePath(`/en/rank/${topicSlug}`)
+  revalidateTag(`rank-${topicSlug}`)
 }
