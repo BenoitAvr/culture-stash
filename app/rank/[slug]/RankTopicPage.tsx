@@ -1,10 +1,12 @@
 'use client'
 
-import React, { use, useState, Suspense } from 'react'
+import React, { use, useState, useEffect, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { getDict } from '@/dictionaries/client'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
+import { fetchAllRankEntries } from '@/app/actions/rankEntries'
 import { type UserEntryListData } from './UserEntryListSection'
+import type { RankEntry } from '@/lib/communityRankData'
 import Link from 'next/link'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
@@ -17,18 +19,7 @@ const TIER_COLOR: Record<string, string> = {
 
 type SortMode = 'combined' | 'tier' | 'rank' | 'favorite' | 'popular'
 
-type Entry = {
-  id: string
-  title: string
-  year: number | null
-  cover: string | null
-  avgRank: number | null
-  rankCount: number
-  avgTierScore: number | null
-  tierCount: number
-  favoriteCount: number
-  tierDistribution: Record<string, number>
-}
+type Entry = RankEntry
 
 type ListItemData = {
   entryId: string
@@ -415,13 +406,14 @@ function UserAwareEntryList({
 
 export function RankTopicPage({
   topicSlug, topicEmoji, topicTitle, topicBadge,
-  entries, personalDataPromise,
+  initialEntries, totalEntries, personalDataPromise,
 }: {
   topicSlug: string
   topicEmoji: string
   topicTitle: string
   topicBadge: string
-  entries: Entry[]
+  initialEntries: Entry[]
+  totalEntries: number
   personalDataPromise: Promise<PersonalRankData>
 }) {
   const { lang } = useParams() as { lang: string }
@@ -430,8 +422,19 @@ export function RankTopicPage({
   const [sortMode, setSortMode] = useState<SortMode>('combined')
   const [quickAddId, setQuickAddId] = useState<string | null>(null)
   const [displayCount, setDisplayCount] = useState(100)
+  const [allEntries, setAllEntries] = useState(initialEntries)
+  const [isLoadingFull, setIsLoadingFull] = useState(initialEntries.length < totalEntries)
 
-  const sorted = [...entries].sort((a, b) => {
+  useEffect(() => {
+    if (!isLoadingFull) return
+    fetchAllRankEntries(topicSlug, lang).then(entries => {
+      setAllEntries(entries)
+      setIsLoadingFull(false)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const sorted = [...allEntries].sort((a, b) => {
     if (sortMode === 'tier') {
       if (a.avgTierScore === null && b.avgTierScore === null) return 0
       if (a.avgTierScore === null) return 1
@@ -545,7 +548,12 @@ export function RankTopicPage({
                 setQuickAddId={setQuickAddId}
               />
             </Suspense>
-            {sorted.length > displayCount && (
+            {isLoadingFull && sorted.length <= displayCount && (
+              <div style={{ width: '100%', marginTop: 16, padding: '12px', textAlign: 'center', color: 'var(--fg-6)', fontSize: 12 }}>
+                Chargement des éléments suivants…
+              </div>
+            )}
+            {!isLoadingFull && sorted.length > displayCount && (
               <button
                 onClick={() => setDisplayCount(c => c + 100)}
                 style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 9, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-5)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}
