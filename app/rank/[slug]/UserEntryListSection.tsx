@@ -67,6 +67,9 @@ export function UserEntryListSection({
         const sorted = [...inTier].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
         for (const item of sorted) globalizedItems.push({ ...item, position: globalPos++ })
       } else {
+        // Non-ranked items don't get a position, but they still occupy slots
+        // in the global order — same as tierOffset in the display formula.
+        globalPos += inTier.length
         for (const item of inTier) globalizedItems.push({ ...item, position: undefined })
       }
     }
