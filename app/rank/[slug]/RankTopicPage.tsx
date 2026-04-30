@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { use, useState, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { getDict } from '@/dictionaries/client'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
@@ -36,6 +36,12 @@ type ListItemData = {
   tier: string | null
   note: string | null
   entry: { id: string; title: string; year: number | null; cover: string | null }
+}
+
+export type PersonalRankData = {
+  userLists: UserEntryListData[]
+  currentUserId: string | null
+  isLoggedIn: boolean
 }
 
 function QuickAddPanel({
@@ -268,28 +274,82 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
   )
 }
 
-
-export function RankTopicPage({
-  topicSlug, topicEmoji, topicTitle, topicBadge,
-  entries, userEntryLists, currentUserId, isLoggedIn,
+// Resolves user lists promise and renders the header controls (edit/create button, public list link)
+function UserHeaderControls({
+  personalDataPromise,
+  topicSlug,
+  lang,
+  dict,
 }: {
+  personalDataPromise: Promise<PersonalRankData>
   topicSlug: string
-  topicEmoji: string
-  topicTitle: string
-  topicBadge: string
-  entries: Entry[]
-  userEntryLists: UserEntryListData[]
-  currentUserId: string | null
-  isLoggedIn: boolean
+  lang: string
+  dict: ReturnType<typeof getDict>
 }) {
-  const { lang } = useParams() as { lang: string }
-  const dict = getDict(lang)
-  const t = dict.rank
-  const [sortMode, setSortMode] = useState<SortMode>('combined')
-  const [lists, setLists] = useState<UserEntryListData[]>(userEntryLists)
-  const [quickAddId, setQuickAddId] = useState<string | null>(null)
-  const [displayCount, setDisplayCount] = useState(100)
+  const { userLists: lists, currentUserId, isLoggedIn } = use(personalDataPromise)
+  const myTierList = lists.find(l => l.userId === currentUserId && (l.type === 'TIER' || l.type === 'BOTH')) ?? null
 
+  if (!isLoggedIn) {
+    return (
+      <Link
+        href={`/${lang}/auth/login`}
+        style={{
+          padding: '8px 18px', borderRadius: 8,
+          border: '1px solid var(--border)', background: 'none',
+          color: 'var(--fg-3)', fontSize: 13, textDecoration: 'none',
+        }}
+      >
+        {dict.rank.loginToRate}
+      </Link>
+    )
+  }
+
+  return (
+    <>
+      <Link
+        href={`/${lang}/rank/${topicSlug}/edit`}
+        style={{
+          padding: '8px 18px', borderRadius: 8,
+          background: 'var(--btn)', color: 'var(--btn-text)',
+          fontSize: 14, fontWeight: 600, textDecoration: 'none',
+        }}
+      >
+        {myTierList ? dict.rankings.editList : dict.rankings.createList}
+      </Link>
+      {myTierList && (
+        <Link
+          href={`/${lang}/rank/${topicSlug}/${encodeURIComponent(myTierList.username)}`}
+          title={lang === 'fr' ? 'Voir ma liste publique' : 'View my public list'}
+          style={{
+            width: 34, height: 34, borderRadius: 7, border: '1px solid var(--border)',
+            background: 'none', color: 'var(--fg-3)', fontSize: 14,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            textDecoration: 'none',
+          }}
+        >
+          ↗
+        </Link>
+      )}
+    </>
+  )
+}
+
+// Resolves user lists promise and renders entry rows with user-specific data (my tier badges, quick add)
+function UserAwareEntryList({
+  personalDataPromise,
+  entries,
+  topicSlug,
+  quickAddId,
+  setQuickAddId,
+}: {
+  personalDataPromise: Promise<PersonalRankData>
+  entries: Entry[]
+  topicSlug: string
+  quickAddId: string | null
+  setQuickAddId: (id: string | null) => void
+}) {
+  const { userLists: initialLists, currentUserId, isLoggedIn } = use(personalDataPromise)
+  const [lists, setLists] = useState(initialLists)
   const myTierList = lists.find(l => l.userId === currentUserId && (l.type === 'TIER' || l.type === 'BOTH')) ?? null
 
   async function handleQuickAdd(entryId: string, tier: string, insertBeforeId?: string) {
@@ -327,8 +387,51 @@ export function RankTopicPage({
     setQuickAddId(null)
   }
 
-  const sorted = [...entries].sort((a, b) => {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {entries.map((entry, i) => (
+        <React.Fragment key={entry.id}>
+          <EntryRow
+            entry={entry}
+            rank={i + 1}
+            isLoggedIn={isLoggedIn}
+            myTier={myTierList?.items.find(item => item.entryId === entry.id)?.tier ?? null}
+            isOpen={quickAddId === entry.id}
+            onAdd={() => setQuickAddId(quickAddId === entry.id ? null : entry.id)}
+          />
+          {quickAddId === entry.id && (
+            <QuickAddPanel
+              entry={entry}
+              myTierList={myTierList}
+              onAdd={(tier, insertBeforeId) => handleQuickAdd(entry.id, tier, insertBeforeId)}
+              onClose={() => setQuickAddId(null)}
+            />
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  )
+}
 
+export function RankTopicPage({
+  topicSlug, topicEmoji, topicTitle, topicBadge,
+  entries, personalDataPromise,
+}: {
+  topicSlug: string
+  topicEmoji: string
+  topicTitle: string
+  topicBadge: string
+  entries: Entry[]
+  personalDataPromise: Promise<PersonalRankData>
+}) {
+  const { lang } = useParams() as { lang: string }
+  const dict = getDict(lang)
+  const t = dict.rank
+  const [sortMode, setSortMode] = useState<SortMode>('combined')
+  const [quickAddId, setQuickAddId] = useState<string | null>(null)
+  const [displayCount, setDisplayCount] = useState(100)
+
+  const sorted = [...entries].sort((a, b) => {
     if (sortMode === 'tier') {
       if (a.avgTierScore === null && b.avgTierScore === null) return 0
       if (a.avgTierScore === null) return 1
@@ -351,6 +454,9 @@ export function RankTopicPage({
     const scoreB = (b.avgTierScore ?? 0) * 4 + (b.avgRank ? 1 / b.avgRank * 8 : 0) + b.favoriteCount + b.tierCount * 0.2
     return scoreB - scoreA
   })
+
+  const visibleEntries = sorted.slice(0, displayCount)
+
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 24px 60px' }}>
 
@@ -368,49 +474,20 @@ export function RankTopicPage({
 
           {/* Personal ranking controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {isLoggedIn ? (
-              <>
-                <Link
-                  href={`/${lang}/rank/${topicSlug}/edit`}
-                  style={{
-                    padding: '8px 18px', borderRadius: 8,
-                    background: 'var(--btn)', color: 'var(--btn-text)',
-                    fontSize: 14, fontWeight: 600, textDecoration: 'none',
-                  }}
-                >
-                  {myTierList ? dict.rankings.editList : dict.rankings.createList}
-                </Link>
-                {myTierList && (
-                  <Link
-                    href={`/${lang}/rank/${topicSlug}/${encodeURIComponent(myTierList.username)}`}
-                    title={lang === 'fr' ? 'Voir ma liste publique' : 'View my public list'}
-                    style={{
-                      width: 34, height: 34, borderRadius: 7, border: '1px solid var(--border)',
-                      background: 'none', color: 'var(--fg-3)', fontSize: 14,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    ↗
-                  </Link>
-                )}
-              </>
-            ) : (
-              <Link
-                href={`/${lang}/auth/login`}
-                style={{
-                  padding: '8px 18px', borderRadius: 8,
-                  border: '1px solid var(--border)', background: 'none',
-                  color: 'var(--fg-3)', fontSize: 13, textDecoration: 'none',
-                }}
-              >
-                {t.loginToRate}
-              </Link>
-            )}
+            <Suspense fallback={
+              <div style={{ width: 120, height: 36, borderRadius: 8, background: 'var(--bg-subtle)' }} />
+            }>
+              <UserHeaderControls
+                personalDataPromise={personalDataPromise}
+                topicSlug={topicSlug}
+                lang={lang}
+                dict={dict}
+              />
+            </Suspense>
           </div>
         </div>
 
-        {/* Community ranking title — flush with content below */}
+        {/* Community ranking title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
           <span style={{ fontSize: 28, lineHeight: 1 }}>{topicEmoji}</span>
           <div>
@@ -442,27 +519,32 @@ export function RankTopicPage({
         {sorted.length === 0 ? (
           <p style={{ color: 'var(--fg-5)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {sorted.slice(0, displayCount).map((entry, i) => (
-              <React.Fragment key={entry.id}>
-                <EntryRow
-                  entry={entry}
-                  rank={i + 1}
-                  isLoggedIn={isLoggedIn}
-                  myTier={myTierList?.items.find(item => item.entryId === entry.id)?.tier ?? null}
-                  isOpen={quickAddId === entry.id}
-                  onAdd={() => setQuickAddId(prev => prev === entry.id ? null : entry.id)}
-                />
-                {quickAddId === entry.id && (
-                  <QuickAddPanel
-                    entry={entry}
-                    myTierList={myTierList}
-                    onAdd={(tier, insertBeforeId) => handleQuickAdd(entry.id, tier, insertBeforeId)}
-                    onClose={() => setQuickAddId(null)}
-                  />
-                )}
-              </React.Fragment>
-            ))}
+          <>
+            <Suspense
+              fallback={
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {visibleEntries.map((entry, i) => (
+                    <EntryRow
+                      key={entry.id}
+                      entry={entry}
+                      rank={i + 1}
+                      isLoggedIn={false}
+                      myTier={null}
+                      isOpen={false}
+                      onAdd={() => {}}
+                    />
+                  ))}
+                </div>
+              }
+            >
+              <UserAwareEntryList
+                personalDataPromise={personalDataPromise}
+                entries={visibleEntries}
+                topicSlug={topicSlug}
+                quickAddId={quickAddId}
+                setQuickAddId={setQuickAddId}
+              />
+            </Suspense>
             {sorted.length > displayCount && (
               <button
                 onClick={() => setDisplayCount(c => c + 100)}
@@ -471,7 +553,7 @@ export function RankTopicPage({
                 Voir plus ({sorted.length - displayCount} restants)
               </button>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>

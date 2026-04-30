@@ -3,9 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
-import { Suspense } from 'react'
 import { cacheTag, cacheLife } from 'next/cache'
-import { RankTopicPage } from '@/app/rank/[slug]/RankTopicPage'
+import { RankTopicPage, type PersonalRankData } from '@/app/rank/[slug]/RankTopicPage'
+import type { UserEntryListData } from '@/app/rank/[slug]/UserEntryListSection'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
 const TIER_SCORE: Record<string, number> = { EX: 7, TB: 6, BO: 5, AB: 4, PA: 3, IN: 2, MA: 1 }
@@ -87,7 +87,7 @@ async function getCommunityData(slug: string, lang: string) {
   }
 }
 
-async function getUserList(topicId: string, userId: string) {
+async function getUserList(topicId: string, userId: string): Promise<UserEntryListData[]> {
   const lists = await prisma.userEntryList.findMany({
     where: { topicId, userId, NOT: { type: 'BOTH' } },
     include: {
@@ -113,6 +113,17 @@ async function getUserList(topicId: string, userId: string) {
       entry: i.entry,
     })),
   }))
+}
+
+async function getPersonalRankData(topicId: string): Promise<PersonalRankData> {
+  const session = await getSession()
+  const userLists = session ? await getUserList(topicId, session.userId) : []
+
+  return {
+    userLists,
+    currentUserId: session?.userId ?? null,
+    isLoggedIn: !!session,
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string; slug: string }> }): Promise<Metadata> {
@@ -146,8 +157,7 @@ async function RankSlugInner({
   const data = await getCommunityData(slug, lang)
   if (!data) notFound()
 
-  const session = await getSession()
-  const myLists = session ? await getUserList(data.topicId, session.userId) : []
+  const personalDataPromise = getPersonalRankData(data.topicId)
 
   return (
     <RankTopicPage
@@ -156,9 +166,7 @@ async function RankSlugInner({
       topicTitle={data.topicTitle}
       topicBadge={data.topicBadge}
       entries={data.entries}
-      userEntryLists={myLists}
-      currentUserId={session?.userId ?? null}
-      isLoggedIn={!!session}
+      personalDataPromise={personalDataPromise}
     />
   )
 }
@@ -168,9 +176,5 @@ export default function RankSlugPage({
 }: {
   params: Promise<{ lang: string; slug: string }>
 }) {
-  return (
-    <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
-      <RankSlugInner params={params} />
-    </Suspense>
-  )
+  return <RankSlugInner params={params} />
 }
