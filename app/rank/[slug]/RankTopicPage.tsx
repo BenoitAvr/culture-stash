@@ -209,7 +209,6 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
                 {TIER_LABEL[t]}{entry.tierDistribution[t] > 1 ? ` ${entry.tierDistribution[t]}` : ''}
               </span>
             ))}
-            <span style={{ fontSize: 10, color: 'var(--fg-5)' }}>×{total}</span>
           </div>
         )}
       </div>
