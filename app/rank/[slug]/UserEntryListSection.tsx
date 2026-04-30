@@ -88,12 +88,22 @@ export function UserEntryListSection({
 
   if (!isEditing) return null
 
-  const initTierItems = myTierList
-    ? myTierList.items
-        .filter(i => i.tier && TIERS.includes(i.tier))
-        .map(i => ({ id: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined, note: i.note ?? undefined }))
-    : []
   const initRankedTiers = (myTierList?.rankedTiers ?? '').split(',').filter(Boolean)
+  // Normalize global DB positions back to within-tier (1, 2, 3…) so the editor
+  // state is consistent and dropOnTier's tierCount+1 always appends correctly.
+  const initTierItems: RankEditItem[] = myTierList
+    ? TIERS.flatMap(t => {
+        const inTier = myTierList.items
+          .filter(i => i.tier === t)
+          .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+        return inTier.map((i, idx) => ({
+          id: i.entryId,
+          tier: t,
+          position: initRankedTiers.includes(t) ? idx + 1 : undefined,
+          note: i.note ?? undefined,
+        }))
+      })
+    : []
 
   return (
     <div style={{ paddingBottom: 28 }}>
