@@ -57,10 +57,23 @@ export function UserEntryListSection({
       } else setIsEditing(false)
       return
     }
+    // Positions stored in state are within-tier (1, 2, 3 per tier).
+    // Convert to global rank (across all ranked tiers combined) before saving.
+    let globalPos = 1
+    const globalizedItems: RankEditItem[] = []
+    for (const t of TIERS) {
+      const inTier = tier.filter(i => i.tier === t)
+      if (rankedTiers.includes(t)) {
+        const sorted = [...inTier].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        for (const item of sorted) globalizedItems.push({ ...item, position: globalPos++ })
+      } else {
+        for (const item of inTier) globalizedItems.push({ ...item, position: undefined })
+      }
+    }
     const updated = await saveUserEntryLists(
       topicSlug,
       [],
-      tier.map(i => ({ entryId: i.id, tier: i.tier, position: i.position, note: i.note })),
+      globalizedItems.map(i => ({ entryId: i.id, tier: i.tier, position: i.position, note: i.note })),
       rankedTiers
     )
     onListsChange([...lists.filter(l => l.userId !== currentUserId), ...updated])
