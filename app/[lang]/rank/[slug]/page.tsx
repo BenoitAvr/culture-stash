@@ -134,11 +134,21 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   }
 }
 
-type CommunityData = NonNullable<Awaited<ReturnType<typeof getCommunityData>>>
+async function RankSlugInner({
+  params,
+}: {
+  params: Promise<{ lang: string; slug: string }>
+}) {
+  const { lang, slug } = await params
+  if (!hasLocale(lang)) notFound()
+  getDictionary(lang)
 
-async function RankSlugContent({ slug, data }: { slug: string; data: CommunityData }) {
+  const data = await getCommunityData(slug, lang)
+  if (!data) notFound()
+
   const session = await getSession()
   const myLists = session ? await getUserList(data.topicId, session.userId) : []
+
   return (
     <RankTopicPage
       topicSlug={slug}
@@ -153,35 +163,14 @@ async function RankSlugContent({ slug, data }: { slug: string; data: CommunityDa
   )
 }
 
-export default async function RankSlugPage({
+export default function RankSlugPage({
   params,
 }: {
   params: Promise<{ lang: string; slug: string }>
 }) {
-  const { lang, slug } = await params
-  if (!hasLocale(lang)) notFound()
-
-  getDictionary(lang)
-
-  const data = await getCommunityData(slug, lang)
-  if (!data) notFound()
-
-  const fallback = (
-    <RankTopicPage
-      topicSlug={slug}
-      topicEmoji={data.topicEmoji}
-      topicTitle={data.topicTitle}
-      topicBadge={data.topicBadge}
-      entries={data.entries}
-      userEntryLists={[]}
-      currentUserId={null}
-      isLoggedIn={false}
-    />
-  )
-
   return (
-    <Suspense fallback={fallback}>
-      <RankSlugContent slug={slug} data={data} />
+    <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+      <RankSlugInner params={params} />
     </Suspense>
   )
 }
