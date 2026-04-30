@@ -238,7 +238,7 @@ export function RankingEditor({
           {hasExisting ? t.editListTitle : t.createListTitle}
         </span>
         <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-        {tierItems.length === 0 && !isImporting && (
+        {!isImporting && (
           <button onClick={() => setIsImporting(true)} style={{ padding: '5px 11px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-6)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer' }}>
             ↑ Importer
           </button>
