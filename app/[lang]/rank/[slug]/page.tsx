@@ -19,13 +19,13 @@ function getCommunityData(slug: string, lang: string) {
           entries: { orderBy: { createdAt: 'asc' } },
           userEntryLists: {
             where: { NOT: { type: 'BOTH' } },
-            include: {
+            select: {
+              type: true,
+              rankedTiers: true,
               items: {
-                include: { entry: { select: { id: true, title: true, year: true, cover: true } } },
-                orderBy: { position: 'asc' },
+                select: { entryId: true, tier: true, position: true },
               },
             },
-            orderBy: { createdAt: 'asc' },
           },
         },
       })
