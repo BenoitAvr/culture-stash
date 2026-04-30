@@ -56,7 +56,9 @@ export function Nav({ lang }: { lang: string }) {
 
       <div style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
         <ThemeToggle />
-        <LangSwitcher lang={lang} />
+        <Suspense fallback={<div style={{ width: 44 }} />}>
+          <LangSwitcher lang={lang} />
+        </Suspense>
         <Suspense fallback={<div style={{ width: 180 }} />}>
           <NavAuth lang={lang} nav={t.nav} />
         </Suspense>

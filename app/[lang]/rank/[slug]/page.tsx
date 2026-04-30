@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 import { cacheTag, cacheLife } from 'next/cache'
 import { RankTopicPage } from '@/app/rank/[slug]/RankTopicPage'
 
@@ -133,24 +134,11 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   }
 }
 
-export default async function RankSlugPage({
-  params,
-}: {
-  params: Promise<{ lang: string; slug: string }>
-}) {
-  const { lang, slug } = await params
-  if (!hasLocale(lang)) notFound()
+type CommunityData = NonNullable<Awaited<ReturnType<typeof getCommunityData>>>
 
-  getDictionary(lang)
+async function RankSlugContent({ slug, data }: { slug: string; data: CommunityData }) {
   const session = await getSession()
-
-  const data = await getCommunityData(slug, lang)
-  if (!data) notFound()
-
-  const myLists = session
-    ? await getUserList(data.topicId, session.userId)
-    : []
-
+  const myLists = session ? await getUserList(data.topicId, session.userId) : []
   return (
     <RankTopicPage
       topicSlug={slug}
@@ -162,5 +150,38 @@ export default async function RankSlugPage({
       currentUserId={session?.userId ?? null}
       isLoggedIn={!!session}
     />
+  )
+}
+
+export default async function RankSlugPage({
+  params,
+}: {
+  params: Promise<{ lang: string; slug: string }>
+}) {
+  const { lang, slug } = await params
+  if (!hasLocale(lang)) notFound()
+
+  getDictionary(lang)
+
+  const data = await getCommunityData(slug, lang)
+  if (!data) notFound()
+
+  const fallback = (
+    <RankTopicPage
+      topicSlug={slug}
+      topicEmoji={data.topicEmoji}
+      topicTitle={data.topicTitle}
+      topicBadge={data.topicBadge}
+      entries={data.entries}
+      userEntryLists={[]}
+      currentUserId={null}
+      isLoggedIn={false}
+    />
+  )
+
+  return (
+    <Suspense fallback={fallback}>
+      <RankSlugContent slug={slug} data={data} />
+    </Suspense>
   )
 }
