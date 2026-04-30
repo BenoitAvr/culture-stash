@@ -4,7 +4,6 @@ import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
 import { RankTopicPage } from '@/app/rank/[slug]/RankTopicPage'
-import { backfillMissingCovers } from '@/app/actions/entries'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string; slug: string }> }): Promise<Metadata> {
   const { lang, slug } = await params
@@ -105,14 +104,6 @@ export default async function RankSlugPage({
     }
   }
 
-  const rankedEntryIds = new Set([
-    ...Object.keys(tierData),
-    ...Object.keys(rankData),
-    ...Object.keys(favoriteData),
-  ])
-  const rankedEntries = topic.entries.filter(e => rankedEntryIds.has(e.id))
-  const coverMap = await backfillMissingCovers(rankedEntries)
-
   const entries = topic.entries.map(e => {
     const rd = rankData[e.id]
     const td = tierData[e.id]
@@ -120,7 +111,7 @@ export default async function RankSlugPage({
       id: e.id,
       title: e.title,
       year: e.year,
-      cover: (e.cover || coverMap.get(e.id)) || null,
+      cover: e.cover || null,
       avgRank: rd && rd.count > 0 ? rd.total / rd.count : null,
       rankCount: rd?.count ?? 0,
       avgTierScore: td && td.count > 0 ? td.totalScore / td.count : null,

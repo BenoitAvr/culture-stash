@@ -27,27 +27,6 @@ async function fetchTmdbCover(title: string, year: number | null): Promise<strin
   }
 }
 
-export async function backfillMissingCovers(
-  entries: { id: string; title: string; year: number | null; cover: string | null }[]
-): Promise<Map<string, string>> {
-  // cover === null  → never checked yet → try TMDB
-  // cover === ""    → checked, nothing found → skip forever
-  // cover === url   → already set → skip
-  const missing = entries.filter(e => e.cover === null)
-  if (missing.length === 0) return new Map()
-
-  const results = await Promise.all(
-    missing.map(async e => {
-      const cover = await fetchTmdbCover(e.title, e.year)
-      // Store "" to mark as checked so we never retry
-      await prisma.entry.update({ where: { id: e.id }, data: { cover: cover ?? '' } })
-      return [e.id, cover] as [string, string | null]
-    })
-  )
-
-  return new Map(results.filter((r): r is [string, string] => !!r[1])
-  )
-}
 
 export async function addEntry(
   topicSlug: string,
