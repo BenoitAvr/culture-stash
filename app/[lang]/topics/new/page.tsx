@@ -3,8 +3,9 @@ import { hasLocale } from '@/dictionaries'
 import { notFound, redirect } from 'next/navigation'
 import { NewTopicForm } from '@/app/topics/new/NewTopicForm'
 import { prisma } from '@/lib/prisma'
+import { Suspense } from 'react'
 
-export default async function NewTopicPage({
+async function NewTopicPageContent({
   params,
   searchParams,
 }: {
@@ -35,5 +36,19 @@ export default async function NewTopicPage({
     <div>
       <NewTopicForm topics={topicOptions} defaultParentId={parentId ?? null} defaultRankable={rankable === 'true'} />
     </div>
+  )
+}
+
+export default function NewTopicPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>
+  searchParams: Promise<{ parent?: string; rankable?: string }>
+}) {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+      <NewTopicPageContent params={params} searchParams={searchParams} />
+    </Suspense>
   )
 }

@@ -3,8 +3,9 @@ import { getSession } from '@/lib/session'
 import { hasLocale } from '@/dictionaries'
 import { notFound, redirect } from 'next/navigation'
 import { TranslateTopicForm } from '@/app/topics/[slug]/TranslateTopicForm'
+import { Suspense } from 'react'
 
-export default async function TranslatePage({
+async function TranslatePageContent({
   params,
 }: {
   params: Promise<{ lang: string; slug: string }>
@@ -29,5 +30,17 @@ export default async function TranslatePage({
       defaultProse={topic.prose}
       defaultDiffNote={topic.diffNote}
     />
+  )
+}
+
+export default function TranslatePage({
+  params,
+}: {
+  params: Promise<{ lang: string; slug: string }>
+}) {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+      <TranslatePageContent params={params} />
+    </Suspense>
   )
 }

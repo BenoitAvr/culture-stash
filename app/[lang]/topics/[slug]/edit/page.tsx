@@ -3,8 +3,9 @@ import { getSession } from '@/lib/session'
 import { hasLocale } from '@/dictionaries'
 import { notFound, redirect } from 'next/navigation'
 import { EditTopicForm } from '@/app/topics/[slug]/edit/EditTopicForm'
+import { Suspense } from 'react'
 
-export default async function EditTopicPage({
+async function EditTopicPageContent({
   params,
 }: {
   params: Promise<{ lang: string; slug: string }>
@@ -38,5 +39,17 @@ export default async function EditTopicPage({
         related: topic.related.map(r => r.name).join(', '),
       }}
     />
+  )
+}
+
+export default function EditTopicPage({
+  params,
+}: {
+  params: Promise<{ lang: string; slug: string }>
+}) {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+      <EditTopicPageContent params={params} />
+    </Suspense>
   )
 }

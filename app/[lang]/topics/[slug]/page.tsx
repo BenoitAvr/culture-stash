@@ -5,6 +5,7 @@ import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
 import { TopicTabs } from '@/app/topics/[slug]/TopicTabs'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string; slug: string }> }): Promise<Metadata> {
   const { lang, slug } = await params
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   }
 }
 
-export default async function TopicPage({
+async function TopicPageContent({
   params,
 }: {
   params: Promise<{ lang: string; slug: string }>
@@ -255,5 +256,17 @@ export default async function TopicPage({
         personalNoteContent={personalNote?.content ?? null}
       />
     </div>
+  )
+}
+
+export default function TopicPage({
+  params,
+}: {
+  params: Promise<{ lang: string; slug: string }>
+}) {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+      <TopicPageContent params={params} />
+    </Suspense>
   )
 }

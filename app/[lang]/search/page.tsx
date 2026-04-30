@@ -2,8 +2,9 @@
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
-export default async function SearchPage({
+async function SearchPageContent({
   params,
   searchParams,
 }: {
@@ -110,5 +111,19 @@ export default async function SearchPage({
         <p style={{ color: 'var(--fg-6)', padding: '40px 0', textAlign: 'center' }}>{t.search.noResults}</p>
       )}
     </div>
+  )
+}
+
+export default function SearchPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>
+  searchParams: Promise<{ q?: string }>
+}) {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+      <SearchPageContent params={params} searchParams={searchParams} />
+    </Suspense>
   )
 }
