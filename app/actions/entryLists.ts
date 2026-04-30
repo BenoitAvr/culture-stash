@@ -10,6 +10,7 @@ export type SavedEntryList = {
   id: string
   userId: string
   userName: string
+  username: string
   type: 'RANKED' | 'TIER' | 'BOTH'
   rankedTiers: string | null
   items: Array<{
@@ -102,6 +103,7 @@ export async function saveUserEntryLists(
     id: l.id,
     userId: session.userId,
     userName: session.name,
+    username: session.username,
     type: l.type as 'RANKED' | 'TIER' | 'BOTH',
     rankedTiers: l.rankedTiers,
     items: l.items.map(i => ({
