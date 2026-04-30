@@ -239,10 +239,10 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
           <>
             <div style={{ width: 1, height: 34, background: 'var(--border)', flexShrink: 0 }} />
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+              <span style={{ fontSize: 9, color: 'var(--fg-5)', letterSpacing: '0.3px' }}>ma note</span>
               <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 3, background: `${myTierColor}18`, color: myTierColor }}>
                 {TIER_LABEL[myTier]}
               </span>
-              <span style={{ fontSize: 9, color: 'var(--fg-5)', letterSpacing: '0.3px' }}>ma note</span>
             </div>
           </>
         )}
