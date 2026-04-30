@@ -4,6 +4,18 @@ import { getSession } from '@/lib/session'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
+import { cacheTag, cacheLife } from 'next/cache'
+
+async function getRankableTopics(lang: string) {
+  'use cache'
+  cacheTag('rank-topics')
+  cacheLife('hours')
+  return prisma.topic.findMany({
+    where: { rankable: true },
+    include: { _count: { select: { entries: true } }, translations: { where: { lang } } },
+    orderBy: { createdAt: 'asc' },
+  })
+}
 
 async function NewTopicButton({ lang }: { lang: string }) {
   const session = await getSession()
@@ -17,20 +29,12 @@ async function NewTopicButton({ lang }: { lang: string }) {
   )
 }
 
-export default async function RankHomePage({ params }: { params: Promise<{ lang: string }> }) {
+async function RankHomeInner({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
   if (!hasLocale(lang)) notFound()
 
   const t = getDictionary(lang)
-
-  const topics = await prisma.topic.findMany({
-    where: { rankable: true },
-    include: {
-      _count: { select: { entries: true } },
-      translations: { where: { lang } },
-    },
-    orderBy: { createdAt: 'asc' },
-  })
+  const topics = await getRankableTopics(lang)
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
@@ -80,5 +84,13 @@ export default async function RankHomePage({ params }: { params: Promise<{ lang:
       </Suspense>
       <div style={{ height: 80 }} />
     </div>
+  )
+}
+
+export default function RankHomePage({ params }: { params: Promise<{ lang: string }> }) {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+      <RankHomeInner params={params} />
+    </Suspense>
   )
 }

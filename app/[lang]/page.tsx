@@ -3,8 +3,9 @@ import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
-export default async function HomePage({ params }: { params: Promise<{ lang: string }> }) {
+async function HomePageInner({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
   if (!hasLocale(lang)) notFound()
 
@@ -102,5 +103,13 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
       </div>
       <div style={{ height: 80 }} />
     </div>
+  )
+}
+
+export default function HomePage({ params }: { params: Promise<{ lang: string }> }) {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+      <HomePageInner params={params} />
+    </Suspense>
   )
 }

@@ -2,9 +2,10 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound, redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import { RankEditClientPage } from '@/app/rank/[slug]/RankEditClientPage'
 
-export default async function RankEditPage({
+async function RankEditInner({
   params,
 }: {
   params: Promise<{ lang: string; slug: string }>
@@ -69,5 +70,17 @@ export default async function RankEditPage({
       currentUserId={session.userId}
       t={dict.rankings}
     />
+  )
+}
+
+export default function RankEditPage({
+  params,
+}: {
+  params: Promise<{ lang: string; slug: string }>
+}) {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+      <RankEditInner params={params} />
+    </Suspense>
   )
 }
