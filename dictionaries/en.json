@@ -2,7 +2,7 @@
   "nav": {
     "explore": "Learn",
     "rank": "Rank",
-    "contribute": "+ Contribute",
+    "contribute": "Sign in",
     "login": "Log in",
     "signup": "Sign up"
   },
@@ -155,7 +155,7 @@
     "submit": "Add",
     "submitting": "Adding...",
     "cancel": "Cancel",
-    "loginToRate": "Log in to rate",
+    "loginToRate": "Create my ranking",
     "learnMore": "← Learn",
     "rankThese": "Rank →",
     "entries": "entries",

@@ -2,7 +2,7 @@
   "nav": {
     "explore": "Apprendre",
     "rank": "Classer",
-    "contribute": "+ Contribuer",
+    "contribute": "Se connecter",
     "login": "Connexion",
     "signup": "S'inscrire"
   },
@@ -155,7 +155,7 @@
     "submit": "Ajouter",
     "submitting": "Ajout...",
     "cancel": "Annuler",
-    "loginToRate": "Connecte-toi pour noter",
+    "loginToRate": "Créer mon classement",
     "learnMore": "← Apprendre",
     "rankThese": "Classer →",
     "entries": "entrées",

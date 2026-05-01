@@ -6,32 +6,27 @@ import { logout } from '@/app/actions/auth'
 import { NavSearch } from './NavSearch'
 import { LangSwitcher } from './LangSwitcher'
 import { ThemeToggle } from './ThemeToggle'
-import { NavLoginLink } from './NavLoginLink'
 
 type NavDict = ReturnType<typeof getDictionary>['nav']
 
-async function NavAuth({ lang, nav, onRank }: { lang: string; nav: NavDict; onRank: boolean }) {
+async function NavAuth({ lang, nav }: { lang: string; nav: NavDict }) {
   const session = await getSession()
-  return session ? (
-    <>
-      {!onRank && (
-        <Link href={`/${lang}/topics/new`} style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-          {nav.contribute}
-        </Link>
-      )}
+  if (session) {
+    return (
       <form action={logout} style={{ display: 'inline' }}>
         <button style={{ padding: '7px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-3)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
           {session.name.split(' ')[0]}
         </button>
       </form>
-    </>
-  ) : (
-    <>
-      <NavLoginLink lang={lang} label={nav.login} />
-      <Link href={`/${lang}/auth/signup`} style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-        {nav.contribute}
-      </Link>
-    </>
+    )
+  }
+  return (
+    <Link
+      href={`/${lang}/auth/login`}
+      style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+    >
+      {nav.contribute}
+    </Link>
   )
 }
 
@@ -65,7 +60,7 @@ export function Nav({ lang, onRank }: { lang: string; onRank: boolean }) {
           <LangSwitcher lang={lang} />
         </Suspense>
         <Suspense fallback={<div style={{ width: 180 }} />}>
-          <NavAuth lang={lang} nav={t.nav} onRank={onRank} />
+          <NavAuth lang={lang} nav={t.nav} />
         </Suspense>
       </div>
     </nav>
