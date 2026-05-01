@@ -55,7 +55,6 @@ export function RankingEditor({
   hasExisting,
   onSave,
   onCancel,
-  onDelete,
   t,
   addFormAction,
   addPending,
@@ -68,7 +67,6 @@ export function RankingEditor({
   hasExisting: boolean
   onSave: (tier: RankEditItem[], rankedTiers: string[]) => Promise<void>
   onCancel: () => void
-  onDelete?: () => Promise<void>
   t: Dict['rankings']
   addFormAction?: (payload: FormData) => void
   addPending?: boolean
@@ -247,13 +245,6 @@ export function RankingEditor({
   function handleSave() {
     setIsPending(true)
     onSave(tierItems, [...tierRankedTiers]).finally(() => setIsPending(false))
-  }
-
-  function handleDelete() {
-    if (onDelete) {
-      setIsPending(true)
-      onDelete().finally(() => setIsPending(false))
-    }
   }
 
   return (
@@ -611,14 +602,6 @@ export function RankingEditor({
         </div>
       </div>
 
-      {/* Supprimer */}
-      {onDelete && hasExisting && (
-        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-          <button onClick={handleDelete} disabled={isPending} style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid #f57c7c44', background: 'none', color: '#f57c7c', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>
-            {t.deleteList}
-          </button>
-        </div>
-      )}
     </div>
   )
 }

@@ -118,7 +118,6 @@ export function UserEntryListSection({
         hasExisting={!!myTierList}
         onSave={handleSave}
         onCancel={() => setIsEditing(false)}
-        onDelete={myTierList ? handleDelete : undefined}
         t={t}
         addFormAction={addFormAction}
         addPending={addPending}

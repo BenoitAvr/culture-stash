@@ -66,11 +66,6 @@ export function UserListsSection({
     setIsEditing(false)
   }
 
-  async function handleDelete() {
-    await saveUserList(topicSlug, 'TIER', [], [])
-    setIsEditing(false)
-  }
-
   function renderPreview(list: UserListData) {
     const rts = (list.rankedTiers ?? '').split(',').filter(Boolean)
     if (list.type === 'RANKED') {
@@ -116,7 +111,6 @@ export function UserListsSection({
         hasExisting={!!myList}
         onSave={handleSave}
         onCancel={() => setIsEditing(false)}
-        onDelete={myList ? handleDelete : undefined}
         t={t}
       />
     )
