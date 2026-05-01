@@ -89,6 +89,7 @@ export function RankingEditor({
   const [importResult, setImportResult] = useState<{ matched: RankEditItem[]; unmatched: string[] } | null>(null)
   const [search, setSearch] = useState('')
   const [quickAddId, setQuickAddId] = useState<string | null>(null)
+  const [quickAddTier, setQuickAddTier] = useState<string | null>(null)
   const [unclassifiedLimit, setUnclassifiedLimit] = useState(100)
   const [showAddForm, setShowAddForm] = useState(false)
   const wasPendingRef = useRef(false)
@@ -163,13 +164,38 @@ export function RankingEditor({
     setImportResult(null)
   }
 
-  function dropOnTier(id: string, tier: string) {
+  function dropOnTier(id: string, tier: string, insertBeforeId?: string | null) {
     setTierItems(prev => {
       const existing = prev.find(i => i.id === id)
       const oldTier = existing?.tier
+      const isRanked = tierRankedTiers.has(tier)
+
+      if (isRanked && insertBeforeId !== undefined) {
+        const sameTierWithoutMoved = prev.filter(i => i.tier === tier && i.id !== id)
+          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        const insertIdx = insertBeforeId === null
+          ? sameTierWithoutMoved.length
+          : sameTierWithoutMoved.findIndex(i => i.id === insertBeforeId)
+        const idxOrEnd = insertIdx === -1 ? sameTierWithoutMoved.length : insertIdx
+        const newTierItems = [
+          ...sameTierWithoutMoved.slice(0, idxOrEnd),
+          { id, tier, position: 0 },
+          ...sameTierWithoutMoved.slice(idxOrEnd),
+        ].map((it, i) => ({ ...it, tier, position: i + 1 }))
+        let result = [
+          ...prev.filter(i => i.tier !== tier && i.id !== id),
+          ...newTierItems,
+        ]
+        if (oldTier && oldTier !== tier && tierRankedTiers.has(oldTier)) {
+          let pos = 1
+          result = result.map(i => i.tier === oldTier ? { ...i, position: pos++ } : i)
+        }
+        return result
+      }
+
       if (oldTier === tier) return prev
       const tierCount = prev.filter(i => i.tier === tier && i.id !== id).length
-      const position = tierRankedTiers.has(tier) ? tierCount + 1 : undefined
+      const position = isRanked ? tierCount + 1 : undefined
       let updated: RankEditItem[] = existing
         ? prev.map(i => i.id === id ? { ...i, tier, position } : i)
         : [...prev, { id, tier, position }]
@@ -478,21 +504,80 @@ export function RankingEditor({
                       <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>{item.label}</span>
                       {item.suffix && <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>{item.suffix}</span>}
                       <button
-                        onClick={() => setQuickAddId(prev => prev === item.id ? null : item.id)}
+                        onClick={() => {
+                          setQuickAddId(prev => prev === item.id ? null : item.id)
+                          setQuickAddTier(null)
+                        }}
                         style={{ marginLeft: 2, background: quickAddId === item.id ? 'var(--accent-faint)' : 'none', border: 'none', cursor: 'pointer', color: quickAddId === item.id ? 'var(--accent-fg)' : 'var(--fg-7)', fontSize: 14, lineHeight: 1, padding: '0 2px', borderRadius: 3, flexShrink: 0 }}
                       >+</button>
                     </div>
-                    {quickAddId === item.id && (
+                    {quickAddId === item.id && quickAddTier === null && (
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingLeft: 4 }}>
-                        {TIERS.map(tier => (
-                          <button
-                            key={tier}
-                            onClick={() => { dropOnTier(item.id, tier); setQuickAddId(null) }}
-                            style={{ padding: '3px 8px', borderRadius: 5, border: `1px solid ${TIER_COLOR[tier]}55`, background: `${TIER_COLOR[tier]}18`, color: TIER_COLOR[tier], fontSize: 10, fontFamily: "'Fraunces', serif", fontWeight: 700, cursor: 'pointer' }}
-                          >{tier}</button>
-                        ))}
+                        {TIERS.map(tier => {
+                          const isRanked = tierRankedTiers.has(tier)
+                          const hasItems = tierItems.some(i => i.tier === tier && i.id !== item.id)
+                          return (
+                            <button
+                              key={tier}
+                              onClick={() => {
+                                if (isRanked && hasItems) {
+                                  setQuickAddTier(tier)
+                                } else {
+                                  dropOnTier(item.id, tier)
+                                  setQuickAddId(null)
+                                  setQuickAddTier(null)
+                                }
+                              }}
+                              style={{ padding: '3px 8px', borderRadius: 5, border: `1px solid ${TIER_COLOR[tier]}55`, background: `${TIER_COLOR[tier]}18`, color: TIER_COLOR[tier], fontSize: 10, fontFamily: "'Fraunces', serif", fontWeight: 700, cursor: 'pointer' }}
+                            >{tier}</button>
+                          )
+                        })}
                       </div>
                     )}
+                    {quickAddId === item.id && quickAddTier !== null && (() => {
+                      const tier = quickAddTier
+                      const positionItems = tierItems
+                        .filter(i => i.tier === tier && i.id !== item.id)
+                        .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+                      const tierColor = TIER_COLOR[tier]
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 4, marginTop: 2 }}>
+                          <div style={{ fontSize: 10, color: 'var(--fg-6)', marginBottom: 2 }}>
+                            Position dans <span style={{ color: tierColor, fontWeight: 600 }}>{TIER_LABEL[tier]}</span> :
+                          </div>
+                          <button
+                            onClick={() => {
+                              dropOnTier(item.id, tier, null)
+                              setQuickAddId(null); setQuickAddTier(null)
+                            }}
+                            style={{ alignSelf: 'flex-start', padding: '3px 9px', borderRadius: 5, border: `1px solid ${tierColor}55`, background: `${tierColor}10`, color: tierColor, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}
+                          >
+                            En dernier (#{positionItems.length + 1})
+                          </button>
+                          {positionItems.map((p, idx) => {
+                            const it = getItem(p.id)
+                            return (
+                              <button
+                                key={p.id}
+                                onClick={() => {
+                                  dropOnTier(item.id, tier, p.id)
+                                  setQuickAddId(null); setQuickAddTier(null)
+                                }}
+                                style={{ alignSelf: 'flex-start', padding: '3px 9px', borderRadius: 5, border: `1px solid ${tierColor}55`, background: `${tierColor}10`, color: tierColor, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                              >
+                                Avant « {it?.label ?? p.id} » (#{idx + 1})
+                              </button>
+                            )
+                          })}
+                          <button
+                            onClick={() => setQuickAddTier(null)}
+                            style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-7)', fontSize: 10, fontFamily: 'inherit', marginTop: 2 }}
+                          >
+                            ← Changer de tier
+                          </button>
+                        </div>
+                      )
+                    })()}
                   </div>
                 ))}
                 {unclassified.length === 0 && (
