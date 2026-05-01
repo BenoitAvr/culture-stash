@@ -35,12 +35,21 @@ export function PersonalActions({
     shareCopied: string
     listCopied: string
     importInvalid: string
+    importTitle: string
+    importHelp: string
+    importFormatHint: string
+    importPlaceholder: string
+    importSubmit: string
+    importCancel: string
   }
 }) {
   const data = use(personalDataPromise)
   const router = useRouter()
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [importOpen, setImportOpen] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importError, setImportError] = useState<string | null>(null)
 
   const myList = data.userLists.find(
     l => l.userId === data.currentUserId && (l.type === 'TIER' || l.type === 'BOTH')
@@ -100,30 +109,33 @@ export function PersonalActions({
     })
   }
 
-  async function handleImport() {
-    let markdown: string
-    try {
-      markdown = await navigator.clipboard.readText()
-    } catch {
-      setFeedback(labels.importInvalid)
-      setTimeout(() => setFeedback(null), 3000)
-      return
-    }
-    if (!markdown.trim()) {
-      setFeedback(labels.importInvalid)
-      setTimeout(() => setFeedback(null), 3000)
+  function openImport() {
+    setImportText('')
+    setImportError(null)
+    setImportOpen(true)
+  }
+
+  function closeImport() {
+    setImportOpen(false)
+    setImportError(null)
+  }
+
+  function submitImport() {
+    if (!importText.trim()) {
+      setImportError(labels.importInvalid)
       return
     }
     startTransition(async () => {
-      const result = await importMarkdownList(topicSlug, markdown)
+      const result = await importMarkdownList(topicSlug, importText)
       if (!result.ok) {
-        setFeedback(labels.importInvalid)
-        setTimeout(() => setFeedback(null), 3000)
+        setImportError(labels.importInvalid)
         return
       }
       const isFr = lang === 'fr'
       const ok = isFr ? `${result.imported} importés` : `${result.imported} imported`
       const miss = isFr ? `${result.unmatched.length} non trouvés` : `${result.unmatched.length} not matched`
+      setImportOpen(false)
+      setImportError(null)
       setFeedback(result.unmatched.length > 0 ? `${ok} · ${miss}` : ok)
       setTimeout(() => setFeedback(null), 3000)
       router.refresh()
@@ -162,12 +174,85 @@ export function PersonalActions({
           <>
             {myList && <button onClick={handleShare} style={linkStyle}>{labels.share}</button>}
             {myList && <button onClick={handleCopyMarkdown} style={linkStyle}>{labels.copyList}</button>}
-            <button onClick={handleImport} disabled={isPending} style={linkStyle}>
-              {isPending ? '…' : labels.import}
-            </button>
+            <button onClick={openImport} style={linkStyle}>{labels.import}</button>
           </>
         )}
       </div>
+
+      {importOpen && (
+        <div
+          onClick={closeImport}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: 16,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              borderRadius: 12, padding: 20, width: '100%', maxWidth: 520,
+              display: 'flex', flexDirection: 'column', gap: 12,
+              fontFamily: 'inherit', textAlign: 'left',
+            }}
+          >
+            <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 800, color: 'var(--fg)', margin: 0 }}>
+              {labels.importTitle}
+            </h2>
+            <p style={{ fontSize: 13, color: 'var(--fg-3)', lineHeight: 1.5, margin: 0 }}>
+              {labels.importHelp}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--fg-5)', lineHeight: 1.5, margin: 0 }}>
+              {labels.importFormatHint}
+            </p>
+            <textarea
+              value={importText}
+              onChange={e => { setImportText(e.target.value); setImportError(null) }}
+              placeholder={labels.importPlaceholder}
+              rows={10}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                fontFamily: 'ui-monospace, "Cascadia Code", Menlo, monospace', fontSize: 12,
+                background: 'var(--bg-input)', color: 'var(--fg)',
+                border: '1px solid var(--border)', borderRadius: 8,
+                padding: '10px 12px', resize: 'vertical', outline: 'none',
+              }}
+            />
+            {importError && (
+              <span style={{ fontSize: 12, color: 'var(--danger, #e05555)' }}>{importError}</span>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                onClick={closeImport}
+                disabled={isPending}
+                style={{
+                  padding: '8px 16px', borderRadius: 8,
+                  background: 'none', color: 'var(--fg-3)',
+                  border: '1px solid var(--border)',
+                  fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+                }}
+              >
+                {labels.importCancel}
+              </button>
+              <button
+                onClick={submitImport}
+                disabled={isPending}
+                style={{
+                  padding: '8px 16px', borderRadius: 8,
+                  background: 'var(--btn)', color: 'var(--btn-text)',
+                  border: 'none',
+                  fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+                  cursor: isPending ? 'not-allowed' : 'pointer',
+                  opacity: isPending ? 0.6 : 1,
+                }}
+              >
+                {isPending ? '…' : labels.importSubmit}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

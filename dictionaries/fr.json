@@ -172,7 +172,13 @@
     "import": "Importer",
     "shareCopied": "Lien copié",
     "listCopied": "Liste copiée",
-    "importInvalid": "Fichier invalide"
+    "importInvalid": "Format invalide",
+    "importTitle": "Importer une liste",
+    "importHelp": "Colle ici un classement au format markdown — par exemple le résultat de « Copier ma liste » sur ce sujet ou ailleurs.",
+    "importFormatHint": "Sections en `## Tier`, items numérotés (1.) pour les tiers classés ou en bullet (-) sinon. Année (1999) et note (— note) optionnelles. Cela remplace ta liste actuelle.",
+    "importPlaceholder": "## Excellent\n1. Mulholland Drive (2001)\n2. ...\n\n## Très bon\n- Inside Out (2015)\n- ...",
+    "importSubmit": "Importer",
+    "importCancel": "Annuler"
   },
   "newTopic": {
     "pageTitle": "Créer un sujet",

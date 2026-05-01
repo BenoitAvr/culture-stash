@@ -118,6 +118,12 @@ function PersonalActionsWrapper({
         shareCopied: dict.rank.shareCopied,
         listCopied: dict.rank.listCopied,
         importInvalid: dict.rank.importInvalid,
+        importTitle: dict.rank.importTitle,
+        importHelp: dict.rank.importHelp,
+        importFormatHint: dict.rank.importFormatHint,
+        importPlaceholder: dict.rank.importPlaceholder,
+        importSubmit: dict.rank.importSubmit,
+        importCancel: dict.rank.importCancel,
       }}
     />
   )
