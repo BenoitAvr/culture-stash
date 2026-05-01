@@ -168,9 +168,10 @@
     "saveNote": "Enregistrer",
     "rankableLabel": "Ce sujet permet de classer des œuvres (films, albums, jeux…)",
     "share": "Partager",
-    "export": "Exporter",
+    "copyList": "Copier ma liste",
     "import": "Importer",
     "shareCopied": "Lien copié",
+    "listCopied": "Liste copiée",
     "importInvalid": "Fichier invalide"
   },
   "newTopic": {

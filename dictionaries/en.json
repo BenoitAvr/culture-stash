@@ -168,9 +168,10 @@
     "saveNote": "Save",
     "rankableLabel": "This topic allows ranking works (films, albums, games…)",
     "share": "Share",
-    "export": "Export",
+    "copyList": "Copy my list",
     "import": "Import",
     "shareCopied": "Link copied",
+    "listCopied": "List copied",
     "importInvalid": "Invalid file"
   },
   "newTopic": {

@@ -88,11 +88,15 @@ type Dict = ReturnType<typeof getDictionary>
 function PersonalActionsWrapper({
   topicId,
   topicSlug,
+  topicTitle,
+  topicEmoji,
   lang,
   dict,
 }: {
   topicId: string
   topicSlug: string
+  topicTitle: string
+  topicEmoji: string
   lang: string
   dict: Dict
 }) {
@@ -100,6 +104,8 @@ function PersonalActionsWrapper({
   return (
     <PersonalActions
       topicSlug={topicSlug}
+      topicTitle={topicTitle}
+      topicEmoji={topicEmoji}
       lang={lang}
       personalDataPromise={personalDataPromise}
       labels={{
@@ -107,11 +113,11 @@ function PersonalActionsWrapper({
         edit: dict.rankings.editList,
         login: dict.rank.loginToRate,
         share: dict.rank.share,
-        export: dict.rank.export,
+        copyList: dict.rank.copyList,
         import: dict.rank.import,
         shareCopied: dict.rank.shareCopied,
+        listCopied: dict.rank.listCopied,
         importInvalid: dict.rank.importInvalid,
-        importConfirm: '',
       }}
     />
   )
@@ -171,7 +177,7 @@ async function RankSlugInner({
 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <Suspense fallback={<div style={{ width: 180, height: 60, borderRadius: 9, background: 'var(--bg-subtle)' }} />}>
-              <PersonalActionsWrapper topicId={header.topicId} topicSlug={slug} lang={lang} dict={dict} />
+              <PersonalActionsWrapper topicId={header.topicId} topicSlug={slug} topicTitle={header.topicTitle} topicEmoji={header.topicEmoji} lang={lang} dict={dict} />
             </Suspense>
           </div>
         </div>
