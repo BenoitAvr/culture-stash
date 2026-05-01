@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { prisma } from '@/lib/prisma'
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound } from 'next/navigation'
+import { pickTitle } from '@/lib/i18n'
 import Link from 'next/link'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string; slug: string; userName: string }> }): Promise<Metadata> {
@@ -57,7 +58,7 @@ async function UserListInner({
     include: {
       user: { select: { name: true } },
       items: {
-        include: { entry: { select: { id: true, title: true, year: true, cover: true } } },
+        include: { entry: { select: { id: true, title: true, titleEn: true, year: true, cover: true } } },
         orderBy: { position: 'asc' },
       },
     },
@@ -139,7 +140,7 @@ async function UserListInner({
                           ? <img src={item.entry.cover} alt="" style={{ width: 34, height: 50, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
                           : <div style={{ width: 34, height: 50, borderRadius: 3, flexShrink: 0, background: `${TIER_COLOR[tier]}18`, border: `1px solid ${TIER_COLOR[tier]}33` }} />
                         }
-                        <span style={{ fontSize: 14, color: 'var(--fg-2)', flex: 1 }}>{item.entry.title}</span>
+                        <span style={{ fontSize: 14, color: 'var(--fg-2)', flex: 1 }}>{pickTitle(item.entry, lang)}</span>
                         {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>{item.entry.year}</span>}
                       </div>
                     ))}
@@ -149,11 +150,11 @@ async function UserListInner({
                     {tItems.map(item => (
                       <div key={item.entryId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 74 }}>
                         {item.entry.cover
-                          ? <img src={item.entry.cover} alt={item.entry.title} style={{ width: 68, height: 98, objectFit: 'cover', borderRadius: 4 }} />
-                          : <div style={{ width: 68, height: 98, borderRadius: 4, background: `${TIER_COLOR[tier]}18`, border: `1px solid ${TIER_COLOR[tier]}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 24, color: TIER_COLOR[tier] }}>{item.entry.title[0]?.toUpperCase()}</div>
+                          ? <img src={item.entry.cover} alt={pickTitle(item.entry, lang)} style={{ width: 68, height: 98, objectFit: 'cover', borderRadius: 4 }} />
+                          : <div style={{ width: 68, height: 98, borderRadius: 4, background: `${TIER_COLOR[tier]}18`, border: `1px solid ${TIER_COLOR[tier]}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 24, color: TIER_COLOR[tier] }}>{pickTitle(item.entry, lang)[0]?.toUpperCase()}</div>
                         }
                         <span style={{ fontSize: 10, color: 'var(--fg-5)', textAlign: 'center', lineHeight: 1.25, width: '100%', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>
-                          {item.entry.title}{item.entry.year ? ` (${item.entry.year})` : ''}
+                          {pickTitle(item.entry, lang)}{item.entry.year ? ` (${item.entry.year})` : ''}
                         </span>
                       </div>
                     ))}

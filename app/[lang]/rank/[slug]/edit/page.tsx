@@ -32,7 +32,7 @@ async function RankEditInner({
     include: {
       user: { select: { id: true, name: true, username: true } },
       items: {
-        include: { entry: { select: { id: true, title: true, year: true, cover: true } } },
+        include: { entry: { select: { id: true, title: true, titleEn: true, year: true, cover: true } } },
         orderBy: { position: 'asc' },
       },
     },
@@ -59,6 +59,7 @@ async function RankEditInner({
   const entries = topic.entries.map(e => ({
     id: e.id,
     title: e.title,
+    titleEn: e.titleEn,
     year: e.year,
   }))
 

@@ -7,6 +7,7 @@ import { saveUserEntryLists } from '@/app/actions/entryLists'
 import { fetchAllRankEntries } from '@/app/actions/rankEntries'
 import { type UserEntryListData } from './UserEntryListSection'
 import type { RankEntry, CommunityEntries } from '@/lib/communityRankData'
+import { pickTitle } from '@/lib/i18n'
 import Link from 'next/link'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
@@ -46,6 +47,7 @@ function QuickAddPanel({
   onAdd: (tier: string, insertBeforeId?: string) => Promise<void>
   onClose: () => void
 }) {
+  const { lang } = useParams() as { lang: string }
   const rankedTiers = (myTierList?.rankedTiers ?? '').split(',').filter(Boolean)
   const currentTierOfEntry = myTierList?.items.find(i => i.entryId === entry.id)?.tier ?? null
 
@@ -69,7 +71,7 @@ function QuickAddPanel({
   return (
     <div style={{ padding: '14px 16px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', marginBottom: 0 }}>
       <div style={{ fontSize: 12, color: 'var(--fg-5)', marginBottom: 10 }}>
-        Ajouter à ma liste : <span style={{ color: 'var(--fg-2)', fontWeight: 600 }}>{entry.title}</span>
+        Ajouter à ma liste : <span style={{ color: 'var(--fg-2)', fontWeight: 600 }}>{pickTitle(entry, lang)}</span>
         {currentTierOfEntry && (
           <span style={{ marginLeft: 8, fontSize: 11, color: TIER_COLOR[currentTierOfEntry], fontStyle: 'italic' }}>
             (actuellement en {TIER_LABEL[currentTierOfEntry]})
@@ -115,7 +117,7 @@ function QuickAddPanel({
           {currentTierItems.map((item, idx) => (
             <label key={item.entryId} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: insertBefore === item.entryId ? 'var(--fg-2)' : 'var(--fg-6)', padding: '3px 0' }}>
               <input type="radio" name="pos" checked={insertBefore === item.entryId} onChange={() => setInsertBefore(item.entryId)} style={{ accentColor: TIER_COLOR[selectedTier] }} />
-              Avant « {item.entry.title} » (#{idx + 1})
+              Avant « {pickTitle(item.entry, lang)} » (#{idx + 1})
             </label>
           ))}
         </div>
@@ -162,6 +164,8 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
   isOpen: boolean
   onAdd: () => void
 }) {
+  const { lang } = useParams() as { lang: string }
+  const displayTitle = pickTitle(entry, lang)
   const isTop3 = rank <= 3
   const myTierColor = myTier ? TIER_COLOR[myTier] : null
   const total = Object.values(entry.tierDistribution).reduce((s, n) => s + n, 0)
@@ -187,13 +191,13 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
 
       {/* Poster */}
       {entry.cover
-        ? <img src={entry.cover} alt={entry.title} loading="lazy" style={{ width: 48, height: 62, objectFit: 'cover', borderRadius: 5, border: '1px solid var(--border)', flexShrink: 0 }} />
+        ? <img src={entry.cover} alt={displayTitle} loading="lazy" style={{ width: 48, height: 62, objectFit: 'cover', borderRadius: 5, border: '1px solid var(--border)', flexShrink: 0 }} />
         : <div style={{ width: 48, height: 62, borderRadius: 5, background: 'var(--bg-subtle)', border: '1px solid var(--border)', flexShrink: 0 }} />
       }
 
       {/* Info */}
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.title}</div>
+        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayTitle}</div>
         {entry.year && <div style={{ fontSize: 11, color: 'var(--fg-5)', marginTop: 2 }}>{entry.year}</div>}
         {total > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>

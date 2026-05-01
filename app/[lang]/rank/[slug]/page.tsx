@@ -21,7 +21,7 @@ async function getUserList(topicId: string, userId: string): Promise<UserEntryLi
     include: {
       user: { select: { id: true, name: true, username: true } },
       items: {
-        include: { entry: { select: { id: true, title: true, year: true, cover: true } } },
+        include: { entry: { select: { id: true, title: true, titleEn: true, year: true, cover: true } } },
         orderBy: { position: 'asc' },
       },
     },

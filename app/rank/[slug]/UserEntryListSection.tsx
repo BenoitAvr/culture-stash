@@ -6,15 +6,16 @@ import { saveUserEntryLists } from '@/app/actions/entryLists'
 import { addEntry } from '@/app/actions/entries'
 import { RankingEditor, type RankEditItem } from '@/app/components/RankingEditor'
 import { getDict, type Dict } from '@/dictionaries/client'
+import { pickTitle } from '@/lib/i18n'
 
-type EntryItem = { id: string; title: string; year: number | null }
+type EntryItem = { id: string; title: string; titleEn: string | null; year: number | null }
 
 type ListItemData = {
   entryId: string
   position: number | null
   tier: string | null
   note: string | null
-  entry: { id: string; title: string; year: number | null; cover: string | null }
+  entry: { id: string; title: string; titleEn: string | null; year: number | null; cover: string | null }
 }
 
 export type UserEntryListData = {
@@ -111,7 +112,7 @@ export function UserEntryListSection({
   return (
     <div style={{ paddingBottom: 28 }}>
       <RankingEditor
-        items={entries.map(e => ({ id: e.id, label: e.title, suffix: e.year?.toString() }))}
+        items={entries.map(e => ({ id: e.id, label: pickTitle(e, lang), suffix: e.year?.toString() }))}
         initialTierItems={initTierItems}
         initialRankedTiers={initRankedTiers}
         hasExisting={!!myTierList}

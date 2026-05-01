@@ -18,7 +18,7 @@ export type SavedEntryList = {
     position: number | null
     tier: string | null
     note: string | null
-    entry: { id: string; title: string; year: number | null; cover: string | null }
+    entry: { id: string; title: string; titleEn: string | null; year: number | null; cover: string | null }
   }>
 }
 
@@ -90,7 +90,7 @@ export async function saveUserEntryLists(
     where: { userId: session.userId, topicId: topic.id },
     include: {
       items: {
-        include: { entry: { select: { id: true, title: true, year: true, cover: true } } },
+        include: { entry: { select: { id: true, title: true, titleEn: true, year: true, cover: true } } },
         orderBy: { position: 'asc' },
       },
     },

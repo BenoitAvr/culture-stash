@@ -8,6 +8,7 @@ const INITIAL_COUNT = 100
 export type RankEntry = {
   id: string
   title: string
+  titleEn: string | null
   year: number | null
   cover: string | null
   avgRank: number | null
@@ -122,6 +123,7 @@ export async function getCommunityData(slug: string, lang: string): Promise<Comm
       return {
         id: e.id,
         title: e.title,
+        titleEn: e.titleEn,
         year: e.year,
         cover: e.cover || null,
         avgRank: rd && rd.count > 0 ? rd.total / rd.count : null,

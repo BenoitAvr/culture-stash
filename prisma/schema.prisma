@@ -157,6 +157,8 @@ model Entry {
   topicId     String
   addedById   String?
   title       String
+  titleEn     String?
+  tmdbId      String?
   year        Int?
   cover       String?
   createdAt   DateTime    @default(now())
@@ -164,6 +166,8 @@ model Entry {
   addedBy            User?           @relation(fields: [addedById], references: [id])
   userEntries        UserEntry[]
   userEntryListItems UserEntryItem[]
+
+  @@index([topicId, tmdbId])
 }
 
 model UserEntry {

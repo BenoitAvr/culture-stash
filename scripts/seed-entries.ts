@@ -1,7 +1,27 @@
+import 'dotenv/config'
+import { config } from 'dotenv'
 import { PrismaClient } from '../app/generated/prisma/client'
 import { PrismaLibSql } from '@prisma/adapter-libsql'
 
-const adapter = new PrismaLibSql({ url: 'file:dev.db' })
+config({ path: '.env.local', override: true })
+
+const TARGET = process.env.SEED_TARGET ?? 'local'
+const tursoUrl = process.env.TURSO_DATABASE_URL
+const tursoToken = process.env.TURSO_AUTH_TOKEN
+
+let adapter: PrismaLibSql
+if (TARGET === 'prod') {
+  if (!tursoUrl) {
+    console.error('TURSO_DATABASE_URL missing — required for SEED_TARGET=prod')
+    process.exit(1)
+  }
+  console.log(`⚠️  Seeding PRODUCTION (${tursoUrl.replace(/\?.*$/, '')})`)
+  adapter = new PrismaLibSql({ url: tursoUrl, ...(tursoToken ? { authToken: tursoToken } : {}) })
+} else {
+  console.log(`Seeding local dev.db`)
+  adapter = new PrismaLibSql({ url: 'file:dev.db' })
+}
+
 const prisma = new PrismaClient({ adapter })
 const TOKEN = process.env.TMDB_READ_TOKEN
 const IMG = 'https://image.tmdb.org/t/p/w500'
@@ -22,80 +42,107 @@ function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms))
 }
 
-async function insertBatch(entries: { topicId: string; addedById: string; title: string; year: number | null; cover: string | null }[]) {
+type EntryInput = {
+  topicId: string
+  addedById: string
+  title: string
+  titleEn: string | null
+  tmdbId: string
+  year: number | null
+  cover: string | null
+}
+
+async function insertBatch(entries: EntryInput[]) {
   if (entries.length === 0) return 0
+  const topicId = entries[0].topicId
+  const tmdbIds = entries.map(e => e.tmdbId)
+  const titles = entries.map(e => e.title)
+
   const existing = await prisma.entry.findMany({
-    where: { topicId: entries[0].topicId, title: { in: entries.map(e => e.title) } },
-    select: { title: true },
+    where: {
+      topicId,
+      OR: [
+        { tmdbId: { in: tmdbIds } },
+        { title: { in: titles } },
+      ],
+    },
+    select: { tmdbId: true, title: true },
   })
+  const existingTmdbIds = new Set(existing.map(e => e.tmdbId).filter(Boolean) as string[])
   const existingTitles = new Set(existing.map(e => e.title))
-  const newEntries = entries.filter(e => !existingTitles.has(e.title))
+
+  const newEntries = entries.filter(
+    e => !existingTmdbIds.has(e.tmdbId) && !existingTitles.has(e.title)
+  )
   if (newEntries.length === 0) return 0
   const { count } = await prisma.entry.createMany({ data: newEntries })
   return count
 }
 
-async function seedMovies(topicId: string, userId: string, startPage = 1, endPage = 50) {
-  console.log(`\n🎬 Films (pages ${startPage}–${endPage} = ~${(endPage - startPage + 1) * 20} films)...`)
-  let total = 0
-  for (let page = startPage; page <= endPage; page++) {
-    const data = await tmdb(`/movie/top_rated?language=fr-FR&page=${page}`)
-    const entries = (data.results ?? [])
-      .filter((m: any) => m.title)
-      .map((m: any) => ({
-        topicId,
-        addedById: userId,
-        title: m.title,
-        year: m.release_date ? parseInt(m.release_date.slice(0, 4)) || null : null,
-        cover: m.poster_path ? `${IMG}${m.poster_path}` : null,
-      }))
-    total += await insertBatch(entries)
-    process.stdout.write(`\r  page ${page}/${endPage} — ${total} insérés`)
-    await sleep(260)
-  }
-  console.log()
+type TmdbItem = {
+  id: number
+  title?: string
+  name?: string
+  release_date?: string
+  first_air_date?: string
+  poster_path?: string | null
 }
 
-async function seedSeries(topicId: string, userId: string) {
-  console.log('\n📺 Séries (10 pages = ~200 séries)...')
-  let total = 0
-  for (let page = 1; page <= 10; page++) {
-    const data = await tmdb(`/tv/top_rated?language=fr-FR&page=${page}`)
-    const entries = (data.results ?? [])
-      .filter((s: any) => s.name)
-      .map((s: any) => ({
-        topicId,
-        addedById: userId,
-        title: s.name,
-        year: s.first_air_date ? parseInt(s.first_air_date.slice(0, 4)) || null : null,
-        cover: s.poster_path ? `${IMG}${s.poster_path}` : null,
-      }))
-    total += await insertBatch(entries)
-    process.stdout.write(`\r  page ${page}/10 — ${total} insérés`)
-    await sleep(260)
-  }
-  console.log()
+async function fetchPage(endpoint: string, page: number, extraQs = '') {
+  const sep = extraQs ? '&' : ''
+  const fr = await tmdb(`${endpoint}?language=fr-FR&page=${page}${sep}${extraQs}`)
+  await sleep(260)
+  const en = await tmdb(`${endpoint}?language=en-US&page=${page}${sep}${extraQs}`)
+  await sleep(260)
+  const enById = new Map<number, TmdbItem>(
+    (en.results ?? []).map((it: TmdbItem) => [it.id, it])
+  )
+  return { fr: (fr.results ?? []) as TmdbItem[], enById }
 }
 
-async function seedAnime(topicId: string, userId: string) {
-  console.log('\n🍜 Animes (10 pages = ~200 animes)...')
+async function seedFromEndpoint({
+  label,
+  endpoint,
+  topicId,
+  userId,
+  pages,
+  extraQs = '',
+  pickTitle,
+  pickDate,
+}: {
+  label: string
+  endpoint: string
+  topicId: string
+  userId: string
+  pages: number
+  extraQs?: string
+  pickTitle: (it: TmdbItem) => string | undefined
+  pickDate: (it: TmdbItem) => string | undefined
+}) {
+  console.log(`\n${label} (${pages} pages = ~${pages * 20} items)…`)
   let total = 0
-  for (let page = 1; page <= 10; page++) {
-    const data = await tmdb(
-      `/discover/tv?with_genres=16&with_original_language=ja&sort_by=vote_count.desc&page=${page}`
-    )
-    const entries = (data.results ?? [])
-      .filter((a: any) => a.name)
-      .map((a: any) => ({
-        topicId,
-        addedById: userId,
-        title: a.name,
-        year: a.first_air_date ? parseInt(a.first_air_date.slice(0, 4)) || null : null,
-        cover: a.poster_path ? `${IMG}${a.poster_path}` : null,
-      }))
+  for (let page = 1; page <= pages; page++) {
+    const { fr, enById } = await fetchPage(endpoint, page, extraQs)
+    const entries: EntryInput[] = fr
+      .map(item => {
+        const frTitle = pickTitle(item)
+        if (!frTitle) return null
+        const en = enById.get(item.id)
+        const enTitle = en ? pickTitle(en) : undefined
+        const date = pickDate(item)
+        return {
+          topicId,
+          addedById: userId,
+          title: frTitle,
+          titleEn: enTitle && enTitle !== frTitle ? enTitle : null,
+          tmdbId: String(item.id),
+          year: date ? parseInt(date.slice(0, 4)) || null : null,
+          cover: item.poster_path ? `${IMG}${item.poster_path}` : null,
+        }
+      })
+      .filter((e): e is EntryInput => e !== null)
     total += await insertBatch(entries)
-    process.stdout.write(`\r  page ${page}/10 — ${total} insérés`)
-    await sleep(260)
+    process.stdout.write(`\r  page ${page}/${pages} — ${total} insérés`)
   }
   console.log()
 }
@@ -115,9 +162,42 @@ async function main() {
   const series = topics.find(t => t.slug === 'series')
   const animes = topics.find(t => t.slug === 'animes')
 
-  if (films)  await seedMovies(films.id,  user.id, 51, 100)
-  if (series) await seedSeries(series.id, user.id)
-  if (animes) await seedAnime(animes.id,  user.id)
+  if (films) {
+    await seedFromEndpoint({
+      label: '🎬 Films',
+      endpoint: '/movie/top_rated',
+      topicId: films.id,
+      userId: user.id,
+      pages: 100,
+      pickTitle: it => it.title,
+      pickDate: it => it.release_date,
+    })
+  }
+
+  if (series) {
+    await seedFromEndpoint({
+      label: '📺 Séries',
+      endpoint: '/tv/top_rated',
+      topicId: series.id,
+      userId: user.id,
+      pages: 50,
+      pickTitle: it => it.name,
+      pickDate: it => it.first_air_date,
+    })
+  }
+
+  if (animes) {
+    await seedFromEndpoint({
+      label: '⛩️ Animes',
+      endpoint: '/discover/tv',
+      topicId: animes.id,
+      userId: user.id,
+      pages: 50,
+      extraQs: 'with_genres=16&with_original_language=ja&sort_by=vote_count.desc',
+      pickTitle: it => it.name,
+      pickDate: it => it.first_air_date,
+    })
+  }
 
   if (!films && !series && !animes) {
     console.log('Aucun topic "films", "series" ou "animes" trouvé.')
