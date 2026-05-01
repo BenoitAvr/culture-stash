@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getOAuthConfig } from '@/lib/oauth'
 
 export async function GET(req: NextRequest) {
-  const clientId = process.env.GOOGLE_CLIENT_ID
-  const appUrl = process.env.APP_URL ?? 'http://localhost:3000'
+  const { clientId, appUrl } = getOAuthConfig(req)
 
   if (!clientId) {
     return NextResponse.redirect(`${appUrl}/auth/login?error=google_not_configured`)

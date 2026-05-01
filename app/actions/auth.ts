@@ -55,5 +55,8 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
 
 export async function logout() {
   await deleteSession()
-  redirect('/')
+  // /fr works on both hosts:
+  //  - rank host: proxy rewrites /fr -> /fr/rank, renders rank home
+  //  - main host: renders main home
+  redirect('/fr')
 }

@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createSession } from '@/lib/session'
 import { generateUsername } from '@/lib/username'
+import { getOAuthConfig } from '@/lib/oauth'
 
 export async function GET(req: NextRequest) {
-  const appUrl = process.env.APP_URL ?? 'http://localhost:3000'
-  const clientId = process.env.GOOGLE_CLIENT_ID!
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET!
+  const { clientId, clientSecret, appUrl } = getOAuthConfig(req)
 
   const code = req.nextUrl.searchParams.get('code')
   const error = req.nextUrl.searchParams.get('error')
@@ -20,8 +19,8 @@ export async function GET(req: NextRequest) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code,
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: clientId!,
+      client_secret: clientSecret!,
       redirect_uri: `${appUrl}/api/auth/callback/google`,
       grant_type: 'authorization_code',
     }),

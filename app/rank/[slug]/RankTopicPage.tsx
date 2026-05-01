@@ -6,7 +6,7 @@ import { getDict } from '@/dictionaries/client'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
 import { fetchAllRankEntries } from '@/app/actions/rankEntries'
 import { type UserEntryListData } from './UserEntryListSection'
-import type { RankEntry } from '@/lib/communityRankData'
+import type { RankEntry, CommunityEntries } from '@/lib/communityRankData'
 import Link from 'next/link'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
@@ -265,66 +265,6 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
   )
 }
 
-// Resolves user lists promise and renders the header controls (edit/create button, public list link)
-function UserHeaderControls({
-  personalDataPromise,
-  topicSlug,
-  lang,
-  dict,
-}: {
-  personalDataPromise: Promise<PersonalRankData>
-  topicSlug: string
-  lang: string
-  dict: ReturnType<typeof getDict>
-}) {
-  const { userLists: lists, currentUserId, isLoggedIn } = use(personalDataPromise)
-  const myTierList = lists.find(l => l.userId === currentUserId && (l.type === 'TIER' || l.type === 'BOTH')) ?? null
-
-  if (!isLoggedIn) {
-    return (
-      <Link
-        href={`/${lang}/auth/login`}
-        style={{
-          padding: '8px 18px', borderRadius: 8,
-          border: '1px solid var(--border)', background: 'none',
-          color: 'var(--fg-3)', fontSize: 13, textDecoration: 'none',
-        }}
-      >
-        {dict.rank.loginToRate}
-      </Link>
-    )
-  }
-
-  return (
-    <>
-      <Link
-        href={`/${lang}/rank/${topicSlug}/edit`}
-        style={{
-          padding: '8px 18px', borderRadius: 8,
-          background: 'var(--btn)', color: 'var(--btn-text)',
-          fontSize: 14, fontWeight: 600, textDecoration: 'none',
-        }}
-      >
-        {myTierList ? dict.rankings.editList : dict.rankings.createList}
-      </Link>
-      {myTierList && (
-        <Link
-          href={`/${lang}/rank/${topicSlug}/${encodeURIComponent(myTierList.username)}`}
-          title={lang === 'fr' ? 'Voir ma liste publique' : 'View my public list'}
-          style={{
-            width: 34, height: 34, borderRadius: 7, border: '1px solid var(--border)',
-            background: 'none', color: 'var(--fg-3)', fontSize: 14,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            textDecoration: 'none',
-          }}
-        >
-          ↗
-        </Link>
-      )}
-    </>
-  )
-}
-
 // Resolves user lists promise and renders entry rows with user-specific data (my tier badges, quick add)
 function UserAwareEntryList({
   personalDataPromise,
@@ -404,21 +344,47 @@ function UserAwareEntryList({
   )
 }
 
-export function RankTopicPage({
-  topicSlug, topicEmoji, topicTitle, topicBadge,
-  initialEntries, totalEntries, personalDataPromise,
+export function CommunityListSkeleton() {
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 2, paddingBottom: 12, flexWrap: 'wrap' }}>
+        {(['combined', 'tier', 'rank', 'favorite', 'popular'] as const).map(mode => (
+          <div key={mode} style={{
+            padding: '6px 14px', borderRadius: 8, fontSize: 13,
+            border: '1px solid transparent', color: 'var(--fg-5)',
+          }}>
+            {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Tier' : mode === 'rank' ? 'Rang' : mode === 'favorite' ? 'Favoris' : 'Popularité'}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} style={{
+            height: 90, background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: 12, opacity: 0.5,
+          }} />
+        ))}
+      </div>
+    </>
+  )
+}
+
+export function RankCommunityBody({
+  topicSlug,
+  entriesPromise,
+  personalDataPromise,
 }: {
   topicSlug: string
-  topicEmoji: string
-  topicTitle: string
-  topicBadge: string
-  initialEntries: Entry[]
-  totalEntries: number
+  entriesPromise: Promise<CommunityEntries | null>
   personalDataPromise: Promise<PersonalRankData>
 }) {
   const { lang } = useParams() as { lang: string }
   const dict = getDict(lang)
   const t = dict.rank
+  const data = use(entriesPromise)
+  const initialEntries = data?.initialEntries ?? []
+  const totalEntries = data?.totalEntries ?? 0
+
   const [sortMode, setSortMode] = useState<SortMode>('combined')
   const [quickAddId, setQuickAddId] = useState<string | null>(null)
   const [displayCount, setDisplayCount] = useState(100)
@@ -461,109 +427,65 @@ export function RankTopicPage({
   const visibleEntries = sorted.slice(0, displayCount)
 
   return (
-    <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 24px 60px' }}>
-
-      {/* Header */}
-      <div style={{ padding: '20px 0 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
-          {/* Breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Link href={`/${lang}/rank`} style={{ fontSize: 12, color: 'var(--fg-3)', textDecoration: 'none' }}>
-              {lang === 'fr' ? 'Classer' : 'Rank'}
-            </Link>
-            <span style={{ color: 'var(--fg-9)' }}>/</span>
-            <span style={{ fontSize: 12, color: 'var(--fg-3)', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 20, padding: '1px 9px' }}>{topicBadge}</span>
-          </div>
-
-          {/* Personal ranking controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Suspense fallback={
-              <div style={{ width: 120, height: 36, borderRadius: 8, background: 'var(--bg-subtle)' }} />
-            }>
-              <UserHeaderControls
-                personalDataPromise={personalDataPromise}
-                topicSlug={topicSlug}
-                lang={lang}
-                dict={dict}
-              />
-            </Suspense>
-          </div>
-        </div>
-
-        {/* Community ranking title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-          <span style={{ fontSize: 28, lineHeight: 1 }}>{topicEmoji}</span>
-          <div>
-            <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 24, fontWeight: 900, color: 'var(--fg)', letterSpacing: -0.3, lineHeight: 1.1 }}>
-              {t.communityTitle.replace('{topic}', topicTitle.toLowerCase())}
-            </h1>
-            <div style={{ fontSize: 12, color: 'var(--fg-5)', marginTop: 2, fontWeight: 300 }}>
-              {lang === 'fr' ? 'Classement collectif · mis à jour en continu' : 'Collective ranking · updated continuously'}
-            </div>
-          </div>
-        </div>
+    <>
+      <div style={{ display: 'flex', gap: 2, paddingBottom: 12, flexWrap: 'wrap' }}>
+        {(['combined', 'tier', 'rank', 'favorite', 'popular'] as SortMode[]).map(mode => (
+          <button key={mode} onClick={() => { setSortMode(mode); setDisplayCount(100) }} style={{
+            padding: '6px 14px', borderRadius: 8, fontFamily: 'inherit', cursor: 'pointer', fontSize: 13,
+            border: sortMode === mode ? '1px solid var(--border)' : '1px solid transparent',
+            background: sortMode === mode ? 'var(--bg-card)' : 'transparent',
+            color: sortMode === mode ? 'var(--fg)' : 'var(--fg-5)',
+            fontWeight: sortMode === mode ? 500 : 400,
+          }}>
+            {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Tier' : mode === 'rank' ? 'Rang' : mode === 'favorite' ? 'Favoris' : 'Popularité'}
+          </button>
+        ))}
       </div>
-
-      {/* Community ranking */}
-      <div style={{ paddingTop: 10 }}>
-        <div style={{ display: 'flex', gap: 2, paddingBottom: 12, flexWrap: 'wrap' }}>
-          {(['combined', 'tier', 'rank', 'favorite', 'popular'] as SortMode[]).map(mode => (
-            <button key={mode} onClick={() => { setSortMode(mode); setDisplayCount(100) }} style={{
-              padding: '6px 14px', borderRadius: 8, fontFamily: 'inherit', cursor: 'pointer', fontSize: 13,
-              border: sortMode === mode ? '1px solid var(--border)' : '1px solid transparent',
-              background: sortMode === mode ? 'var(--bg-card)' : 'transparent',
-              color: sortMode === mode ? 'var(--fg)' : 'var(--fg-5)',
-              fontWeight: sortMode === mode ? 500 : 400,
-            }}>
-              {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Tier' : mode === 'rank' ? 'Rang' : mode === 'favorite' ? 'Favoris' : 'Popularité'}
-            </button>
-          ))}
-        </div>
-        {sorted.length === 0 ? (
-          <p style={{ color: 'var(--fg-5)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
-        ) : (
-          <>
-            <Suspense
-              fallback={
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {visibleEntries.map((entry, i) => (
-                    <EntryRow
-                      key={entry.id}
-                      entry={entry}
-                      rank={i + 1}
-                      isLoggedIn={false}
-                      myTier={null}
-                      isOpen={false}
-                      onAdd={() => {}}
-                    />
-                  ))}
-                </div>
-              }
-            >
-              <UserAwareEntryList
-                personalDataPromise={personalDataPromise}
-                entries={visibleEntries}
-                topicSlug={topicSlug}
-                quickAddId={quickAddId}
-                setQuickAddId={setQuickAddId}
-              />
-            </Suspense>
-            {isLoadingFull && sorted.length <= displayCount && (
-              <div style={{ width: '100%', marginTop: 16, padding: '12px', textAlign: 'center', color: 'var(--fg-6)', fontSize: 12 }}>
-                Chargement des éléments suivants…
+      {sorted.length === 0 ? (
+        <p style={{ color: 'var(--fg-5)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
+      ) : (
+        <>
+          <Suspense
+            fallback={
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {visibleEntries.map((entry, i) => (
+                  <EntryRow
+                    key={entry.id}
+                    entry={entry}
+                    rank={i + 1}
+                    isLoggedIn={false}
+                    myTier={null}
+                    isOpen={false}
+                    onAdd={() => {}}
+                  />
+                ))}
               </div>
-            )}
-            {!isLoadingFull && sorted.length > displayCount && (
-              <button
-                onClick={() => setDisplayCount(c => c + 100)}
-                style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 9, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-5)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}
-              >
-                Voir plus ({sorted.length - displayCount} restants)
-              </button>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+            }
+          >
+            <UserAwareEntryList
+              personalDataPromise={personalDataPromise}
+              entries={visibleEntries}
+              topicSlug={topicSlug}
+              quickAddId={quickAddId}
+              setQuickAddId={setQuickAddId}
+            />
+          </Suspense>
+          {isLoadingFull && sorted.length <= displayCount && (
+            <div style={{ width: '100%', marginTop: 16, padding: '12px', textAlign: 'center', color: 'var(--fg-6)', fontSize: 12 }}>
+              Chargement des éléments suivants…
+            </div>
+          )}
+          {!isLoadingFull && sorted.length > displayCount && (
+            <button
+              onClick={() => setDisplayCount(c => c + 100)}
+              style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 9, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-5)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}
+            >
+              Voir plus ({sorted.length - displayCount} restants)
+            </button>
+          )}
+        </>
+      )}
+    </>
   )
 }
+

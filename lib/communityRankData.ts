@@ -3,6 +3,7 @@ import { cacheTag, cacheLife } from 'next/cache'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
 const TIER_SCORE: Record<string, number> = { EX: 7, TB: 6, BO: 5, AB: 4, PA: 3, IN: 2, MA: 1 }
+const INITIAL_COUNT = 100
 
 export type RankEntry = {
   id: string
@@ -17,12 +18,44 @@ export type RankEntry = {
   tierDistribution: Record<string, number>
 }
 
-export type CommunityData = {
+export type RankTopicHeader = {
   topicId: string
   topicEmoji: string
   topicTitle: string
   topicBadge: string
+}
+
+export type CommunityEntries = {
+  initialEntries: RankEntry[]
+  totalEntries: number
+}
+
+export type CommunityData = RankTopicHeader & {
   entries: RankEntry[]
+}
+
+function combinedScore(e: RankEntry) {
+  return (e.avgTierScore ?? 0) * 4 + (e.avgRank ? 1 / e.avgRank * 8 : 0) + e.favoriteCount + e.tierCount * 0.2
+}
+
+export async function getRankTopicHeader(slug: string, lang: string): Promise<RankTopicHeader | null> {
+  'use cache'
+  cacheTag(`rank-${slug}`)
+  cacheLife('weeks')
+
+  const topic = await prisma.topic.findUnique({
+    where: { slug },
+    include: { translations: { where: { lang } } },
+  })
+  if (!topic || !topic.rankable) return null
+
+  const tr = topic.translations[0]
+  return {
+    topicId: topic.id,
+    topicEmoji: topic.emoji,
+    topicTitle: tr?.title ?? topic.title,
+    topicBadge: tr?.badge ?? topic.badge,
+  }
 }
 
 export async function getCommunityData(slug: string, lang: string): Promise<CommunityData | null> {
@@ -99,5 +132,20 @@ export async function getCommunityData(slug: string, lang: string): Promise<Comm
         tierDistribution: tierDistData[e.id] ?? {},
       }
     }),
+  }
+}
+
+export async function getCommunityEntries(slug: string, lang: string): Promise<CommunityEntries | null> {
+  'use cache'
+  cacheTag(`rank-${slug}`)
+  cacheLife('weeks')
+
+  const data = await getCommunityData(slug, lang)
+  if (!data) return null
+
+  const sorted = [...data.entries].sort((a, b) => combinedScore(b) - combinedScore(a))
+  return {
+    initialEntries: sorted.slice(0, INITIAL_COUNT),
+    totalEntries: sorted.length,
   }
 }

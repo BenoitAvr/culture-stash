@@ -10,13 +10,15 @@ import { NavLoginLink } from './NavLoginLink'
 
 type NavDict = ReturnType<typeof getDictionary>['nav']
 
-async function NavAuth({ lang, nav }: { lang: string; nav: NavDict }) {
+async function NavAuth({ lang, nav, onRank }: { lang: string; nav: NavDict; onRank: boolean }) {
   const session = await getSession()
   return session ? (
     <>
-      <Link href={`/${lang}/topics/new`} style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-        {nav.contribute}
-      </Link>
+      {!onRank && (
+        <Link href={`/${lang}/topics/new`} style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+          {nav.contribute}
+        </Link>
+      )}
       <form action={logout} style={{ display: 'inline' }}>
         <button style={{ padding: '7px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-3)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
           {session.name.split(' ')[0]}
@@ -33,8 +35,9 @@ async function NavAuth({ lang, nav }: { lang: string; nav: NavDict }) {
   )
 }
 
-export function Nav({ lang }: { lang: string }) {
+export function Nav({ lang, onRank }: { lang: string; onRank: boolean }) {
   const t = hasLocale(lang) ? getDictionary(lang) : getDictionary('fr')
+  const brand = onRank ? 'Rank' : 'Stash'
 
   return (
     <nav style={{
@@ -46,13 +49,15 @@ export function Nav({ lang }: { lang: string }) {
     }}>
       <div style={{ flex: 1 }}>
         <Link href={`/${lang}`} style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 900, textDecoration: 'none', color: 'var(--fg)' }}>
-          Culture <span style={{ color: 'var(--accent-fg)' }}>Stash</span>
+          Culture <span style={{ color: 'var(--accent-fg)' }}>{brand}</span>
         </Link>
       </div>
 
-      <Suspense fallback={<div style={{ width: 220 }} />}>
-        <NavSearch lang={lang} placeholder={t.search.placeholder} />
-      </Suspense>
+      {!onRank && (
+        <Suspense fallback={<div style={{ width: 220 }} />}>
+          <NavSearch lang={lang} placeholder={t.search.placeholder} />
+        </Suspense>
+      )}
 
       <div style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
         <ThemeToggle />
@@ -60,7 +65,7 @@ export function Nav({ lang }: { lang: string }) {
           <LangSwitcher lang={lang} />
         </Suspense>
         <Suspense fallback={<div style={{ width: 180 }} />}>
-          <NavAuth lang={lang} nav={t.nav} />
+          <NavAuth lang={lang} nav={t.nav} onRank={onRank} />
         </Suspense>
       </div>
     </nav>

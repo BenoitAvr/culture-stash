@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/prisma'
 import { getDictionary, hasLocale } from '@/dictionaries'
@@ -35,7 +35,7 @@ const TIER_COLOR: Record<string, string> = {
   EX: '#5b8dee', TB: '#388e3c', BO: '#66bb6a', AB: '#a3c940', PA: '#f9c933', IN: '#f5a623', MA: '#e05555',
 }
 
-export default async function UserListPage({
+async function UserListInner({
   params,
 }: {
   params: Promise<{ lang: string; slug: string; userName: string }>
@@ -172,5 +172,17 @@ export default async function UserListPage({
         </Link>
       </div>
     </div>
+  )
+}
+
+export default function UserListPage({
+  params,
+}: {
+  params: Promise<{ lang: string; slug: string; userName: string }>
+}) {
+  return (
+    <Suspense fallback={null}>
+      <UserListInner params={params} />
+    </Suspense>
   )
 }
