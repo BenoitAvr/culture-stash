@@ -49,3 +49,6 @@ next-env.d.ts
 .vercel
 .env*.local
 prisma/dev.db
+
+# database backups
+/backups

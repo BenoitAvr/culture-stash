@@ -7,6 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "backup": "tsx scripts/backup-prod.ts",
     "migrate:prod": "ALLOW_PROD_MIGRATION=true npx tsx scripts/migrate-prod.ts"
   },
   "dependencies": {
