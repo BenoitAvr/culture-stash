@@ -26,14 +26,15 @@ import { config } from 'dotenv'
 
 config({ path: '.env.local' })
 
-const url = process.env.TURSO_DATABASE_URL
+const tursoUrl = process.env.TURSO_DATABASE_URL
 const authToken = process.env.TURSO_AUTH_TOKEN
 
-if (!url) {
+if (!tursoUrl) {
   console.error('❌  TURSO_DATABASE_URL is not set in .env.local')
   process.exit(1)
 }
 
+const url: string = tursoUrl
 const client = createClient({ url, ...(authToken ? { authToken } : {}) })
 
 async function run() {

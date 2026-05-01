@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "backup": "tsx scripts/backup-prod.ts",
+    "backup": "tsx scripts/backup.ts",
     "migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {

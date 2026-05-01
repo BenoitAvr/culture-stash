@@ -5,23 +5,16 @@ import { PrismaLibSql } from '@prisma/adapter-libsql'
 
 config({ path: '.env.local', override: true })
 
-const TARGET = process.env.SEED_TARGET ?? 'local'
 const tursoUrl = process.env.TURSO_DATABASE_URL
 const tursoToken = process.env.TURSO_AUTH_TOKEN
 
-let adapter: PrismaLibSql
-if (TARGET === 'prod') {
-  if (!tursoUrl) {
-    console.error('TURSO_DATABASE_URL missing — required for SEED_TARGET=prod')
-    process.exit(1)
-  }
-  console.log(`⚠️  Backfilling PRODUCTION (${tursoUrl.replace(/\?.*$/, '')})`)
-  adapter = new PrismaLibSql({ url: tursoUrl, ...(tursoToken ? { authToken: tursoToken } : {}) })
-} else {
-  console.log(`Backfilling local dev.db`)
-  adapter = new PrismaLibSql({ url: 'file:dev.db' })
+if (!tursoUrl) {
+  console.error('TURSO_DATABASE_URL missing in .env.local')
+  process.exit(1)
 }
 
+console.log(`Backfilling ${tursoUrl.replace(/\?.*$/, '')}`)
+const adapter = new PrismaLibSql({ url: tursoUrl, ...(tursoToken ? { authToken: tursoToken } : {}) })
 const prisma = new PrismaClient({ adapter })
 const TOKEN = process.env.TMDB_READ_TOKEN
 
