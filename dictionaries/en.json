@@ -6,6 +6,22 @@
     "login": "Log in",
     "signup": "Sign up"
   },
+  "feedback": {
+    "open": "Feedback",
+    "title": "Bug or suggestion?",
+    "help": "Spotted a bug or got an idea? It'll land straight on my Discord.",
+    "messagePlaceholder": "Describe the bug or your idea…",
+    "contactLabel": "Email to reply to",
+    "contactPlaceholder": "(optional)",
+    "contactLoggedIn": "Signed in as {name} — I'll reply at that address.",
+    "submit": "Send",
+    "cancel": "Cancel",
+    "sent": "Thanks, sent!",
+    "errorEmpty": "Message is empty.",
+    "errorTooLong": "Message too long (max 2000 chars).",
+    "errorNotConfigured": "Feedback channel isn't configured.",
+    "errorFailed": "Send failed, please try again later."
+  },
   "home": {
     "tagline": "A community wiki to understand any topic — ranked resources, shared insights.",
     "createTopic": "Create a topic",

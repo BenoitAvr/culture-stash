@@ -12,6 +12,22 @@
     "resource": "ressource",
     "note": "note"
   },
+  "feedback": {
+    "open": "Feedback",
+    "title": "Bug ou suggestion ?",
+    "help": "Une remarque, un bug, une idée ? Tout va arriver direct sur mon Discord.",
+    "messagePlaceholder": "Décris le bug ou ton idée…",
+    "contactLabel": "Email pour te répondre",
+    "contactPlaceholder": "(optionnel)",
+    "contactLoggedIn": "Connecté en tant que {name} — je te recontacterai à cette adresse.",
+    "submit": "Envoyer",
+    "cancel": "Annuler",
+    "sent": "Merci, c'est envoyé !",
+    "errorEmpty": "Le message est vide.",
+    "errorTooLong": "Message trop long (max 2000 caractères).",
+    "errorNotConfigured": "Le canal de feedback n'est pas configuré.",
+    "errorFailed": "Échec de l'envoi, réessaye plus tard."
+  },
   "topic": {
     "resources": "Ressources",
     "notes": "Notes"

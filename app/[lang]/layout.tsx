@@ -1,13 +1,21 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import { hasLocale, LOCALES } from '@/dictionaries'
+import { hasLocale, LOCALES, getDictionary } from '@/dictionaries'
 import { Nav } from '@/app/components/Nav'
+import { FeedbackWidget } from '@/app/components/FeedbackWidget'
 import { isRankHost, getRankHost, getMainHost } from '@/lib/host'
+import { getSession } from '@/lib/session'
 
 async function NavWithHost({ lang }: { lang: string }) {
   const onRank = await isRankHost()
   return <Nav lang={lang} onRank={onRank} />
+}
+
+async function FeedbackWidgetWithSession({ lang }: { lang: string }) {
+  const session = await getSession()
+  const dict = getDictionary(lang as 'fr' | 'en')
+  return <FeedbackWidget labels={dict.feedback} loggedInName={session?.name ?? null} />
 }
 
 const NAV_FALLBACK_HEIGHT = 57
@@ -72,6 +80,9 @@ export default async function LangLayout({
         <NavWithHost lang={lang} />
       </Suspense>
       <main>{children}</main>
+      <Suspense fallback={null}>
+        <FeedbackWidgetWithSession lang={lang} />
+      </Suspense>
     </>
   )
 }
