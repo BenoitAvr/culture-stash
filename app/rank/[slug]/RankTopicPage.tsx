@@ -438,8 +438,8 @@ export function RankCommunityBody({
     if (sortMode === 'popular') {
       return b.tierCount - a.tierCount || (b.avgTierScore ?? 0) - (a.avgTierScore ?? 0)
     }
-    const scoreA = (a.avgTierScore ?? 0) * 4 + (a.avgRank ? 1 / a.avgRank * 8 : 0) + a.favoriteCount + a.tierCount * 0.2
-    const scoreB = (b.avgTierScore ?? 0) * 4 + (b.avgRank ? 1 / b.avgRank * 8 : 0) + b.favoriteCount + b.tierCount * 0.2
+    const scoreA = (a.avgTierScore ?? 0) * 4 + (a.avgRank ? 1 / a.avgRank * 12 : 0) + a.favoriteCount + a.tierCount * 0.2
+    const scoreB = (b.avgTierScore ?? 0) * 4 + (b.avgRank ? 1 / b.avgRank * 12 : 0) + b.favoriteCount + b.tierCount * 0.2
     return scoreB - scoreA
   })
 

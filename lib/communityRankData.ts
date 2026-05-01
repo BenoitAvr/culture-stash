@@ -36,7 +36,7 @@ export type CommunityData = RankTopicHeader & {
 }
 
 function combinedScore(e: RankEntry) {
-  return (e.avgTierScore ?? 0) * 4 + (e.avgRank ? 1 / e.avgRank * 8 : 0) + e.favoriteCount + e.tierCount * 0.2
+  return (e.avgTierScore ?? 0) * 4 + (e.avgRank ? 1 / e.avgRank * 12 : 0) + e.favoriteCount + e.tierCount * 0.2
 }
 
 export function getRankTopicHeader(slug: string, lang: string): Promise<RankTopicHeader | null> {
