@@ -1,14 +1,22 @@
 /**
- * Apply SQL migrations to the production Turso database.
+ * Apply SQL migrations to the Turso database.
  *
  * Usage:
- *   ALLOW_PROD_MIGRATION=true npx tsx scripts/migrate-prod.ts
+ *   yarn migrate
  *
- * Never add ALLOW_PROD_MIGRATION to .env.local — it must be set explicitly
- * on the command line to prevent accidental production changes.
+ * Migrations are flat .sql files in prisma/migrations/, named like
+ * `001_xxx.sql`, `002_xxx.sql`, applied in lexical order. Already-
+ * applied migrations are tracked in the _Migrations table on Turso.
  *
- * Add new migrations as numbered .sql files in prisma/migrations/.
- * Already-applied migrations are tracked in the _Migrations table.
+ * To add a new migration:
+ *   1. Edit prisma/schema.prisma
+ *   2. Generate the SQL diff:
+ *      npx prisma migrate diff \
+ *        --from-url "$TURSO_DATABASE_URL" \
+ *        --to-schema-datamodel prisma/schema.prisma \
+ *        --script > prisma/migrations/00X_your_change.sql
+ *   3. Review and edit the generated SQL
+ *   4. Run `yarn migrate`
  */
 
 import { createClient } from '@libsql/client'
@@ -18,24 +26,17 @@ import { config } from 'dotenv'
 
 config({ path: '.env.local' })
 
-if (process.env.ALLOW_PROD_MIGRATION !== 'true') {
-  console.error('❌  Set ALLOW_PROD_MIGRATION=true explicitly to run this script.')
-  console.error('   Example: ALLOW_PROD_MIGRATION=true npx tsx scripts/migrate-prod.ts')
-  process.exit(1)
-}
-
 const url = process.env.TURSO_DATABASE_URL
 const authToken = process.env.TURSO_AUTH_TOKEN
 
 if (!url) {
-  console.error('❌  TURSO_DATABASE_URL is not set.')
+  console.error('❌  TURSO_DATABASE_URL is not set in .env.local')
   process.exit(1)
 }
 
 const client = createClient({ url, ...(authToken ? { authToken } : {}) })
 
 async function run() {
-  // Create tracking table if it doesn't exist
   await client.execute(`
     CREATE TABLE IF NOT EXISTS _Migrations (
       name TEXT PRIMARY KEY,
@@ -58,7 +59,7 @@ async function run() {
     return
   }
 
-  console.log(`⚠️   Applying ${pending.length} migration(s) to PRODUCTION:`)
+  console.log(`⚠️   Applying ${pending.length} migration(s) to ${url.replace(/\?.*$/, '')}:`)
   for (const file of pending) console.log(`     • ${file}`)
   console.log()
 

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "backup": "tsx scripts/backup-prod.ts",
-    "migrate:prod": "ALLOW_PROD_MIGRATION=true npx tsx scripts/migrate-prod.ts"
+    "migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.3",
