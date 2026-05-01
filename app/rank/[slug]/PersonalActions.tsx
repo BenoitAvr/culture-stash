@@ -55,10 +55,10 @@ export function PersonalActions({
       <Link
         href={`/${lang}/auth/login`}
         style={{
-          padding: '8px 18px', borderRadius: 8,
-          background: 'transparent', color: 'var(--fg-2)',
+          padding: '9px 20px', borderRadius: 8,
+          background: 'var(--bg-subtle)', color: 'var(--fg)',
           border: '1px solid var(--border)',
-          fontSize: 13, fontWeight: 500, textDecoration: 'none',
+          fontSize: 13, fontWeight: 600, textDecoration: 'none',
         }}
       >
         {labels.login}
@@ -151,10 +151,10 @@ export function PersonalActions({
       <Link
         href={`/${lang}/rank/${topicSlug}/edit`}
         style={{
-          padding: '8px 18px', borderRadius: 8,
-          background: 'transparent', color: 'var(--fg-2)',
+          padding: '9px 20px', borderRadius: 8,
+          background: 'var(--bg-subtle)', color: 'var(--fg)',
           border: '1px solid var(--border)',
-          fontSize: 13, fontWeight: 500, textDecoration: 'none',
+          fontSize: 13, fontWeight: 600, textDecoration: 'none',
         }}
       >
         {myList ? labels.edit : labels.create}
