@@ -16,7 +16,6 @@ model User {
   googleId     String?    @unique
   createdAt    DateTime   @default(now())
   notes        Note[]
-  ratings      Rating[]
   likes        Like[]
   resources    Resource[]
   userLists    UserList[]
@@ -78,21 +77,8 @@ model Resource {
   createdAt DateTime @default(now())
   topic         Topic                @relation(fields: [topicId], references: [id], onDelete: Cascade)
   addedBy       User?                @relation(fields: [addedById], references: [id])
-  ratings       Rating[]
   userListItems UserListItem[]
   translations  ResourceTranslation[]
-}
-
-model Rating {
-  id         String   @id @default(cuid())
-  resourceId String
-  userId     String
-  stars      Int
-  createdAt  DateTime @default(now())
-  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([resourceId, userId])
 }
 
 model Note {

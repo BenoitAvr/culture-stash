@@ -23,7 +23,6 @@ const TABLES = [
   "Concept",
   "Related",
   "Resource",
-  "Rating",
   "Note",
   "NoteTag",
   "Like",

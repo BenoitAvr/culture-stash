@@ -14,8 +14,7 @@
   },
   "topic": {
     "resources": "Ressources",
-    "notes": "Notes",
-    "ratings": "Évaluations"
+    "notes": "Notes"
   },
   "tabs": {
     "understand": "Comprendre",
@@ -77,13 +76,6 @@
     "weeksAgo": "il y a {w} sem.",
     "monthsAgo": "il y a {m} mois"
   },
-  "starRating": {
-    "star": "étoile",
-    "stars": "étoiles",
-    "loginRequired": "Connexion requise pour noter",
-    "notRated": "Pas encore noté",
-    "reviews": "avis"
-  },
   "auth": {
     "loginTitle": "Connexion",
     "loginBtn": "Se connecter",
@@ -143,7 +135,6 @@
     "noRankableTopics": "Aucun sujet classable pour l'instant.",
     "communityRanking": "Les préférés de la communauté",
     "communityTitle": "Les {topic} préférés de la communauté",
-    "myRating": "Ma note",
     "noEntries": "Aucune entrée pour l'instant. Sois le premier à en ajouter !",
     "addEntry": "+ Ajouter",
     "addEntryTitle": "Ajouter une entrée",
@@ -159,12 +150,6 @@
     "rankThese": "Classer →",
     "entries": "entrées",
     "entry": "entrée",
-    "notRated": "Pas encore noté",
-    "reviews": "avis",
-    "star": "étoile",
-    "stars": "étoiles",
-    "yourNote": "Ta note...",
-    "saveNote": "Enregistrer",
     "rankableLabel": "Ce sujet permet de classer des œuvres (films, albums, jeux…)",
     "share": "Partager",
     "copyList": "Copier ma liste",

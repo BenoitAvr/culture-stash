@@ -53,7 +53,6 @@ async function TopicPageContent({
       },
       resources: {
         include: {
-          ratings: true,
           translations: { where: { lang } },
         },
       },
@@ -88,25 +87,17 @@ async function TopicPageContent({
 
   const tr = topic.translations[0]
 
-  const resources = topic.resources
-    .map(r => {
-      const rtr = r.translations[0]
-      const avgRating = r.ratings.length > 0
-        ? r.ratings.reduce((s, rt) => s + rt.stars, 0) / r.ratings.length
-        : 0
-      return {
-        id: r.id,
-        title: rtr?.title ?? r.title,
-        sub: rtr?.sub ?? r.sub,
-        type: r.type,
-        emoji: r.emoji,
-        url: r.url,
-        avgRating,
-        ratingCount: r.ratings.length,
-        userRating: userId ? (r.ratings.find(rt => rt.userId === userId)?.stars ?? null) : null,
-      }
-    })
-    .sort((a, b) => b.avgRating - a.avgRating || b.ratingCount - a.ratingCount)
+  const resources = topic.resources.map(r => {
+    const rtr = r.translations[0]
+    return {
+      id: r.id,
+      title: rtr?.title ?? r.title,
+      sub: rtr?.sub ?? r.sub,
+      type: r.type,
+      emoji: r.emoji,
+      url: r.url,
+    }
+  })
 
   const notes = topic.notes.map(n => ({
     id: n.id,

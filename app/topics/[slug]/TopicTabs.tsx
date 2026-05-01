@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { StarRating } from './StarRating'
 import { LikeButton } from './LikeButton'
 import { UserListsSection, type UserListData } from './UserListsSection'
 import { getDict } from '@/dictionaries/client'
@@ -11,7 +10,7 @@ import { PersonalTopicNote } from './PersonalTopicNote'
 type Concept = { id: string; name: string }
 type Resource = {
   id: string; title: string; sub: string; type: string; emoji: string
-  url: string | null; avgRating: number; ratingCount: number; userRating: number | null
+  url: string | null
 }
 type Note = {
   id: string; title: string; excerpt: string; createdAt: string
@@ -262,7 +261,7 @@ export function TopicTabs({
               {shown.map((r, i) => {
                 const color = TYPE_COLOR[r.type] || '#7c6df0'
                 return (
-                  <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '42px 52px 1fr auto', alignItems: 'center', gap: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow)', padding: '14px 18px' }}>
+                  <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '42px 52px 1fr', alignItems: 'center', gap: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow)', padding: '14px 18px' }}>
                     <div style={{ fontFamily: "'Fraunces', serif", fontSize: 26, fontWeight: 900, textAlign: 'center', color: i < 3 ? 'var(--accent-fg)' : 'var(--fg-6)' }}>{i + 1}</div>
                     <div style={{ width: 52, height: 52, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, background: `${color}22`, flexShrink: 0 }}>{r.emoji}</div>
                     <div>
@@ -272,7 +271,6 @@ export function TopicTabs({
                       </div>
                       <div style={{ color: 'var(--fg-6)', fontSize: 12 }}>{r.sub}</div>
                     </div>
-                    <StarRating resourceId={r.id} topicSlug={slug} initialUserRating={r.userRating} initialAvg={r.avgRating} initialCount={r.ratingCount} isLoggedIn={isLoggedIn} t={t.starRating} />
                   </div>
                 )
               })}

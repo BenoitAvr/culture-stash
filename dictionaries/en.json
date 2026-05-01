@@ -14,8 +14,7 @@
   },
   "topic": {
     "resources": "Resources",
-    "notes": "Notes",
-    "ratings": "Ratings"
+    "notes": "Notes"
   },
   "tabs": {
     "understand": "Understand",
@@ -77,13 +76,6 @@
     "weeksAgo": "{w} wks ago",
     "monthsAgo": "{m} months ago"
   },
-  "starRating": {
-    "star": "star",
-    "stars": "stars",
-    "loginRequired": "Log in to rate",
-    "notRated": "Not rated yet",
-    "reviews": "reviews"
-  },
   "auth": {
     "loginTitle": "Log in",
     "loginBtn": "Log in",
@@ -143,7 +135,6 @@
     "noRankableTopics": "No rankable topics yet.",
     "communityRanking": "Community favourites",
     "communityTitle": "The community's favourite {topic}",
-    "myRating": "My rating",
     "noEntries": "No entries yet. Be the first to add one!",
     "addEntry": "+ Add",
     "addEntryTitle": "Add an entry",
@@ -159,12 +150,6 @@
     "rankThese": "Rank →",
     "entries": "entries",
     "entry": "entry",
-    "notRated": "Not rated yet",
-    "reviews": "reviews",
-    "star": "star",
-    "stars": "stars",
-    "yourNote": "Your note...",
-    "saveNote": "Save",
     "rankableLabel": "This topic allows ranking works (films, albums, games…)",
     "share": "Share",
     "copyList": "Copy my list",
