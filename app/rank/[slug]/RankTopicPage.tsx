@@ -248,7 +248,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
           </>
         )}
 
-        {isLoggedIn && (
+        {isLoggedIn ? (
           <button
             onClick={onAdd}
             title={myTier ? 'Modifier' : 'Ajouter à ma liste'}
@@ -263,6 +263,21 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
           >
             {myTier ? '✎' : (isOpen ? '×' : '+')}
           </button>
+        ) : (
+          <Link
+            href={`/${lang}/auth/login`}
+            title={lang === 'fr' ? 'Connecte-toi pour noter' : 'Sign in to rate'}
+            style={{
+              width: 28, height: 28, borderRadius: 7, textDecoration: 'none',
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18, color: 'var(--fg-4)',
+              flexShrink: 0,
+            }}
+          >
+            +
+          </Link>
         )}
       </div>
     </div>
