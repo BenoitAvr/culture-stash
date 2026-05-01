@@ -4,17 +4,20 @@ import { getSession } from '@/lib/session'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { cacheTag, cacheLife } from 'next/cache'
+import { unstable_cache } from 'next/cache'
 
-async function getRankableTopics(lang: string) {
-  'use cache'
-  cacheTag('rank-topics')
-  cacheLife('hours')
-  return prisma.topic.findMany({
-    where: { rankable: true },
-    include: { _count: { select: { entries: true } }, translations: { where: { lang } } },
-    orderBy: { createdAt: 'asc' },
-  })
+function getRankableTopics(lang: string) {
+  return unstable_cache(
+    async () => {
+      return prisma.topic.findMany({
+        where: { rankable: true },
+        include: { _count: { select: { entries: true } }, translations: { where: { lang } } },
+        orderBy: { createdAt: 'asc' },
+      })
+    },
+    [`rank-topics-${lang}`],
+    { tags: ['rank-topics'] }
+  )()
 }
 
 async function NewTopicButton({ lang }: { lang: string }) {

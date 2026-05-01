@@ -140,7 +140,7 @@ function CommunityBody({
   )
 }
 
-export default async function RankSlugPage({
+async function RankSlugInner({
   params,
 }: {
   params: Promise<{ lang: string; slug: string }>
@@ -201,5 +201,17 @@ export default async function RankSlugPage({
         </Suspense>
       </div>
     </div>
+  )
+}
+
+export default function RankSlugPage({
+  params,
+}: {
+  params: Promise<{ lang: string; slug: string }>
+}) {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+      <RankSlugInner params={params} />
+    </Suspense>
   )
 }
