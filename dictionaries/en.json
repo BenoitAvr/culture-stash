@@ -166,7 +166,12 @@
     "stars": "stars",
     "yourNote": "Your note...",
     "saveNote": "Save",
-    "rankableLabel": "This topic allows ranking works (films, albums, games…)"
+    "rankableLabel": "This topic allows ranking works (films, albums, games…)",
+    "share": "Share",
+    "export": "Export",
+    "import": "Import",
+    "shareCopied": "Link copied",
+    "importInvalid": "Invalid file"
   },
   "newTopic": {
     "pageTitle": "Create a topic",

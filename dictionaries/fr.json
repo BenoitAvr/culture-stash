@@ -166,7 +166,12 @@
     "stars": "étoiles",
     "yourNote": "Ta note...",
     "saveNote": "Enregistrer",
-    "rankableLabel": "Ce sujet permet de classer des œuvres (films, albums, jeux…)"
+    "rankableLabel": "Ce sujet permet de classer des œuvres (films, albums, jeux…)",
+    "share": "Partager",
+    "export": "Exporter",
+    "import": "Importer",
+    "shareCopied": "Lien copié",
+    "importInvalid": "Fichier invalide"
   },
   "newTopic": {
     "pageTitle": "Créer un sujet",

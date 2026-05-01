@@ -13,6 +13,7 @@ import {
   CommunityListSkeleton,
   type PersonalRankData,
 } from '@/app/rank/[slug]/RankTopicPage'
+import { PersonalActions } from '@/app/rank/[slug]/PersonalActions'
 import type { UserEntryListData } from '@/app/rank/[slug]/UserEntryListSection'
 
 async function getUserList(topicId: string, userId: string): Promise<UserEntryListData[]> {
@@ -84,7 +85,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 
 type Dict = ReturnType<typeof getDictionary>
 
-async function PersonalHeaderControls({
+function PersonalActionsWrapper({
   topicId,
   topicSlug,
   lang,
@@ -95,53 +96,24 @@ async function PersonalHeaderControls({
   lang: string
   dict: Dict
 }) {
-  const data = await getPersonalRankData(topicId)
-  const myTierList = data.userLists.find(
-    l => l.userId === data.currentUserId && (l.type === 'TIER' || l.type === 'BOTH')
-  ) ?? null
-
-  if (!data.isLoggedIn) {
-    return (
-      <Link
-        href={`/${lang}/auth/login`}
-        style={{
-          padding: '8px 18px', borderRadius: 8,
-          border: '1px solid var(--border)', background: 'none',
-          color: 'var(--fg-3)', fontSize: 13, textDecoration: 'none',
-        }}
-      >
-        {dict.rank.loginToRate}
-      </Link>
-    )
-  }
-
+  const personalDataPromise = getPersonalRankData(topicId)
   return (
-    <>
-      <Link
-        href={`/${lang}/rank/${topicSlug}/edit`}
-        style={{
-          padding: '8px 18px', borderRadius: 8,
-          background: 'var(--btn)', color: 'var(--btn-text)',
-          fontSize: 14, fontWeight: 600, textDecoration: 'none',
-        }}
-      >
-        {myTierList ? dict.rankings.editList : dict.rankings.createList}
-      </Link>
-      {myTierList && (
-        <Link
-          href={`/${lang}/rank/${topicSlug}/${encodeURIComponent(myTierList.username)}`}
-          title={lang === 'fr' ? 'Voir ma liste publique' : 'View my public list'}
-          style={{
-            width: 34, height: 34, borderRadius: 7, border: '1px solid var(--border)',
-            background: 'none', color: 'var(--fg-3)', fontSize: 14,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            textDecoration: 'none',
-          }}
-        >
-          ↗
-        </Link>
-      )}
-    </>
+    <PersonalActions
+      topicSlug={topicSlug}
+      lang={lang}
+      personalDataPromise={personalDataPromise}
+      labels={{
+        create: dict.rankings.createList,
+        edit: dict.rankings.editList,
+        login: dict.rank.loginToRate,
+        share: dict.rank.share,
+        export: dict.rank.export,
+        import: dict.rank.import,
+        shareCopied: dict.rank.shareCopied,
+        importInvalid: dict.rank.importInvalid,
+        importConfirm: '',
+      }}
+    />
   )
 }
 
@@ -197,9 +169,9 @@ export default async function RankSlugPage({
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Suspense fallback={<div style={{ width: 120, height: 36, borderRadius: 8, background: 'var(--bg-subtle)' }} />}>
-              <PersonalHeaderControls topicId={header.topicId} topicSlug={slug} lang={lang} dict={dict} />
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <Suspense fallback={<div style={{ width: 180, height: 60, borderRadius: 9, background: 'var(--bg-subtle)' }} />}>
+              <PersonalActionsWrapper topicId={header.topicId} topicSlug={slug} lang={lang} dict={dict} />
             </Suspense>
           </div>
         </div>
