@@ -372,7 +372,7 @@ export function CommunityListSkeleton() {
             padding: '6px 14px', borderRadius: 8, fontSize: 13,
             border: '1px solid transparent', color: 'var(--fg-5)',
           }}>
-            {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Tier' : mode === 'rank' ? 'Rang' : mode === 'favorite' ? 'Favoris' : 'Popularité'}
+            {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Mention' : mode === 'rank' ? 'Rang' : mode === 'favorite' ? 'Favoris' : 'Popularité'}
           </div>
         ))}
       </div>
@@ -456,7 +456,7 @@ export function RankCommunityBody({
             color: sortMode === mode ? 'var(--fg)' : 'var(--fg-5)',
             fontWeight: sortMode === mode ? 500 : 400,
           }}>
-            {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Tier' : mode === 'rank' ? 'Rang' : mode === 'favorite' ? 'Favoris' : 'Popularité'}
+            {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Mention' : mode === 'rank' ? 'Rang' : mode === 'favorite' ? 'Favoris' : 'Popularité'}
           </button>
         ))}
       </div>
