@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 
 type EntryListItem = { entryId: string; position?: number; tier?: string; note?: string }
 
@@ -96,8 +96,6 @@ export async function saveUserEntryLists(
     },
   })
 
-  revalidatePath(`/fr/rank/${topicSlug}`)
-  revalidatePath(`/en/rank/${topicSlug}`)
   revalidateTag(`rank-${topicSlug}`, 'max')
 
   return fresh.map(l => ({
@@ -131,8 +129,6 @@ export async function saveUserEntryList(
 
   await upsertEntryList(session.userId, topic.id, type, items, rankedTiers)
 
-  revalidatePath(`/fr/rank/${topicSlug}`)
-  revalidatePath(`/en/rank/${topicSlug}`)
   revalidateTag(`rank-${topicSlug}`, 'max')
 }
 
@@ -238,8 +234,6 @@ export async function importMarkdownList(topicSlug: string, markdown: string): P
     where: { userId: session.userId, topicId: topic.id, type: 'BOTH' },
   })
 
-  revalidatePath(`/fr/rank/${topicSlug}`)
-  revalidatePath(`/en/rank/${topicSlug}`)
   revalidateTag(`rank-${topicSlug}`, 'max')
 
   return { ok: true, imported: tierItems.length, unmatched }

@@ -3,7 +3,28 @@ import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale } from '@/dictionaries'
 import { notFound, redirect } from 'next/navigation'
 import { Suspense } from 'react'
+import { unstable_cache } from 'next/cache'
 import { RankEditClientPage } from '@/app/rank/[slug]/RankEditClientPage'
+
+function getEditableTopic(slug: string) {
+  return unstable_cache(
+    async () => {
+      return prisma.topic.findUnique({
+        where: { slug },
+        select: {
+          id: true,
+          rankable: true,
+          entries: {
+            select: { id: true, title: true, titleEn: true, year: true },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      })
+    },
+    [`topic-editable-${slug}`],
+    { tags: [`rank-${slug}`] }
+  )()
+}
 
 async function RankEditInner({
   params,
@@ -18,25 +39,21 @@ async function RankEditInner({
 
   const dict = getDictionary(lang)
 
-  const topic = await prisma.topic.findUnique({
-    where: { slug },
-    include: {
-      translations: { where: { lang } },
-      entries: { orderBy: { createdAt: 'asc' } },
-    },
-  })
-  if (!topic || !topic.rankable) notFound()
-
-  const existingList = await prisma.userEntryList.findFirst({
-    where: { topicId: topic.id, userId: session.userId, type: { in: ['TIER', 'BOTH'] } },
-    include: {
-      user: { select: { id: true, name: true, username: true } },
-      items: {
-        include: { entry: { select: { id: true, title: true, titleEn: true, year: true, cover: true } } },
-        orderBy: { position: 'asc' },
+  // Cached topic+entries (shared) parallelised with the per-user list (uncached, joined on slug).
+  const [topic, existingList] = await Promise.all([
+    getEditableTopic(slug),
+    prisma.userEntryList.findFirst({
+      where: { topic: { slug }, userId: session.userId, type: { in: ['TIER', 'BOTH'] } },
+      include: {
+        user: { select: { id: true, name: true, username: true } },
+        items: {
+          include: { entry: { select: { id: true, title: true, titleEn: true, year: true, cover: true } } },
+          orderBy: { position: 'asc' },
+        },
       },
-    },
-  })
+    }),
+  ])
+  if (!topic || !topic.rankable) notFound()
 
   const initialLists = existingList
     ? [{
