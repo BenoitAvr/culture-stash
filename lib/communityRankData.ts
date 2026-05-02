@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { unstable_cache } from 'next/cache'
+import { combinedScore } from '@/lib/communityRankScore'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
 const TIER_SCORE: Record<string, number> = { EX: 7, TB: 6, BO: 5, AB: 4, PA: 3, IN: 2, MA: 1 }
@@ -33,11 +34,6 @@ export type CommunityEntries = {
 
 export type CommunityData = RankTopicHeader & {
   entries: RankEntry[]
-}
-
-function combinedScore(e: RankEntry) {
-  const rankBonus = e.avgRank ? Math.max(0, 8 - 3 * Math.log10(e.avgRank)) : 0
-  return (e.avgTierScore ?? 0) * 4 + rankBonus + e.favoriteCount + e.tierCount * 0.2
 }
 
 export function getRankTopicHeader(slug: string, lang: string): Promise<RankTopicHeader | null> {
