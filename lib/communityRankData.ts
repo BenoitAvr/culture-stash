@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { unstable_cache } from 'next/cache'
-import { combinedScore, rankPositionBonus } from '@/lib/communityRankScore'
+import { combinedScore } from '@/lib/communityRankScore'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
 const TIER_SCORE: Record<string, number> = { EX: 7, TB: 6, BO: 5, AB: 4, PA: 3, IN: 2, MA: 1 }
@@ -13,7 +13,6 @@ export type RankEntry = {
   year: number | null
   cover: string | null
   avgRank: number | null
-  avgRankBonus: number | null
   rankCount: number
   avgTierScore: number | null
   tierCount: number
@@ -81,7 +80,7 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
       })
       if (!topic || !topic.rankable) return null
 
-      const rankData: Record<string, { total: number; bonusTotal: number; count: number }> = {}
+      const rankData: Record<string, { total: number; count: number }> = {}
       const tierData: Record<string, { totalScore: number; count: number }> = {}
       const favoriteData: Record<string, number> = {}
       const tierDistData: Record<string, Record<string, number>> = {}
@@ -97,9 +96,8 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
           if (!tierDistData[item.entryId]) tierDistData[item.entryId] = {}
           tierDistData[item.entryId][item.tier] = (tierDistData[item.entryId][item.tier] ?? 0) + 1
           if (item.position !== null && rts.includes(item.tier)) {
-            if (!rankData[item.entryId]) rankData[item.entryId] = { total: 0, bonusTotal: 0, count: 0 }
+            if (!rankData[item.entryId]) rankData[item.entryId] = { total: 0, count: 0 }
             rankData[item.entryId].total += item.position
-            rankData[item.entryId].bonusTotal += rankPositionBonus(item.position)
             rankData[item.entryId].count += 1
           }
         }
@@ -126,7 +124,6 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
             year: e.year,
             cover: e.cover || null,
             avgRank: rd && rd.count > 0 ? rd.total / rd.count : null,
-            avgRankBonus: rd && rd.count > 0 ? rd.bonusTotal / rd.count : null,
             rankCount: rd?.count ?? 0,
             avgTierScore: td && td.count > 0 ? td.totalScore / td.count : null,
             tierCount: td?.count ?? 0,
