@@ -89,7 +89,7 @@ export function RankingEditor({
   const [search, setSearch] = useState('')
   const [quickAddId, setQuickAddId] = useState<string | null>(null)
   const [quickAddTier, setQuickAddTier] = useState<string | null>(null)
-  const [unclassifiedLimit, setUnclassifiedLimit] = useState(100)
+  const [unclassifiedLimit, setUnclassifiedLimit] = useState(18)
   const wasPendingRef = useRef(false)
   useEffect(() => {
     if (wasPendingRef.current && !addPending && !addError) setSearch('')
@@ -449,63 +449,99 @@ export function RankingEditor({
           )
         })}
 
-        {/* Non classés */}
-        <div
-          style={{ marginTop: 14 }}
-          onDragOver={ev => ev.preventDefault()}
-          onDrop={() => { if (tierDragId) dropOnUnclassified(tierDragId); setTierDragId(null); setDragOverTier(null) }}
-        >
-          <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--fg-5)', marginBottom: 8 }}>
-            {t.noTier}
-            <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--fg-7)', textTransform: 'none', letterSpacing: 0 }}>— glisser vers un tier</span>
-          </div>
-          {(() => {
-            const unclassified = items.filter(item => !tierItems.some(i => i.id === item.id) && (!search.trim() || normalizeTitle(item.label).includes(normalizeTitle(search))))
-            const visibleUnclassified = search.trim() ? unclassified : unclassified.slice(0, unclassifiedLimit)
-            return (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {visibleUnclassified.map(item => (
-                  <div key={item.id} style={{ position: 'relative' }}>
+      </div>
+
+      {/* Sticky bottom: search/add bar + unclassified strip below */}
+      <div style={{ position: 'sticky', bottom: 0, marginTop: 24, marginLeft: -12, marginRight: -12, padding: '14px 16px 12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px 14px 0 0', boxShadow: '0 -8px 28px rgba(0,0,0,.10)', zIndex: 20 }}>
+        {addError && (
+          <div style={{ background: 'var(--error-bg)', border: '1px solid var(--error-border)', borderRadius: 6, padding: '8px 12px', marginBottom: 8, color: 'var(--error-text)', fontSize: 13 }}>{addError}</div>
+        )}
+        {addFormAction && (
+          <form action={addFormAction} style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 10 }}>
+            <input
+              name="title"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher…"
+              required
+              autoComplete="off"
+              style={{ flex: 1, minWidth: 0, padding: '10px 14px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, fontFamily: 'inherit', outline: 'none', transition: 'border-color .15s, box-shadow .15s' }}
+              onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-fg)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-faint)' }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
+            />
+            <input
+              name="year"
+              type="number"
+              min={1888}
+              max={2099}
+              placeholder="Année"
+              style={{ width: 90, padding: '10px 12px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }}
+            />
+            <button type="submit" disabled={addPending || !search.trim()} title="Si le titre n'est pas dans la liste, ajoute-le au site" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1, padding: '6px 18px', borderRadius: 9, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontFamily: 'inherit', cursor: addPending || !search.trim() ? 'default' : 'pointer', opacity: addPending || !search.trim() ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 9.5, fontWeight: 400, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '.05em' }}>Pas dans la liste&nbsp;?</span>
+              <span style={{ fontSize: 14, fontWeight: 700, marginTop: 1 }}>{addPending ? '…' : '+ Ajoute-le'}</span>
+            </button>
+          </form>
+        )}
+        {(() => {
+          const unclassified = items.filter(item => !tierItems.some(i => i.id === item.id) && (!search.trim() || normalizeTitle(item.label).includes(normalizeTitle(search))))
+          const visibleUnclassified = search.trim() ? unclassified : unclassified.slice(0, unclassifiedLimit)
+          const totalUnclassified = items.filter(item => !tierItems.some(i => i.id === item.id)).length
+          const labelText = search.trim()
+            ? `${unclassified.length} résultat${unclassified.length !== 1 ? 's' : ''}`
+            : (totalUnclassified === 0
+                ? t.allClassified
+                : `${totalUnclassified} ${totalUnclassified > 1 ? 'films restent à classer' : 'film reste à classer'}`)
+          return (
+            <>
+              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--fg-6)', marginBottom: 5 }}>
+                {labelText}
+              </div>
+              <div
+                onDragOver={ev => ev.preventDefault()}
+                onDrop={() => { if (tierDragId) dropOnUnclassified(tierDragId); setTierDragId(null); setDragOverTier(null) }}
+                style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 5, minHeight: visibleUnclassified.length === 0 ? 0 : 70 }}
+              >
+              {visibleUnclassified.length === 0 ? (
+                search.trim() && addFormAction ? (
+                  <span style={{ color: 'var(--fg-5)', fontSize: 12, fontStyle: 'italic' }}>
+                    « {search} » n&apos;est pas dans la liste — utilise <strong style={{ color: 'var(--fg-4)' }}>Ajoute-le</strong> au-dessus.
+                  </span>
+                ) : null
+              ) : (
+                visibleUnclassified.map(item => (
+                  <div key={item.id} style={{ position: 'relative', flexShrink: 0 }}>
                     <div
                       draggable
+                      onClick={() => {
+                        setQuickAddId(prev => prev === item.id ? null : item.id)
+                        setQuickAddTier(null)
+                      }}
                       onDragStart={() => { setTierDragId(item.id); setQuickAddId(null) }}
                       onDragEnd={() => { setTierDragId(null); setDragOverTier(null) }}
                       title={item.label}
-                      style={{ width: 104, flexShrink: 0, background: 'var(--bg-card)', border: `1px solid ${quickAddId === item.id ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 6, padding: 4, cursor: 'grab', opacity: tierDragId === item.id ? 0.4 : 1, userSelect: 'none', transition: 'opacity .1s, border-color .1s' }}
+                      style={{ width: 44, background: 'var(--bg-card)', border: `1px solid ${quickAddId === item.id ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 4, padding: 2, cursor: 'grab', opacity: tierDragId === item.id ? 0.4 : 1, userSelect: 'none', transition: 'opacity .1s, border-color .1s' }}
                     >
-                      <div style={{ position: 'relative', width: '100%', aspectRatio: '2 / 3', background: 'var(--bg-subtle)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ position: 'relative', width: '100%', aspectRatio: '2 / 3', background: 'var(--bg-subtle)', borderRadius: 3, overflow: 'hidden' }}>
                         {item.cover ? (
                           <img src={item.cover} alt="" loading="lazy" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 26, color: 'var(--fg-7)' }}>
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 14, color: 'var(--fg-7)' }}>
                             {item.prefix ?? item.label.charAt(0).toUpperCase()}
                           </div>
                         )}
-                        <button
-                          onClick={ev => {
-                            ev.stopPropagation()
-                            setQuickAddId(prev => prev === item.id ? null : item.id)
-                            setQuickAddTier(null)
-                          }}
-                          style={{ position: 'absolute', bottom: 3, right: 3, width: 26, height: 26, borderRadius: 13, background: quickAddId === item.id ? 'var(--accent-fg)' : 'rgba(0,0,0,.65)', color: quickAddId === item.id ? 'var(--btn-text)' : '#fff', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontWeight: 700 }}
-                        >+</button>
                       </div>
-                      <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--fg-3)', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>
-                        {item.label}
-                      </div>
-                      {item.suffix && (
-                        <div style={{ fontSize: 10, color: 'var(--fg-6)', marginTop: 1 }}>{item.suffix}</div>
-                      )}
                     </div>
                     {quickAddId === item.id && quickAddTier === null && (
-                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 7, padding: 6, boxShadow: '0 6px 20px rgba(0,0,0,.18)', display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 220 }}>
+                      <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, zIndex: 30, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 7, padding: 6, boxShadow: '0 -6px 20px rgba(0,0,0,.18)', display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 220 }}>
                         {TIERS.map(tier => {
                           const isRanked = tierRankedTiers.has(tier)
                           const hasItems = tierItems.some(i => i.tier === tier && i.id !== item.id)
                           return (
                             <button
                               key={tier}
-                              onClick={() => {
+                              onClick={ev => {
+                                ev.stopPropagation()
                                 if (isRanked && hasItems) {
                                   setQuickAddTier(tier)
                                 } else {
@@ -527,12 +563,13 @@ export function RankingEditor({
                         .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
                       const tierColor = TIER_COLOR[tier]
                       return (
-                        <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 7, padding: 8, boxShadow: '0 6px 20px rgba(0,0,0,.18)', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 200, maxHeight: 280, overflowY: 'auto' }}>
+                        <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, zIndex: 30, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 7, padding: 8, boxShadow: '0 -6px 20px rgba(0,0,0,.18)', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 200, maxHeight: 280, overflowY: 'auto' }}>
                           <div style={{ fontSize: 10, color: 'var(--fg-6)', marginBottom: 2 }}>
                             Position dans <span style={{ color: tierColor, fontWeight: 600 }}>{TIER_LABEL[tier]}</span> :
                           </div>
                           <button
-                            onClick={() => {
+                            onClick={ev => {
+                              ev.stopPropagation()
                               dropOnTier(item.id, tier, null)
                               setQuickAddId(null); setQuickAddTier(null)
                             }}
@@ -545,7 +582,8 @@ export function RankingEditor({
                             return (
                               <button
                                 key={p.id}
-                                onClick={() => {
+                                onClick={ev => {
+                                  ev.stopPropagation()
                                   dropOnTier(item.id, tier, p.id)
                                   setQuickAddId(null); setQuickAddTier(null)
                                 }}
@@ -556,7 +594,7 @@ export function RankingEditor({
                             )
                           })}
                           <button
-                            onClick={() => setQuickAddTier(null)}
+                            onClick={ev => { ev.stopPropagation(); setQuickAddTier(null) }}
                             style={{ alignSelf: 'flex-start', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-7)', fontSize: 10, fontFamily: 'inherit', marginTop: 2 }}
                           >
                             ← Changer de tier
@@ -565,60 +603,21 @@ export function RankingEditor({
                       )
                     })()}
                   </div>
-                ))}
-                {unclassified.length === 0 && (
-                  search.trim() && addFormAction ? (
-                    <span style={{ color: 'var(--fg-4)', fontSize: 12 }}>« {search} » n&apos;est pas dans la liste — clique sur Ajouter en bas pour le créer.</span>
-                  ) : (
-                    <span style={{ color: 'var(--fg-5)', fontSize: 12 }}>{search.trim() ? 'Aucun résultat' : t.allClassified}</span>
-                  )
-                )}
-                {!search.trim() && unclassified.length > unclassifiedLimit && (
-                  <div style={{ width: '100%', marginTop: 8 }}>
-                    <button
-                      onClick={() => setUnclassifiedLimit(c => c + 100)}
-                      style={{ padding: '6px 16px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--fg-5)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}
-                    >
-                      Voir plus ({unclassified.length - unclassifiedLimit} restants)
-                    </button>
-                  </div>
-                )}
+                ))
+              )}
+              {!search.trim() && unclassified.length > unclassifiedLimit && (
+                <button
+                  onClick={() => setUnclassifiedLimit(c => c + 18)}
+                  style={{ alignSelf: 'center', marginLeft: 4, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--fg-6)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
+                  +{Math.min(18, unclassified.length - unclassifiedLimit)} ({unclassified.length - unclassifiedLimit} restants)
+                </button>
+              )}
               </div>
-            )
-          })()}
-        </div>
+            </>
+          )
+        })()}
       </div>
-
-      {/* Sticky bottom search + add bar */}
-      {addFormAction && (
-        <div style={{ position: 'sticky', bottom: 0, marginTop: 24, paddingTop: 12, paddingBottom: 12, background: 'var(--bg)', borderTop: '1px solid var(--border)', zIndex: 20 }}>
-          {addError && (
-            <div style={{ background: 'var(--error-bg)', border: '1px solid var(--error-border)', borderRadius: 6, padding: '8px 12px', marginBottom: 8, color: 'var(--error-text)', fontSize: 13 }}>{addError}</div>
-          )}
-          <form action={addFormAction} style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-            <input
-              name="title"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher ou ajouter un titre…"
-              required
-              autoComplete="off"
-              style={{ flex: 1, minWidth: 0, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
-            />
-            <input
-              name="year"
-              type="number"
-              min={1888}
-              max={2099}
-              placeholder="Année"
-              style={{ width: 90, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
-            />
-            <button type="submit" disabled={addPending || !search.trim()} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, cursor: addPending || !search.trim() ? 'default' : 'pointer', fontFamily: 'inherit', opacity: addPending || !search.trim() ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
-              {addPending ? '…' : `+ ${addEntryLabel ?? 'Ajouter'}`}
-            </button>
-          </form>
-        </div>
-      )}
 
     </div>
   )
