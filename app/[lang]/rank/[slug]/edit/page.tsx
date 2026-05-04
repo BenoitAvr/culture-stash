@@ -15,13 +15,13 @@ function getEditableTopic(slug: string) {
           id: true,
           rankable: true,
           entries: {
-            select: { id: true, title: true, titleEn: true, year: true },
+            select: { id: true, title: true, titleEn: true, year: true, cover: true },
             orderBy: { createdAt: 'asc' },
           },
         },
       })
     },
-    [`topic-editable-${slug}`],
+    [`topic-editable-v2-${slug}`],
     { tags: [`rank-${slug}`] }
   )()
 }
@@ -78,6 +78,7 @@ async function RankEditInner({
     title: e.title,
     titleEn: e.titleEn,
     year: e.year,
+    cover: e.cover,
   }))
 
   return (

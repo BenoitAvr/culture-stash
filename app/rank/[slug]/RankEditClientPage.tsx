@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { UserEntryListSection, type UserEntryListData } from './UserEntryListSection'
 import type { Dict } from '@/dictionaries/client'
 
-type EntryItem = { id: string; title: string; titleEn: string | null; year: number | null }
+type EntryItem = { id: string; title: string; titleEn: string | null; year: number | null; cover: string | null }
 
 export function RankEditClientPage({
   topicSlug,
@@ -29,7 +29,7 @@ export function RankEditClientPage({
   }
 
   return (
-    <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 24px 60px' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 24px 60px' }}>
       <UserEntryListSection
         topicSlug={topicSlug}
         entries={entries}

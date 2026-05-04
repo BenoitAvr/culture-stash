@@ -8,6 +8,7 @@ export type RankableItem = {
   label: string
   prefix?: string
   suffix?: string
+  cover?: string | null
 }
 
 export type RankEditItem = {
@@ -89,10 +90,9 @@ export function RankingEditor({
   const [quickAddId, setQuickAddId] = useState<string | null>(null)
   const [quickAddTier, setQuickAddTier] = useState<string | null>(null)
   const [unclassifiedLimit, setUnclassifiedLimit] = useState(100)
-  const [showAddForm, setShowAddForm] = useState(false)
   const wasPendingRef = useRef(false)
   useEffect(() => {
-    if (wasPendingRef.current && !addPending && !addError) setShowAddForm(false)
+    if (wasPendingRef.current && !addPending && !addError) setSearch('')
     wasPendingRef.current = addPending ?? false
   }, [addPending, addError])
 
@@ -346,8 +346,8 @@ export function RankingEditor({
           const isDropTarget = dragOverTier === tier
           const tierOffset = TIERS.slice(0, TIERS.indexOf(tier)).reduce((sum, t) => sum + tierItems.filter(i => i.tier === t).length, 0)
           return (
-            <div key={tier} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
-              <div style={{ width: 80, minHeight: 44, borderRadius: 7, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 9.5, color: TIER_COLOR[tier], flexShrink: 0, textAlign: 'center', padding: '0 6px' }}>
+            <div key={tier} style={{ display: 'flex', alignItems: 'stretch', gap: 10, marginBottom: 10 }}>
+              <div style={{ width: 64, minHeight: 60, borderRadius: 7, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 10, color: TIER_COLOR[tier], flexShrink: 0, textAlign: 'center', padding: '0 6px' }}>
                 {TIER_LABEL[tier]}
               </div>
               <div
@@ -361,64 +361,68 @@ export function RankingEditor({
                   }
                   setDragOverTier(null); setTierDragId(null)
                 }}
-                style={{ flex: 1, minHeight: 44, background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 7, padding: '6px 10px', transition: 'background .12s, border-color .12s' }}
+                style={{ flex: 1, minHeight: 60, background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 7, padding: '6px 8px', display: 'flex', flexWrap: 'wrap', gap: 7, alignItems: 'flex-start', alignContent: 'flex-start', transition: 'background .12s, border-color .12s' }}
               >
-                {inTier.length === 0 && <span style={{ color: 'var(--fg-6)', fontSize: 12, fontStyle: 'italic' }}>← glisser ici</span>}
-                {isRankedTier ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {inTier.map((rankItem, idx) => {
-                      const item = getItem(rankItem.id)
-                      if (!item) return null
-                      const isDragging = tierDragId === rankItem.id
-                      const isOver = dragOverItemId === rankItem.id
-                      return (
-                        <div key={rankItem.id}
-                          draggable
-                          onDragStart={ev => { ev.stopPropagation(); setTierDragId(rankItem.id) }}
-                          onDragOver={ev => { ev.preventDefault(); ev.stopPropagation(); if (!isDragging) setDragOverItemId(rankItem.id) }}
-                          onDragLeave={() => setDragOverItemId(prev => prev === rankItem.id ? null : prev)}
-                          onDrop={ev => {
-                            ev.preventDefault(); ev.stopPropagation()
-                            if (tierDragId && tierDragId !== rankItem.id) {
-                              const fromTier = tierItems.find(i => i.id === tierDragId)?.tier
-                              if (fromTier === tier) reorderWithinTier(tier, tierDragId, rankItem.id)
-                              else dropOnTier(tierDragId, tier)
+                {inTier.length === 0 && <span style={{ color: 'var(--fg-6)', fontSize: 12, fontStyle: 'italic', alignSelf: 'center' }}>← glisser ici</span>}
+                {inTier.map((rankItem, idx) => {
+                  const item = getItem(rankItem.id)
+                  if (!item) return null
+                  const isDragging = tierDragId === rankItem.id
+                  const isOver = isRankedTier && dragOverItemId === rankItem.id
+                  const position = isRankedTier ? tierOffset + idx + 1 : undefined
+                  return (
+                    <div key={rankItem.id}
+                      draggable
+                      onDragStart={ev => { ev.stopPropagation(); setTierDragId(rankItem.id) }}
+                      onDragOver={isRankedTier ? ev => { ev.preventDefault(); ev.stopPropagation(); if (!isDragging) setDragOverItemId(rankItem.id) } : undefined}
+                      onDragLeave={isRankedTier ? () => setDragOverItemId(prev => prev === rankItem.id ? null : prev) : undefined}
+                      onDrop={isRankedTier ? ev => {
+                        ev.preventDefault(); ev.stopPropagation()
+                        if (tierDragId && tierDragId !== rankItem.id) {
+                          const fromTier = tierItems.find(i => i.id === tierDragId)?.tier
+                          if (fromTier === tier) reorderWithinTier(tier, tierDragId, rankItem.id)
+                          else dropOnTier(tierDragId, tier)
+                        }
+                        setDragOverTier(null); setDragOverItemId(null); setTierDragId(null)
+                      } : undefined}
+                      onDragEnd={() => { setTierDragId(null); setDragOverTier(null); setDragOverItemId(null) }}
+                      title={item.label}
+                      style={{ position: 'relative', width: 104, flexShrink: 0, background: 'var(--bg-card)', border: `1px solid ${isOver ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 6, padding: 4, cursor: 'grab', opacity: isDragging ? 0.4 : 1, userSelect: 'none', transition: 'border-color .1s, opacity .1s' }}
+                    >
+                      <div style={{ position: 'relative', width: '100%', aspectRatio: '2 / 3', background: 'var(--bg-subtle)', borderRadius: 4, overflow: 'hidden' }}>
+                        {item.cover ? (
+                          <img src={item.cover} alt="" loading="lazy" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 26, color: 'var(--fg-7)' }}>
+                            {item.prefix ?? item.label.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <button
+                          onClick={ev => {
+                            ev.stopPropagation()
+                            if (isRankedTier) {
+                              setTierItems(prev => { const r = prev.filter(i => i.id !== rankItem.id); let pos = 1; return r.map(i => i.tier === tier ? { ...i, position: pos++ } : i) })
+                            } else {
+                              setTierItems(prev => prev.filter(i => i.id !== rankItem.id))
                             }
-                            setDragOverTier(null); setDragOverItemId(null); setTierDragId(null)
                           }}
-                          onDragEnd={() => { setTierDragId(null); setDragOverTier(null); setDragOverItemId(null) }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 5, background: isOver ? 'var(--accent-faint)' : 'transparent', opacity: isDragging ? 0.35 : 1, cursor: 'grab', transition: 'background .1s' }}
-                        >
-                          <span style={{ color: 'var(--fg-7)', fontSize: 11, userSelect: 'none', flexShrink: 0 }}>⠿</span>
-                          <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 14, color: (tierOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-5)', minWidth: 20, textAlign: 'center', flexShrink: 0 }}>{tierOffset + idx + 1}</span>
-                          {item.prefix && <span style={{ fontSize: 16 }}>{item.prefix}</span>}
-                          <span style={{ fontSize: 13, color: 'var(--fg-2)', flex: 1 }}>{item.label}</span>
-                          {item.suffix && <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>{item.suffix}</span>}
-                          <button onClick={() => setTierItems(prev => { const r = prev.filter(i => i.id !== rankItem.id); let pos = 1; return r.map(i => i.tier === tier ? { ...i, position: pos++ } : i) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-7)', fontSize: 14, padding: '0 2px', flexShrink: 0 }}>×</button>
+                          style={{ position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: 10, background: 'rgba(0,0,0,.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                        >×</button>
+                      </div>
+                      {position !== undefined && (
+                        <div style={{ position: 'absolute', top: -8, left: -8, minWidth: 34, height: 34, padding: '0 8px', borderRadius: 17, background: position <= 3 ? 'var(--accent-fg)' : '#1a1a1a', color: position <= 3 ? 'var(--btn-text)' : '#fff', border: '2.5px solid var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, fontFamily: "'Fraunces', serif", boxShadow: '0 3px 8px rgba(0,0,0,.4)', zIndex: 3 }}>
+                          {position}
                         </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                    {inTier.map(rankItem => {
-                      const item = getItem(rankItem.id)
-                      if (!item) return null
-                      return (
-                        <div key={rankItem.id}
-                          draggable
-                          onDragStart={ev => { ev.stopPropagation(); setTierDragId(rankItem.id) }}
-                          onDragEnd={() => { setTierDragId(null); setDragOverTier(null) }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'var(--bg-subtle)', borderRadius: 5, padding: '3px 9px', cursor: 'grab', opacity: tierDragId === rankItem.id ? 0.35 : 1 }}
-                        >
-                          {item.prefix && <span style={{ fontSize: 14 }}>{item.prefix}</span>}
-                          <span style={{ fontSize: 12, color: 'var(--fg-2)' }}>{item.label}</span>
-                          <button onClick={() => setTierItems(prev => prev.filter(i => i.id !== rankItem.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-7)', fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                      )}
+                      <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--fg-3)', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>
+                        {item.label}
+                      </div>
+                      {item.suffix && (
+                        <div style={{ fontSize: 10, color: 'var(--fg-6)', marginTop: 1 }}>{item.suffix}</div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
               <button
                 onClick={() => toggleTierRanking(tier)}
@@ -437,73 +441,50 @@ export function RankingEditor({
           onDragOver={ev => ev.preventDefault()}
           onDrop={() => { if (tierDragId) dropOnUnclassified(tierDragId); setTierDragId(null); setDragOverTier(null) }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--fg-5)', whiteSpace: 'nowrap' }}>
-              {t.noTier}
-              <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--fg-7)', textTransform: 'none', letterSpacing: 0 }}>— glisser vers un tier</span>
-            </div>
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher…"
-              style={{ flex: 1, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
-            />
-            {addFormAction && (
-              <button
-                onClick={() => setShowAddForm(v => !v)}
-                style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: showAddForm ? 'var(--bg-subtle)' : 'none', color: 'var(--fg-5)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-              >
-                {showAddForm ? '× Annuler' : `+ ${addEntryLabel ?? 'Ajouter'}`}
-              </button>
-            )}
+          <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--fg-5)', marginBottom: 8 }}>
+            {t.noTier}
+            <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--fg-7)', textTransform: 'none', letterSpacing: 0 }}>— glisser vers un tier</span>
           </div>
-          {addFormAction && showAddForm && (
-            <div style={{ marginBottom: 12 }}>
-              {addError && (
-                <div style={{ background: 'var(--error-bg)', border: '1px solid var(--error-border)', borderRadius: 6, padding: '8px 12px', marginBottom: 10, color: 'var(--error-text)', fontSize: 13 }}>{addError}</div>
-              )}
-              <form action={addFormAction} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <div style={{ flex: '2 1 160px' }}>
-                  <label style={{ display: 'block', fontSize: 10, color: 'var(--fg-6)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>Titre</label>
-                  <input name="title" required style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', color: 'var(--fg)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }} />
-                </div>
-                <div style={{ flex: '0 1 80px' }}>
-                  <label style={{ display: 'block', fontSize: 10, color: 'var(--fg-6)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>Année</label>
-                  <input name="year" type="number" min={1888} max={2099} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', color: 'var(--fg)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }} />
-                </div>
-                <button type="submit" disabled={addPending} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 12, fontWeight: 600, cursor: addPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: addPending ? 0.7 : 1, flexShrink: 0 }}>
-                  {addPending ? '…' : 'Ajouter'}
-                </button>
-              </form>
-            </div>
-          )}
           {(() => {
             const unclassified = items.filter(item => !tierItems.some(i => i.id === item.id) && (!search.trim() || normalizeTitle(item.label).includes(normalizeTitle(search))))
             const visibleUnclassified = search.trim() ? unclassified : unclassified.slice(0, unclassifiedLimit)
             return (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {visibleUnclassified.map(item => (
-                  <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div key={item.id} style={{ position: 'relative' }}>
                     <div
                       draggable
                       onDragStart={() => { setTierDragId(item.id); setQuickAddId(null) }}
                       onDragEnd={() => { setTierDragId(null); setDragOverTier(null) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--bg-card)', border: `1px solid ${quickAddId === item.id ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 7, padding: '5px 8px 5px 12px', cursor: 'grab', opacity: tierDragId === item.id ? 0.4 : 1, userSelect: 'none', transition: 'opacity .1s, border-color .1s' }}
+                      title={item.label}
+                      style={{ width: 104, flexShrink: 0, background: 'var(--bg-card)', border: `1px solid ${quickAddId === item.id ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 6, padding: 4, cursor: 'grab', opacity: tierDragId === item.id ? 0.4 : 1, userSelect: 'none', transition: 'opacity .1s, border-color .1s' }}
                     >
-                      <span style={{ fontSize: 11, color: 'var(--fg-7)', lineHeight: 1 }}>⠿</span>
-                      {item.prefix && <span style={{ fontSize: 16 }}>{item.prefix}</span>}
-                      <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>{item.label}</span>
-                      {item.suffix && <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>{item.suffix}</span>}
-                      <button
-                        onClick={() => {
-                          setQuickAddId(prev => prev === item.id ? null : item.id)
-                          setQuickAddTier(null)
-                        }}
-                        style={{ marginLeft: 2, background: quickAddId === item.id ? 'var(--accent-faint)' : 'none', border: 'none', cursor: 'pointer', color: quickAddId === item.id ? 'var(--accent-fg)' : 'var(--fg-7)', fontSize: 14, lineHeight: 1, padding: '0 2px', borderRadius: 3, flexShrink: 0 }}
-                      >+</button>
+                      <div style={{ position: 'relative', width: '100%', aspectRatio: '2 / 3', background: 'var(--bg-subtle)', borderRadius: 4, overflow: 'hidden' }}>
+                        {item.cover ? (
+                          <img src={item.cover} alt="" loading="lazy" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 26, color: 'var(--fg-7)' }}>
+                            {item.prefix ?? item.label.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <button
+                          onClick={ev => {
+                            ev.stopPropagation()
+                            setQuickAddId(prev => prev === item.id ? null : item.id)
+                            setQuickAddTier(null)
+                          }}
+                          style={{ position: 'absolute', bottom: 3, right: 3, width: 26, height: 26, borderRadius: 13, background: quickAddId === item.id ? 'var(--accent-fg)' : 'rgba(0,0,0,.65)', color: quickAddId === item.id ? 'var(--btn-text)' : '#fff', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontWeight: 700 }}
+                        >+</button>
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--fg-3)', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>
+                        {item.label}
+                      </div>
+                      {item.suffix && (
+                        <div style={{ fontSize: 10, color: 'var(--fg-6)', marginTop: 1 }}>{item.suffix}</div>
+                      )}
                     </div>
                     {quickAddId === item.id && quickAddTier === null && (
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingLeft: 4 }}>
+                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 7, padding: 6, boxShadow: '0 6px 20px rgba(0,0,0,.18)', display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 220 }}>
                         {TIERS.map(tier => {
                           const isRanked = tierRankedTiers.has(tier)
                           const hasItems = tierItems.some(i => i.tier === tier && i.id !== item.id)
@@ -519,7 +500,7 @@ export function RankingEditor({
                                   setQuickAddTier(null)
                                 }
                               }}
-                              style={{ padding: '3px 8px', borderRadius: 5, border: `1px solid ${TIER_COLOR[tier]}55`, background: `${TIER_COLOR[tier]}18`, color: TIER_COLOR[tier], fontSize: 10, fontFamily: "'Fraunces', serif", fontWeight: 700, cursor: 'pointer' }}
+                              style={{ padding: '4px 10px', borderRadius: 5, border: `1px solid ${TIER_COLOR[tier]}55`, background: `${TIER_COLOR[tier]}18`, color: TIER_COLOR[tier], fontSize: 11, fontFamily: "'Fraunces', serif", fontWeight: 700, cursor: 'pointer' }}
                             >{tier}</button>
                           )
                         })}
@@ -532,7 +513,7 @@ export function RankingEditor({
                         .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
                       const tierColor = TIER_COLOR[tier]
                       return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 4, marginTop: 2 }}>
+                        <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 7, padding: 8, boxShadow: '0 6px 20px rgba(0,0,0,.18)', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 200, maxHeight: 280, overflowY: 'auto' }}>
                           <div style={{ fontSize: 10, color: 'var(--fg-6)', marginBottom: 2 }}>
                             Position dans <span style={{ color: tierColor, fontWeight: 600 }}>{TIER_LABEL[tier]}</span> :
                           </div>
@@ -573,15 +554,7 @@ export function RankingEditor({
                 ))}
                 {unclassified.length === 0 && (
                   search.trim() && addFormAction ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ color: 'var(--fg-4)', fontSize: 12 }}>"{search}" n'est pas encore dans la liste.</span>
-                      <button
-                        onClick={() => setShowAddForm(true)}
-                        style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--accent-fg)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}
-                      >
-                        + Ajouter
-                      </button>
-                    </div>
+                    <span style={{ color: 'var(--fg-4)', fontSize: 12 }}>« {search} » n&apos;est pas dans la liste — clique sur Ajouter en bas pour le créer.</span>
                   ) : (
                     <span style={{ color: 'var(--fg-5)', fontSize: 12 }}>{search.trim() ? 'Aucun résultat' : t.allClassified}</span>
                   )
@@ -601,6 +574,37 @@ export function RankingEditor({
           })()}
         </div>
       </div>
+
+      {/* Sticky bottom search + add bar */}
+      {addFormAction && (
+        <div style={{ position: 'sticky', bottom: 0, marginTop: 24, paddingTop: 12, paddingBottom: 12, background: 'var(--bg)', borderTop: '1px solid var(--border)', zIndex: 20 }}>
+          {addError && (
+            <div style={{ background: 'var(--error-bg)', border: '1px solid var(--error-border)', borderRadius: 6, padding: '8px 12px', marginBottom: 8, color: 'var(--error-text)', fontSize: 13 }}>{addError}</div>
+          )}
+          <form action={addFormAction} style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+            <input
+              name="title"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher ou ajouter un titre…"
+              required
+              autoComplete="off"
+              style={{ flex: 1, minWidth: 0, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+            />
+            <input
+              name="year"
+              type="number"
+              min={1888}
+              max={2099}
+              placeholder="Année"
+              style={{ width: 90, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+            />
+            <button type="submit" disabled={addPending || !search.trim()} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, cursor: addPending || !search.trim() ? 'default' : 'pointer', fontFamily: 'inherit', opacity: addPending || !search.trim() ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
+              {addPending ? '…' : `+ ${addEntryLabel ?? 'Ajouter'}`}
+            </button>
+          </form>
+        </div>
+      )}
 
     </div>
   )
