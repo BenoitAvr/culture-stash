@@ -77,7 +77,45 @@ export function RankingEditor({
   const [tierItems, setTierItems] = useState<RankEditItem[]>(initialTierItems)
   const [tierRankedTiers, setTierRankedTiers] = useState(new Set<string>(initialRankedTiers))
 
-  const [isPending, setIsPending] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'error'>('idle')
+  const tierItemsRef = useRef(tierItems)
+  const tierRankedTiersRef = useRef(tierRankedTiers)
+  const onSaveRef = useRef(onSave)
+  tierItemsRef.current = tierItems
+  tierRankedTiersRef.current = tierRankedTiers
+  onSaveRef.current = onSave
+
+  const computeSnapshot = () => JSON.stringify({
+    items: [...tierItemsRef.current]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map(i => ({ id: i.id, tier: i.tier ?? null, position: i.position ?? null, note: i.note ?? null })),
+    ranked: [...tierRankedTiersRef.current].sort(),
+  })
+
+  const lastSavedRef = useRef<string>('')
+  const initSnapshotRef = useRef(false)
+  if (!initSnapshotRef.current) {
+    lastSavedRef.current = computeSnapshot()
+    initSnapshotRef.current = true
+  }
+
+  const flushSave = async () => {
+    const snapshot = computeSnapshot()
+    if (snapshot === lastSavedRef.current) return
+    setSaveStatus('saving')
+    try {
+      await onSaveRef.current(tierItemsRef.current, [...tierRankedTiersRef.current])
+      if (computeSnapshot() === snapshot) {
+        lastSavedRef.current = snapshot
+        setSaveStatus('saved')
+      } else {
+        setSaveStatus('dirty')
+      }
+    } catch (e) {
+      console.error('[RankingEditor] autosave failed', e)
+      setSaveStatus('error')
+    }
+  }
 
   const [tierDragId, setTierDragId] = useState<string | null>(null)
   const [dragOverTier, setDragOverTier] = useState<string | null>(null)
@@ -96,6 +134,35 @@ export function RankingEditor({
     if (wasPendingRef.current && !addPending && !addError) setSearch('')
     wasPendingRef.current = addPending ?? false
   }, [addPending, addError])
+
+  // Mark dirty on edits
+  useEffect(() => {
+    if (computeSnapshot() === lastSavedRef.current) return
+    setSaveStatus(prev => prev === 'saving' ? prev : 'dirty')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tierItems, tierRankedTiers])
+
+  // Debounced autosave (30s after last change)
+  useEffect(() => {
+    if (saveStatus !== 'dirty') return
+    const t = setTimeout(() => { flushSave() }, 30000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveStatus, tierItems, tierRankedTiers])
+
+  // Save on tab hide / unload / unmount
+  useEffect(() => {
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flushSave() }
+    const onUnload = () => { flushSave() }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('beforeunload', onUnload)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('beforeunload', onUnload)
+      flushSave()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const getItem = (id: string) => items.find(e => e.id === id)
 
@@ -243,10 +310,20 @@ export function RankingEditor({
     }
   }
 
-  function handleSave() {
-    setIsPending(true)
-    onSave(tierItems, [...tierRankedTiers]).finally(() => setIsPending(false))
+  async function handleClose() {
+    await flushSave()
+    onCancel()
   }
+
+  const statusContent = (() => {
+    switch (saveStatus) {
+      case 'saving': return { text: 'Enregistrement…', color: 'var(--fg-5)' }
+      case 'saved': return { text: '✓ Enregistré', color: 'var(--accent-fg)' }
+      case 'dirty': return { text: '● Modifications…', color: 'var(--fg-5)' }
+      case 'error': return { text: '✗ Erreur — réessayer', color: '#e05555' }
+      default: return { text: 'Auto-enregistrement actif', color: 'var(--fg-7)' }
+    }
+  })()
 
   return (
     <div>
@@ -256,14 +333,21 @@ export function RankingEditor({
           {hasExisting ? t.editListTitle : t.createListTitle}
         </span>
         <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+        <button
+          onClick={saveStatus === 'error' ? () => flushSave() : undefined}
+          disabled={saveStatus !== 'error'}
+          title={saveStatus === 'error' ? 'Cliquer pour réessayer' : undefined}
+          style={{ padding: '5px 11px', borderRadius: 7, border: 'none', background: 'none', color: statusContent.color, fontSize: 11, fontFamily: 'inherit', cursor: saveStatus === 'error' ? 'pointer' : 'default', whiteSpace: 'nowrap' }}
+        >
+          {statusContent.text}
+        </button>
         {!isImporting && (
           <button onClick={() => setIsImporting(true)} style={{ padding: '5px 11px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-6)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer' }}>
             ↑ Importer
           </button>
         )}
-        <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--fg-7)', fontFamily: 'inherit' }}>{t.cancel}</button>
-        <button onClick={handleSave} disabled={isPending} style={{ padding: '6px 18px', borderRadius: 8, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', cursor: isPending ? 'default' : 'pointer', opacity: isPending ? 0.6 : 1 }}>
-          {isPending ? t.saving : t.save}
+        <button onClick={handleClose} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 12, color: 'var(--fg-4)', background: 'var(--bg-card)', fontFamily: 'inherit', fontWeight: 500 }}>
+          Fermer
         </button>
       </div>
 

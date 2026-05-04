@@ -63,7 +63,6 @@ export function UserListsSection({
       tier.map(i => ({ resourceId: i.id, position: i.position, tier: i.tier, note: i.note })),
       rankedTiers
     )
-    setIsEditing(false)
   }
 
   function renderPreview(list: UserListData) {

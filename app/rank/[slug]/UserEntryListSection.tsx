@@ -53,9 +53,9 @@ export function UserEntryListSection({
   async function handleSave(tier: RankEditItem[], rankedTiers: string[]) {
     if (tier.length === 0) {
       if (myTierList) {
-        console.log('[UserEntryListSection] saving empty ranking → deleting list', myTierList.id)
-        await handleDelete()
-      } else setIsEditing(false)
+        await saveUserEntryLists(topicSlug, [], [], [])
+        onListsChange(lists.filter(l => l.userId !== currentUserId))
+      }
       return
     }
     // Positions stored in state are within-tier (1, 2, 3 per tier).
@@ -81,13 +81,6 @@ export function UserEntryListSection({
       rankedTiers
     )
     onListsChange([...lists.filter(l => l.userId !== currentUserId), ...updated])
-    setIsEditing(false)
-  }
-
-  async function handleDelete() {
-    await saveUserEntryLists(topicSlug, [], [], [])
-    onListsChange(lists.filter(l => l.userId !== currentUserId))
-    setIsEditing(false)
   }
 
   if (!isEditing) return null
