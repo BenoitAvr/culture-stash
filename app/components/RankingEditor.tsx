@@ -528,13 +528,24 @@ export function RankingEditor({
                   )
                 })}
               </div>
-              <button
-                onClick={() => toggleTierRanking(tier)}
-                title="Classer par rang à l'intérieur de ce tier"
-                style={{ alignSelf: 'flex-start', marginTop: 6, padding: '5px 11px', borderRadius: 6, border: `1px solid ${isRankedTier ? 'var(--accent-muted)' : 'var(--border)'}`, background: isRankedTier ? 'var(--accent-faint)' : 'var(--bg-subtle)', color: isRankedTier ? 'var(--accent-fg)' : 'var(--fg-5)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all .15s' }}
-              >
-                {isRankedTier ? '# classé' : '# ranger'}
-              </button>
+              <div role="group" aria-label={`Mode d'affichage de ${TIER_LABEL[tier]}`} style={{ alignSelf: 'flex-start', marginTop: 4, display: 'flex', borderRadius: 7, border: `1px solid ${isRankedTier ? 'var(--accent-muted)' : 'var(--border)'}`, overflow: 'hidden', flexShrink: 0, background: 'var(--bg-subtle)', boxShadow: 'inset 0 0 0 1px transparent' }}>
+                <button
+                  onClick={() => isRankedTier && toggleTierRanking(tier)}
+                  title="Films groupés sans ordre dans cette mention"
+                  style={{ padding: '5px 9px', border: 'none', background: !isRankedTier ? 'var(--bg-card)' : 'transparent', color: !isRankedTier ? 'var(--fg-3)' : 'var(--fg-6)', fontSize: 10.5, fontWeight: !isRankedTier ? 700 : 500, cursor: !isRankedTier ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 4 }}
+                >
+                  <span aria-hidden style={{ fontSize: 11, opacity: 0.85 }}>▦</span>
+                  Vrac
+                </button>
+                <button
+                  onClick={() => !isRankedTier && toggleTierRanking(tier)}
+                  title="Classer les films par rang (1, 2, 3…) dans cette mention"
+                  style={{ padding: '5px 9px', border: 'none', borderLeft: '1px solid var(--border)', background: isRankedTier ? 'var(--accent-fg)' : 'transparent', color: isRankedTier ? 'var(--btn-text)' : 'var(--fg-6)', fontSize: 10.5, fontWeight: isRankedTier ? 800 : 500, cursor: isRankedTier ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 4 }}
+                >
+                  <span aria-hidden style={{ fontFamily: "'Fraunces', serif", fontWeight: 800 }}>1·2·3</span>
+                  <span style={{ fontWeight: 600 }}>Classé</span>
+                </button>
+              </div>
             </div>
           )
         })}

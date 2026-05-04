@@ -85,7 +85,11 @@ export function UserEntryListSection({
 
   if (!isEditing) return null
 
-  const initRankedTiers = (myTierList?.rankedTiers ?? '').split(',').filter(Boolean)
+  // For a brand new list, default to ranking the top tier (EX) so users
+  // discover the rank-within-tier feature on their best films.
+  const initRankedTiers = myTierList
+    ? (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
+    : ['EX']
   // Normalize global DB positions back to within-tier (1, 2, 3…) so the editor
   // state is consistent and dropOnTier's tierCount+1 always appends correctly.
   const initTierItems: RankEditItem[] = myTierList
