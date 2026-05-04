@@ -342,8 +342,13 @@ export function RankingEditor({
           {statusContent.text}
         </button>
         {!isImporting && (
-          <button onClick={() => setIsImporting(true)} style={{ padding: '5px 11px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-6)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer' }}>
-            ↑ Importer
+          <button
+            onClick={() => setIsImporting(true)}
+            title="Coller une tier list venant d'un autre site"
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1, padding: '6px 14px', borderRadius: 8, border: '1.5px solid var(--accent-fg)', background: 'var(--accent-faint)', color: 'var(--accent-fg)', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            <span style={{ fontSize: 9.5, fontWeight: 400, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '.05em' }}>Déjà une liste ailleurs&nbsp;?</span>
+            <span style={{ fontSize: 13, fontWeight: 700, marginTop: 1 }}>↑ Importe-la</span>
           </button>
         )}
         <button onClick={handleClose} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 12, color: 'var(--fg-4)', background: 'var(--bg-card)', fontFamily: 'inherit', fontWeight: 500 }}>
