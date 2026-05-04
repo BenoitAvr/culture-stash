@@ -41,11 +41,13 @@ function QuickAddPanel({
   entry,
   myTierList,
   onAdd,
+  onToggleRanking,
   onClose,
 }: {
   entry: Entry
   myTierList: UserEntryListData | null
   onAdd: (tier: string, insertBeforeId?: string) => Promise<void>
+  onToggleRanking: (tier: string) => Promise<void>
   onClose: () => void
 }) {
   const { lang } = useParams() as { lang: string }
@@ -104,6 +106,33 @@ function QuickAddPanel({
           )
         })}
       </div>
+
+      {/* Mode toggle for the selected tier (only on existing lists) */}
+      {selectedTier && myTierList && (
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 11, color: 'var(--fg-6)' }}>
+            Mode pour {TIER_LABEL[selectedTier]} :
+          </span>
+          <div role="group" aria-label="Mode du tier" style={{ display: 'flex', borderRadius: 7, border: `1px solid ${isRanked ? 'var(--accent-muted)' : 'var(--border)'}`, overflow: 'hidden', flexShrink: 0, background: 'var(--bg-subtle)' }}>
+            <button
+              onClick={() => isRanked && onToggleRanking(selectedTier)}
+              title="Films groupés sans ordre dans cette mention"
+              style={{ padding: '4px 9px', border: 'none', background: !isRanked ? 'var(--bg-card)' : 'transparent', color: !isRanked ? 'var(--fg-3)' : 'var(--fg-6)', fontSize: 10.5, fontWeight: !isRanked ? 700 : 500, cursor: !isRanked ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              <span aria-hidden style={{ fontSize: 11, opacity: 0.85 }}>▦</span>
+              Vrac
+            </button>
+            <button
+              onClick={() => !isRanked && onToggleRanking(selectedTier)}
+              title="Classer les films par rang (1, 2, 3…) dans cette mention"
+              style={{ padding: '4px 9px', border: 'none', borderLeft: '1px solid var(--border)', background: isRanked ? 'var(--accent-fg)' : 'transparent', color: isRanked ? 'var(--btn-text)' : 'var(--fg-6)', fontSize: 10.5, fontWeight: isRanked ? 800 : 500, cursor: isRanked ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              <span aria-hidden style={{ fontFamily: "'Fraunces', serif", fontWeight: 800 }}>1·2·3</span>
+              <span style={{ fontWeight: 600 }}>Classé</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Position picker for ranked tiers */}
       {isRanked && selectedTier && (
@@ -338,6 +367,31 @@ function UserAwareEntryList({
     setQuickAddId(null)
   }
 
+  async function handleToggleRanking(tier: string) {
+    if (!myTierList) return
+    const currentRankedTiers = (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
+    const willBeRanked = !currentRankedTiers.includes(tier)
+    const newRankedTiers = willBeRanked
+      ? [...currentRankedTiers, tier].sort((a, b) => TIERS.indexOf(a) - TIERS.indexOf(b))
+      : currentRankedTiers.filter(t => t !== tier)
+
+    let pos = 1
+    const newItems = myTierList.items.map(i => {
+      if (i.tier !== tier) {
+        return { entryId: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined, note: i.note ?? undefined }
+      }
+      return {
+        entryId: i.entryId,
+        tier: i.tier ?? undefined,
+        position: willBeRanked ? pos++ : undefined,
+        note: i.note ?? undefined,
+      }
+    })
+
+    const updated = await saveUserEntryLists(topicSlug, [], newItems, newRankedTiers)
+    setLists(prev => [...prev.filter(l => l.userId !== currentUserId), ...updated])
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {entries.map((entry, i) => (
@@ -355,6 +409,7 @@ function UserAwareEntryList({
               entry={entry}
               myTierList={myTierList}
               onAdd={(tier, insertBeforeId) => handleQuickAdd(entry.id, tier, insertBeforeId)}
+              onToggleRanking={handleToggleRanking}
               onClose={() => setQuickAddId(null)}
             />
           )}
