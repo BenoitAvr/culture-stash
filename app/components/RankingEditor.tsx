@@ -121,6 +121,8 @@ export function RankingEditor({
   const [dragOverTier, setDragOverTier] = useState<string | null>(null)
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null)
   const [hoveredTier, setHoveredTier] = useState<string | null>(null)
+  const [moveCardId, setMoveCardId] = useState<string | null>(null)
+  const [moveTier, setMoveTier] = useState<string | null>(null)
 
   const [isImporting, setIsImporting] = useState(false)
   const [importText, setImportText] = useState('')
@@ -450,11 +452,11 @@ export function RankingEditor({
           return (
             <div
               key={tier}
+              className="tier-row"
               onMouseEnter={() => setHoveredTier(tier)}
               onMouseLeave={() => setHoveredTier(prev => prev === tier ? null : prev)}
-              style={{ display: 'flex', alignItems: 'stretch', gap: 8, marginBottom: 5 }}
             >
-              <div style={{ width: 54, minHeight: 50, borderRadius: 6, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 9.5, color: TIER_COLOR[tier], flexShrink: 0, textAlign: 'center', padding: '0 4px' }}>
+              <div className="tier-label" style={{ minHeight: 50, borderRadius: 6, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 9.5, color: TIER_COLOR[tier], textAlign: 'center', padding: '0 4px' }}>
                 {TIER_LABEL[tier]}
               </div>
               <div
@@ -468,7 +470,8 @@ export function RankingEditor({
                   }
                   setDragOverTier(null); setTierDragId(null)
                 }}
-                style={{ flex: 1, minHeight: 50, maxHeight: isExpanded ? 4000 : collapsedMaxH, overflow: 'hidden', background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 6, padding: '9px 6px 5px', display: 'flex', flexWrap: 'wrap', gap: cardGap, alignItems: 'flex-start', alignContent: 'flex-start', transition: 'background .12s, border-color .12s, max-height .25s ease' }}
+                className="tier-dropzone"
+                style={{ minHeight: 50, maxHeight: isExpanded ? 4000 : collapsedMaxH, overflow: 'hidden', background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 6, padding: '9px 6px 5px', display: 'flex', flexWrap: 'wrap', gap: cardGap, alignItems: 'flex-start', alignContent: 'flex-start', transition: 'background .12s, border-color .12s, max-height .25s ease' }}
               >
                 {inTier.length === 0 && <span style={{ color: 'var(--fg-6)', fontSize: 12, fontStyle: 'italic', alignSelf: 'center' }}>← glisser ici</span>}
                 {inTier.map((rankItem, idx) => {
@@ -480,6 +483,7 @@ export function RankingEditor({
                   return (
                     <div key={rankItem.id}
                       draggable
+                      onClick={() => { setMoveCardId(rankItem.id); setMoveTier(null) }}
                       onDragStart={ev => { ev.stopPropagation(); setTierDragId(rankItem.id) }}
                       onDragOver={isRankedTier ? ev => { ev.preventDefault(); ev.stopPropagation(); if (!isDragging) setDragOverItemId(rankItem.id) } : undefined}
                       onDragLeave={isRankedTier ? () => setDragOverItemId(prev => prev === rankItem.id ? null : prev) : undefined}
@@ -528,7 +532,7 @@ export function RankingEditor({
                   )
                 })}
               </div>
-              <div role="group" aria-label={`Mode d'affichage de ${TIER_LABEL[tier]}`} style={{ alignSelf: 'flex-start', marginTop: 4, display: 'flex', borderRadius: 7, border: `1px solid ${isRankedTier ? 'var(--accent-muted)' : 'var(--border)'}`, overflow: 'hidden', flexShrink: 0, background: 'var(--bg-subtle)', boxShadow: 'inset 0 0 0 1px transparent' }}>
+              <div role="group" aria-label={`Mode d'affichage de ${TIER_LABEL[tier]}`} className="tier-toggle" style={{ alignSelf: 'flex-start', marginTop: 4, display: 'flex', borderRadius: 7, border: `1px solid ${isRankedTier ? 'var(--accent-muted)' : 'var(--border)'}`, overflow: 'hidden', flexShrink: 0, background: 'var(--bg-subtle)', boxShadow: 'inset 0 0 0 1px transparent' }}>
                 <button
                   onClick={() => isRankedTier && toggleTierRanking(tier)}
                   title="Films groupés sans ordre dans cette mention"
@@ -558,7 +562,7 @@ export function RankingEditor({
           <div style={{ background: 'var(--error-bg)', border: '1px solid var(--error-border)', borderRadius: 6, padding: '8px 12px', marginBottom: 8, color: 'var(--error-text)', fontSize: 13 }}>{addError}</div>
         )}
         {addFormAction && (
-          <form action={addFormAction} style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 10 }}>
+          <form action={addFormAction} className="rank-add-form" style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 10 }}>
             <input
               name="title"
               value={search}
@@ -566,6 +570,7 @@ export function RankingEditor({
               placeholder="Rechercher…"
               required
               autoComplete="off"
+              className="rank-add-title"
               style={{ flex: 1, minWidth: 0, padding: '10px 14px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, fontFamily: 'inherit', outline: 'none', transition: 'border-color .15s, box-shadow .15s' }}
               onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-fg)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-faint)' }}
               onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
@@ -576,9 +581,10 @@ export function RankingEditor({
               min={1888}
               max={2099}
               placeholder="Année"
+              className="rank-add-year"
               style={{ width: 90, padding: '10px 12px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }}
             />
-            <button type="submit" disabled={addPending || !search.trim()} title="Si le titre n'est pas dans la liste, ajoute-le au site" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1, padding: '6px 18px', borderRadius: 9, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontFamily: 'inherit', cursor: addPending || !search.trim() ? 'default' : 'pointer', opacity: addPending || !search.trim() ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
+            <button type="submit" disabled={addPending || !search.trim()} title="Si le titre n'est pas dans la liste, ajoute-le au site" className="rank-add-submit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1, padding: '6px 18px', borderRadius: 9, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontFamily: 'inherit', cursor: addPending || !search.trim() ? 'default' : 'pointer', opacity: addPending || !search.trim() ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
               <span style={{ fontSize: 9.5, fontWeight: 400, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '.05em' }}>Pas dans la liste&nbsp;?</span>
               <span style={{ fontSize: 14, fontWeight: 700, marginTop: 1 }}>{addPending ? '…' : '+ Ajoute-le'}</span>
             </button>
@@ -719,6 +725,128 @@ export function RankingEditor({
           )
         })()}
       </div>
+
+      {/* Move modal — replaces drag-and-drop on touch devices */}
+      {moveCardId && (() => {
+        const card = tierItems.find(i => i.id === moveCardId)
+        const item = card ? getItem(card.id) : null
+        if (!card || !item) return null
+        const currentTier = card.tier
+        const close = () => { setMoveCardId(null); setMoveTier(null) }
+        const targetTier = moveTier ?? currentTier ?? null
+        const isTargetRanked = targetTier ? tierRankedTiers.has(targetTier) : false
+        const positionItems = targetTier
+          ? tierItems
+              .filter(i => i.tier === targetTier && i.id !== card.id)
+              .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+          : []
+        return (
+          <div
+            onClick={close}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 12 }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, width: '100%', maxWidth: 460, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 -10px 40px rgba(0,0,0,.25)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                {item.cover && <img src={item.cover} alt="" style={{ width: 42, height: 60, objectFit: 'cover', borderRadius: 4 }} />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: 'var(--fg-6)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Déplacer</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</div>
+                  {currentTier && (
+                    <div style={{ fontSize: 11, color: TIER_COLOR[currentTier], marginTop: 2 }}>
+                      Actuellement : {TIER_LABEL[currentTier]}
+                      {card.position !== undefined && tierRankedTiers.has(currentTier) ? ` · #${card.position}` : ''}
+                    </div>
+                  )}
+                </div>
+                <button onClick={close} style={{ background: 'none', border: 'none', fontSize: 22, color: 'var(--fg-6)', cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
+              </div>
+
+              {/* Tier picker */}
+              <div style={{ fontSize: 11, color: 'var(--fg-6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>Mention</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 14 }}>
+                {TIERS.map(tier => {
+                  const isCurrent = tier === targetTier
+                  const c = TIER_COLOR[tier]
+                  return (
+                    <button
+                      key={tier}
+                      onClick={() => setMoveTier(tier)}
+                      style={{ padding: '7px 12px', borderRadius: 6, border: `1px solid ${isCurrent ? c : c + '55'}`, background: isCurrent ? `${c}25` : `${c}0d`, color: c, fontSize: 12, fontFamily: "'Fraunces', serif", fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      {TIER_LABEL[tier]}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Position picker for ranked tier */}
+              {targetTier && isTargetRanked && (
+                <>
+                  <div style={{ fontSize: 11, color: 'var(--fg-6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                    Position dans {TIER_LABEL[targetTier]}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
+                    <button
+                      onClick={() => { dropOnTier(card.id, targetTier, null); close() }}
+                      style={{ padding: '8px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--fg-3)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      En dernier (#{positionItems.length + 1})
+                    </button>
+                    {positionItems.map((p, idx) => {
+                      const it = getItem(p.id)
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => { dropOnTier(card.id, targetTier, p.id); close() }}
+                          style={{ padding: '8px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--fg-3)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          Avant « {it?.label ?? p.id} » (#{idx + 1})
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* Confirm for unranked target tier */}
+              {targetTier && !isTargetRanked && targetTier !== currentTier && (
+                <button
+                  onClick={() => { dropOnTier(card.id, targetTier); close() }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10 }}
+                >
+                  Déplacer vers {TIER_LABEL[targetTier]}
+                </button>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button
+                  onClick={() => {
+                    setTierItems(prev => {
+                      const oldTier = card.tier
+                      const r = prev.filter(i => i.id !== card.id)
+                      if (oldTier && tierRankedTiers.has(oldTier)) {
+                        let pos = 1
+                        return r.map(i => i.tier === oldTier ? { ...i, position: pos++ } : i)
+                      }
+                      return r
+                    })
+                    close()
+                  }}
+                  style={{ flex: 1, padding: '9px 14px', borderRadius: 8, border: '1px solid #e0555533', background: '#e0555518', color: '#e05555', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Retirer de la liste
+                </button>
+                <button onClick={close} style={{ flex: 1, padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--fg-5)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
     </div>
   )

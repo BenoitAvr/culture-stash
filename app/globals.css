@@ -148,6 +148,43 @@ nav, [data-nav] {
   .rank-row > .col-metrics > .col-fav { flex: 0 0 auto; }
 }
 
+/* tier editor rows */
+.tier-row {
+  display: grid;
+  grid-template-columns: 54px 1fr auto;
+  grid-template-areas: "label dropzone toggle";
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.tier-row > .tier-label    { grid-area: label; }
+.tier-row > .tier-dropzone { grid-area: dropzone; }
+.tier-row > .tier-toggle   { grid-area: toggle; }
+
+@media (max-width: 720px) {
+  /* Editor page padding tighter */
+  .rank-edit-shell { padding: 16px 12px 100px !important; }
+
+  .tier-row {
+    grid-template-columns: 54px minmax(0, 1fr);
+    grid-template-areas:
+      "label dropzone"
+      "label toggle";
+    column-gap: 6px;
+    row-gap: 4px;
+  }
+  .tier-row > .tier-toggle { justify-self: end; align-self: end; }
+
+  /* Always expanded — there is no hover on touch devices */
+  .tier-dropzone { max-height: none !important; }
+
+  /* Form in the sticky bar wraps gracefully */
+  .rank-add-form { flex-wrap: wrap !important; }
+  .rank-add-form > .rank-add-title { flex: 1 1 100% !important; min-width: 0 !important; }
+  .rank-add-form > .rank-add-year { flex: 0 1 90px !important; }
+  .rank-add-form > .rank-add-submit { flex: 1 1 auto !important; }
+}
+
 /* prose content from DB */
 .prose-content h2 {
   font-family: 'Fraunces', serif;
