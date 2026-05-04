@@ -435,29 +435,26 @@ export function RankingEditor({
           const isRankedTier = tierRankedTiers.has(tier)
           const isDropTarget = dragOverTier === tier
           const tierOffset = TIERS.slice(0, TIERS.indexOf(tier)).reduce((sum, t) => sum + tierItems.filter(i => i.tier === t).length, 0)
-          const cardW = 62
-          const placeholderFs = 18
-          const closeSz = 16
-          const closeFs = 11
-          const emblemSz = 24
-          const emblemFs = 12
-          const emblemOff = -6
+          const cardW = 50
+          const placeholderFs = 16
+          const closeSz = 14
+          const closeFs = 10
+          const emblemSz = 22
+          const emblemFs = 11
+          const emblemOff = -5
           const emblemBw = 2
-          const titleFs = 10
-          const titleClamp = 1
-          const yearFs = 9
-          const cardPad = 3
-          const cardGap = 5
+          const cardPad = 2
+          const cardGap = 4
           const isExpanded = hoveredTier === tier || isDropTarget
-          const collapsedMaxH = 145
+          const collapsedMaxH = 110
           return (
             <div
               key={tier}
               onMouseEnter={() => setHoveredTier(tier)}
               onMouseLeave={() => setHoveredTier(prev => prev === tier ? null : prev)}
-              style={{ display: 'flex', alignItems: 'stretch', gap: 10, marginBottom: 10 }}
+              style={{ display: 'flex', alignItems: 'stretch', gap: 8, marginBottom: 5 }}
             >
-              <div style={{ width: 64, minHeight: 60, borderRadius: 7, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 10, color: TIER_COLOR[tier], flexShrink: 0, textAlign: 'center', padding: '0 6px' }}>
+              <div style={{ width: 54, minHeight: 50, borderRadius: 6, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 9.5, color: TIER_COLOR[tier], flexShrink: 0, textAlign: 'center', padding: '0 4px' }}>
                 {TIER_LABEL[tier]}
               </div>
               <div
@@ -471,7 +468,7 @@ export function RankingEditor({
                   }
                   setDragOverTier(null); setTierDragId(null)
                 }}
-                style={{ flex: 1, minHeight: 60, maxHeight: isExpanded ? 4000 : collapsedMaxH, overflow: 'hidden', background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 7, padding: '12px 8px 8px', display: 'flex', flexWrap: 'wrap', gap: cardGap, alignItems: 'flex-start', alignContent: 'flex-start', transition: 'background .12s, border-color .12s, max-height .25s ease' }}
+                style={{ flex: 1, minHeight: 50, maxHeight: isExpanded ? 4000 : collapsedMaxH, overflow: 'hidden', background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 6, padding: '9px 6px 5px', display: 'flex', flexWrap: 'wrap', gap: cardGap, alignItems: 'flex-start', alignContent: 'flex-start', transition: 'background .12s, border-color .12s, max-height .25s ease' }}
               >
                 {inTier.length === 0 && <span style={{ color: 'var(--fg-6)', fontSize: 12, fontStyle: 'italic', alignSelf: 'center' }}>← glisser ici</span>}
                 {inTier.map((rankItem, idx) => {
@@ -524,12 +521,9 @@ export function RankingEditor({
                           {position}
                         </div>
                       )}
-                      <div style={{ marginTop: 4, fontSize: titleFs, color: 'var(--fg-3)', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: titleClamp, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>
+                      <div style={{ marginTop: 2, fontSize: 8.5, color: 'var(--fg-4)', lineHeight: 1.15, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>
                         {item.label}
                       </div>
-                      {item.suffix && (
-                        <div style={{ fontSize: yearFs, color: 'var(--fg-6)', marginTop: 1 }}>{item.suffix}</div>
-                      )}
                     </div>
                   )
                 })}
