@@ -82,6 +82,7 @@ export function RankingEditor({
   const [tierDragId, setTierDragId] = useState<string | null>(null)
   const [dragOverTier, setDragOverTier] = useState<string | null>(null)
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null)
+  const [hoveredTier, setHoveredTier] = useState<string | null>(null)
 
   const [isImporting, setIsImporting] = useState(false)
   const [importText, setImportText] = useState('')
@@ -345,22 +346,28 @@ export function RankingEditor({
           const isRankedTier = tierRankedTiers.has(tier)
           const isDropTarget = dragOverTier === tier
           const tierOffset = TIERS.slice(0, TIERS.indexOf(tier)).reduce((sum, t) => sum + tierItems.filter(i => i.tier === t).length, 0)
-          const compact = inTier.length > 8
-          const cardW = compact ? 62 : 104
-          const placeholderFs = compact ? 18 : 26
-          const closeSz = compact ? 16 : 20
-          const closeFs = compact ? 11 : 13
-          const emblemSz = compact ? 24 : 34
-          const emblemFs = compact ? 12 : 16
-          const emblemOff = compact ? -6 : -8
-          const emblemBw = compact ? 2 : 2.5
-          const titleFs = compact ? 10 : 11.5
-          const titleClamp = compact ? 1 : 2
-          const yearFs = compact ? 9 : 10
-          const cardPad = compact ? 3 : 4
-          const cardGap = compact ? 5 : 7
+          const cardW = 62
+          const placeholderFs = 18
+          const closeSz = 16
+          const closeFs = 11
+          const emblemSz = 24
+          const emblemFs = 12
+          const emblemOff = -6
+          const emblemBw = 2
+          const titleFs = 10
+          const titleClamp = 1
+          const yearFs = 9
+          const cardPad = 3
+          const cardGap = 5
+          const isExpanded = hoveredTier === tier || isDropTarget
+          const collapsedMaxH = 145
           return (
-            <div key={tier} style={{ display: 'flex', alignItems: 'stretch', gap: 10, marginBottom: 10 }}>
+            <div
+              key={tier}
+              onMouseEnter={() => setHoveredTier(tier)}
+              onMouseLeave={() => setHoveredTier(prev => prev === tier ? null : prev)}
+              style={{ display: 'flex', alignItems: 'stretch', gap: 10, marginBottom: 10 }}
+            >
               <div style={{ width: 64, minHeight: 60, borderRadius: 7, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 10, color: TIER_COLOR[tier], flexShrink: 0, textAlign: 'center', padding: '0 6px' }}>
                 {TIER_LABEL[tier]}
               </div>
@@ -375,7 +382,7 @@ export function RankingEditor({
                   }
                   setDragOverTier(null); setTierDragId(null)
                 }}
-                style={{ flex: 1, minHeight: 60, background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 7, padding: '6px 8px', display: 'flex', flexWrap: 'wrap', gap: cardGap, alignItems: 'flex-start', alignContent: 'flex-start', transition: 'background .12s, border-color .12s' }}
+                style={{ flex: 1, minHeight: 60, maxHeight: isExpanded ? 4000 : collapsedMaxH, overflow: 'hidden', background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 7, padding: '12px 8px 8px', display: 'flex', flexWrap: 'wrap', gap: cardGap, alignItems: 'flex-start', alignContent: 'flex-start', transition: 'background .12s, border-color .12s, max-height .25s ease' }}
               >
                 {inTier.length === 0 && <span style={{ color: 'var(--fg-6)', fontSize: 12, fontStyle: 'italic', alignSelf: 'center' }}>← glisser ici</span>}
                 {inTier.map((rankItem, idx) => {
