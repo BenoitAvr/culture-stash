@@ -271,13 +271,13 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
             <>
               <div
                 title={TIERS.filter(t => entry.tierDistribution[t]).map(t => `${TIER_LABEL[t]} : ${entry.tierDistribution[t]}`).join(' · ')}
-                style={{ position: 'relative', height: 22, borderRadius: 4, background: tierGradient, overflow: 'hidden', border: '1px solid rgba(0,0,0,.08)' }}
+                style={{ position: 'relative', height: 26, borderRadius: 6, background: tierGradient, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(0,0,0,.12)', overflow: 'hidden' }}
               >
-                <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 11, fontWeight: 800, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,.6), 0 0 3px rgba(0,0,0,.4)', letterSpacing: '.02em' }}>
+                <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontSize: 13, fontWeight: 600, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,.55), 0 0 6px rgba(0,0,0,.25)', letterSpacing: '.01em' }}>
                   {TIER_LABEL[mention]}
                 </span>
               </div>
-              <span style={{ fontSize: 9.5, color: 'var(--fg-6)', textAlign: 'center' }}>{totalVotes} avis</span>
+              <span style={{ fontSize: 9.5, color: 'var(--fg-6)', textAlign: 'center', letterSpacing: '.02em' }}>{totalVotes} avis</span>
             </>
           ) : (
             <span style={{ fontSize: 11, color: 'var(--fg-7)', textAlign: 'center' }}>—</span>

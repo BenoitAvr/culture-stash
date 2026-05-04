@@ -156,7 +156,9 @@ export function PersonalActions({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
       <Link
-        href={`/${lang}/rank/${topicSlug}/edit`}
+        href={myList
+          ? `/${lang}/rank/${topicSlug}/${encodeURIComponent(myList.username)}/edit`
+          : `/${lang}/rank/${topicSlug}/edit`}
         style={{
           padding: '10px 22px', borderRadius: 8,
           background: 'var(--bg-card)', color: 'var(--fg)',

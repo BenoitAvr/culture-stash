@@ -100,66 +100,80 @@ async function UserListInner({
         </div>
       </div>
 
-      {/* Tier list */}
+      {/* Tier list — same look as the editor (read-only) */}
       {activeTiers.length === 0 ? (
         <p style={{ color: 'var(--fg-5)', fontSize: 14 }}>
           {lang === 'fr' ? 'Cette liste est vide.' : 'This list is empty.'}
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {activeTiers.map(tier => {
+        <div>
+          {TIERS.filter(t => activeTiers.includes(t)).map(tier => {
             const tItems = list.items.filter(i => i.tier === tier)
+              .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
             const isRanked = rts.includes(tier)
             const viewOffset = TIERS.slice(0, TIERS.indexOf(tier)).reduce(
               (sum, t) => sum + list.items.filter(i => i.tier === t).length, 0
             )
             return (
-              <div key={tier} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                <div style={{
-                  minWidth: 80, height: 30, borderRadius: 6,
-                  background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}55`,
+              <div key={tier} className="tier-row">
+                <div className="tier-label" style={{
+                  minHeight: 50, borderRadius: 6,
+                  background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 10,
-                  color: TIER_COLOR[tier], flexShrink: 0, padding: '0 6px',
+                  fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 9.5,
+                  color: TIER_COLOR[tier], textAlign: 'center', padding: '0 4px',
                 }}>
                   {TIER_LABEL[tier]}
                 </div>
-
-                {isRanked ? (
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, paddingTop: 2 }}>
-                    {tItems.map((item, idx) => (
-                      <div key={item.entryId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{
-                          fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 13,
-                          color: (viewOffset + idx) < 3 ? 'var(--accent-fg)' : 'var(--fg-5)',
-                          minWidth: 18, textAlign: 'right', flexShrink: 0,
+                <div className="tier-dropzone" style={{
+                  minHeight: 50, background: 'var(--bg-card)',
+                  border: '1px solid var(--border)', borderRadius: 6,
+                  padding: '12px 6px 6px',
+                  display: 'flex', flexWrap: 'wrap', gap: 4,
+                  alignItems: 'flex-start', alignContent: 'flex-start',
+                }}>
+                  {tItems.map((item, idx) => {
+                    const position = isRanked ? viewOffset + idx + 1 : undefined
+                    const label = pickTitle(item.entry, lang)
+                    return (
+                      <div key={item.entryId} title={label} style={{
+                        position: 'relative', width: 50, flexShrink: 0,
+                        background: 'var(--bg-card)', border: '1px solid var(--border)',
+                        borderRadius: 6, padding: 2, userSelect: 'none',
+                      }}>
+                        <div style={{
+                          position: 'relative', width: '100%', aspectRatio: '2 / 3',
+                          background: 'var(--bg-subtle)', borderRadius: 4, overflow: 'hidden',
                         }}>
-                          {viewOffset + idx + 1}
-                        </span>
-                        {item.entry.cover
-                          ? <img src={item.entry.cover} alt="" style={{ width: 34, height: 50, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
-                          : <div style={{ width: 34, height: 50, borderRadius: 3, flexShrink: 0, background: `${TIER_COLOR[tier]}18`, border: `1px solid ${TIER_COLOR[tier]}33` }} />
-                        }
-                        <span style={{ fontSize: 14, color: 'var(--fg-2)', flex: 1 }}>{pickTitle(item.entry, lang)}</span>
-                        {item.entry.year && <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>{item.entry.year}</span>}
+                          {item.entry.cover
+                            ? <img src={item.entry.cover} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 16, color: 'var(--fg-7)' }}>{label.charAt(0).toUpperCase()}</div>
+                          }
+                        </div>
+                        {position !== undefined && (
+                          <div style={{
+                            position: 'absolute', top: -5, left: -5,
+                            minWidth: 22, height: 22, padding: '0 5px',
+                            borderRadius: 11,
+                            background: position <= 3 ? 'var(--accent-fg)' : '#1a1a1a',
+                            color: position <= 3 ? 'var(--btn-text)' : '#fff',
+                            border: '2px solid var(--bg-card)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 11, fontWeight: 800, fontFamily: "'Fraunces', serif",
+                            boxShadow: '0 3px 8px rgba(0,0,0,.4)', zIndex: 3,
+                          }}>{position}</div>
+                        )}
+                        <div style={{
+                          marginTop: 2, fontSize: 8.5, color: 'var(--fg-4)', lineHeight: 1.15,
+                          display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden', wordBreak: 'break-word',
+                        } as React.CSSProperties}>
+                          {label}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 10, paddingTop: 2 }}>
-                    {tItems.map(item => (
-                      <div key={item.entryId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 74 }}>
-                        {item.entry.cover
-                          ? <img src={item.entry.cover} alt={pickTitle(item.entry, lang)} style={{ width: 68, height: 98, objectFit: 'cover', borderRadius: 4 }} />
-                          : <div style={{ width: 68, height: 98, borderRadius: 4, background: `${TIER_COLOR[tier]}18`, border: `1px solid ${TIER_COLOR[tier]}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 24, color: TIER_COLOR[tier] }}>{pickTitle(item.entry, lang)[0]?.toUpperCase()}</div>
-                        }
-                        <span style={{ fontSize: 10, color: 'var(--fg-5)', textAlign: 'center', lineHeight: 1.25, width: '100%', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>
-                          {pickTitle(item.entry, lang)}{item.entry.year ? ` (${item.entry.year})` : ''}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                    )
+                  })}
+                </div>
               </div>
             )
           })}

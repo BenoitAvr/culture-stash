@@ -12,12 +12,14 @@ export function RankEditClientPage({
   entries,
   initialLists,
   currentUserId,
+  ownerUsername,
   t,
 }: {
   topicSlug: string
   entries: EntryItem[]
   initialLists: UserEntryListData[]
   currentUserId: string
+  ownerUsername?: string
   t: Dict['rankings']
 }) {
   const router = useRouter()
@@ -25,7 +27,14 @@ export function RankEditClientPage({
   const [lists, setLists] = useState<UserEntryListData[]>(initialLists)
 
   function handleSetIsEditing(v: boolean) {
-    if (!v) router.push(`/${lang}/rank/${topicSlug}`)
+    if (!v) {
+      // Once edits are saved, send the user to their public list view —
+      // that's the URL they'd want to share.
+      const target = ownerUsername
+        ? `/${lang}/rank/${topicSlug}/${encodeURIComponent(ownerUsername)}`
+        : `/${lang}/rank/${topicSlug}`
+      router.push(target)
+    }
   }
 
   return (
