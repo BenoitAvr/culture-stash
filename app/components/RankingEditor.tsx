@@ -345,6 +345,20 @@ export function RankingEditor({
           const isRankedTier = tierRankedTiers.has(tier)
           const isDropTarget = dragOverTier === tier
           const tierOffset = TIERS.slice(0, TIERS.indexOf(tier)).reduce((sum, t) => sum + tierItems.filter(i => i.tier === t).length, 0)
+          const compact = inTier.length > 8
+          const cardW = compact ? 62 : 104
+          const placeholderFs = compact ? 18 : 26
+          const closeSz = compact ? 16 : 20
+          const closeFs = compact ? 11 : 13
+          const emblemSz = compact ? 24 : 34
+          const emblemFs = compact ? 12 : 16
+          const emblemOff = compact ? -6 : -8
+          const emblemBw = compact ? 2 : 2.5
+          const titleFs = compact ? 10 : 11.5
+          const titleClamp = compact ? 1 : 2
+          const yearFs = compact ? 9 : 10
+          const cardPad = compact ? 3 : 4
+          const cardGap = compact ? 5 : 7
           return (
             <div key={tier} style={{ display: 'flex', alignItems: 'stretch', gap: 10, marginBottom: 10 }}>
               <div style={{ width: 64, minHeight: 60, borderRadius: 7, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 10, color: TIER_COLOR[tier], flexShrink: 0, textAlign: 'center', padding: '0 6px' }}>
@@ -361,7 +375,7 @@ export function RankingEditor({
                   }
                   setDragOverTier(null); setTierDragId(null)
                 }}
-                style={{ flex: 1, minHeight: 60, background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 7, padding: '6px 8px', display: 'flex', flexWrap: 'wrap', gap: 7, alignItems: 'flex-start', alignContent: 'flex-start', transition: 'background .12s, border-color .12s' }}
+                style={{ flex: 1, minHeight: 60, background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 7, padding: '6px 8px', display: 'flex', flexWrap: 'wrap', gap: cardGap, alignItems: 'flex-start', alignContent: 'flex-start', transition: 'background .12s, border-color .12s' }}
               >
                 {inTier.length === 0 && <span style={{ color: 'var(--fg-6)', fontSize: 12, fontStyle: 'italic', alignSelf: 'center' }}>← glisser ici</span>}
                 {inTier.map((rankItem, idx) => {
@@ -387,13 +401,13 @@ export function RankingEditor({
                       } : undefined}
                       onDragEnd={() => { setTierDragId(null); setDragOverTier(null); setDragOverItemId(null) }}
                       title={item.label}
-                      style={{ position: 'relative', width: 104, flexShrink: 0, background: 'var(--bg-card)', border: `1px solid ${isOver ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 6, padding: 4, cursor: 'grab', opacity: isDragging ? 0.4 : 1, userSelect: 'none', transition: 'border-color .1s, opacity .1s' }}
+                      style={{ position: 'relative', width: cardW, flexShrink: 0, background: 'var(--bg-card)', border: `1px solid ${isOver ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 6, padding: cardPad, cursor: 'grab', opacity: isDragging ? 0.4 : 1, userSelect: 'none', transition: 'border-color .1s, opacity .1s' }}
                     >
                       <div style={{ position: 'relative', width: '100%', aspectRatio: '2 / 3', background: 'var(--bg-subtle)', borderRadius: 4, overflow: 'hidden' }}>
                         {item.cover ? (
                           <img src={item.cover} alt="" loading="lazy" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 26, color: 'var(--fg-7)' }}>
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: placeholderFs, color: 'var(--fg-7)' }}>
                             {item.prefix ?? item.label.charAt(0).toUpperCase()}
                           </div>
                         )}
@@ -406,19 +420,19 @@ export function RankingEditor({
                               setTierItems(prev => prev.filter(i => i.id !== rankItem.id))
                             }
                           }}
-                          style={{ position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: 10, background: 'rgba(0,0,0,.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                          style={{ position: 'absolute', top: 3, right: 3, width: closeSz, height: closeSz, borderRadius: closeSz / 2, background: 'rgba(0,0,0,.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: closeFs, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
                         >×</button>
                       </div>
                       {position !== undefined && (
-                        <div style={{ position: 'absolute', top: -8, left: -8, minWidth: 34, height: 34, padding: '0 8px', borderRadius: 17, background: position <= 3 ? 'var(--accent-fg)' : '#1a1a1a', color: position <= 3 ? 'var(--btn-text)' : '#fff', border: '2.5px solid var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, fontFamily: "'Fraunces', serif", boxShadow: '0 3px 8px rgba(0,0,0,.4)', zIndex: 3 }}>
+                        <div style={{ position: 'absolute', top: emblemOff, left: emblemOff, minWidth: emblemSz, height: emblemSz, padding: `0 ${Math.round(emblemSz * 0.24)}px`, borderRadius: emblemSz / 2, background: position <= 3 ? 'var(--accent-fg)' : '#1a1a1a', color: position <= 3 ? 'var(--btn-text)' : '#fff', border: `${emblemBw}px solid var(--bg-card)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: emblemFs, fontWeight: 800, fontFamily: "'Fraunces', serif", boxShadow: '0 3px 8px rgba(0,0,0,.4)', zIndex: 3 }}>
                           {position}
                         </div>
                       )}
-                      <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--fg-3)', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>
+                      <div style={{ marginTop: 4, fontSize: titleFs, color: 'var(--fg-3)', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: titleClamp, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>
                         {item.label}
                       </div>
                       {item.suffix && (
-                        <div style={{ fontSize: 10, color: 'var(--fg-6)', marginTop: 1 }}>{item.suffix}</div>
+                        <div style={{ fontSize: yearFs, color: 'var(--fg-6)', marginTop: 1 }}>{item.suffix}</div>
                       )}
                     </div>
                   )
