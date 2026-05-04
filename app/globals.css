@@ -103,6 +103,51 @@ nav, [data-nav] {
   -webkit-backdrop-filter: blur(10px);
 }
 
+/* community rank table */
+.rank-row {
+  display: grid;
+  grid-template-columns: 28px 44px minmax(0, 1fr) 110px 86px 64px 32px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+}
+.rank-row > .col-metrics { display: contents; }
+
+.rank-header {
+  display: grid;
+  grid-template-columns: 28px 44px minmax(0, 1fr) 110px 86px 64px 32px;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px;
+}
+.rank-header > .col-metrics { display: contents; }
+
+@media (max-width: 720px) {
+  .rank-header { display: none; }
+
+  .rank-row {
+    grid-template-columns: 28px 44px minmax(0, 1fr) 32px;
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    row-gap: 8px;
+    padding: 10px 12px;
+  }
+  .rank-row > .col-rank    { grid-row: 1; grid-column: 1; }
+  .rank-row > .col-poster  { grid-row: 1; grid-column: 2; }
+  .rank-row > .col-title   { grid-row: 1; grid-column: 3; }
+  .rank-row > .col-action  { grid-row: 1; grid-column: 4; justify-self: end; }
+  .rank-row > .col-metrics {
+    display: flex;
+    grid-row: 2;
+    grid-column: 1 / -1;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .rank-row > .col-metrics > .col-mention { flex: 1; min-width: 0; }
+  .rank-row > .col-metrics > .col-avg,
+  .rank-row > .col-metrics > .col-fav { flex: 0 0 auto; }
+}
+
 /* prose content from DB */
 .prose-content h2 {
   font-family: 'Fraunces', serif;

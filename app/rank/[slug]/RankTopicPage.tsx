@@ -169,8 +169,6 @@ function QuickAddPanel({
   )
 }
 
-const ROW_GRID = '28px 44px minmax(0, 1fr) 110px 86px 64px 32px'
-
 function majorityTier(distribution: Record<string, number>): string | null {
   let best: string | null = null
   let bestCount = 0
@@ -197,19 +195,19 @@ function buildTierGradient(distribution: Record<string, number>, total: number):
 
 function TableHeader() {
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: ROW_GRID,
-      alignItems: 'center', gap: 12, padding: '6px 16px',
+    <div className="rank-header" style={{
       fontSize: 10, textTransform: 'uppercase', letterSpacing: '.06em',
       color: 'var(--fg-6)', fontWeight: 600,
     }}>
-      <span style={{ textAlign: 'center' }}>#</span>
-      <span />
-      <span>Titre</span>
-      <span style={{ textAlign: 'center' }}>Mention</span>
-      <span style={{ textAlign: 'center' }}>Rang moyen</span>
-      <span style={{ textAlign: 'center' }}>En tête</span>
-      <span />
+      <span className="col-rank" style={{ textAlign: 'center' }}>#</span>
+      <span className="col-poster" />
+      <span className="col-title">Titre</span>
+      <div className="col-metrics">
+        <span className="col-mention" style={{ textAlign: 'center' }}>Mention</span>
+        <span className="col-avg" style={{ textAlign: 'center' }}>Rang moyen</span>
+        <span className="col-fav" style={{ textAlign: 'center' }}>En tête</span>
+      </div>
+      <span className="col-action" />
     </div>
   )
 }
@@ -231,9 +229,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
   const tierGradient = buildTierGradient(entry.tierDistribution, totalVotes)
 
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: ROW_GRID,
-      alignItems: 'center', gap: 12, padding: '10px 16px',
+    <div className="rank-row" style={{
       background: 'var(--bg-card)', border: '1px solid var(--border)',
       borderRadius: 10, cursor: 'default',
       borderBottomColor: isOpen ? 'transparent' : undefined,
@@ -241,7 +237,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
       borderBottomRightRadius: isOpen ? 0 : 10,
     }}>
       {/* Rank */}
-      <span style={{
+      <span className="col-rank" style={{
         fontFamily: "'Fraunces', serif",
         fontSize: rank === 1 ? 17 : isTop3 ? 15 : 14,
         fontWeight: rank === 1 ? 700 : 400,
@@ -251,12 +247,12 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
 
       {/* Poster */}
       {entry.cover
-        ? <img src={entry.cover} alt={displayTitle} loading="lazy" style={{ width: 44, height: 60, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)' }} />
-        : <div style={{ width: 44, height: 60, borderRadius: 4, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }} />
+        ? <img className="col-poster" src={entry.cover} alt={displayTitle} loading="lazy" style={{ width: 44, height: 60, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)' }} />
+        : <div className="col-poster" style={{ width: 44, height: 60, borderRadius: 4, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }} />
       }
 
       {/* Title */}
-      <div style={{ minWidth: 0 }}>
+      <div className="col-title" style={{ minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayTitle}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
           {entry.year && <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>{entry.year}</span>}
@@ -268,50 +264,52 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
         </div>
       </div>
 
-      {/* Mention */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 3, width: '100%' }}>
-        {mention && tierGradient ? (
-          <>
-            <div
-              title={TIERS.filter(t => entry.tierDistribution[t]).map(t => `${TIER_LABEL[t]} : ${entry.tierDistribution[t]}`).join(' · ')}
-              style={{ position: 'relative', height: 22, borderRadius: 4, background: tierGradient, overflow: 'hidden', border: '1px solid rgba(0,0,0,.08)' }}
-            >
-              <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 11, fontWeight: 800, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,.6), 0 0 3px rgba(0,0,0,.4)', letterSpacing: '.02em' }}>
-                {TIER_LABEL[mention]}
+      <div className="col-metrics">
+        {/* Mention */}
+        <div className="col-mention" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 3, minWidth: 0 }}>
+          {mention && tierGradient ? (
+            <>
+              <div
+                title={TIERS.filter(t => entry.tierDistribution[t]).map(t => `${TIER_LABEL[t]} : ${entry.tierDistribution[t]}`).join(' · ')}
+                style={{ position: 'relative', height: 22, borderRadius: 4, background: tierGradient, overflow: 'hidden', border: '1px solid rgba(0,0,0,.08)' }}
+              >
+                <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 11, fontWeight: 800, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,.6), 0 0 3px rgba(0,0,0,.4)', letterSpacing: '.02em' }}>
+                  {TIER_LABEL[mention]}
+                </span>
+              </div>
+              <span style={{ fontSize: 9.5, color: 'var(--fg-6)', textAlign: 'center' }}>{totalVotes} avis</span>
+            </>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--fg-7)', textAlign: 'center' }}>—</span>
+          )}
+        </div>
+
+        {/* Rang moyen */}
+        <div className="col-avg" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          {entry.avgRank !== null ? (
+            <>
+              <span style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>#{entry.avgRank.toFixed(1)}</span>
+              <span style={{ fontSize: 9.5, color: 'var(--fg-6)' }}>{entry.rankCount} cl.</span>
+            </>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--fg-7)' }}>—</span>
+          )}
+        </div>
+
+        {/* En tête */}
+        <div className="col-fav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          {entry.favoriteCount > 0 ? (
+            <>
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>★</span>
+                <span style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>{entry.favoriteCount}</span>
               </span>
-            </div>
-            <span style={{ fontSize: 9.5, color: 'var(--fg-6)', textAlign: 'center' }}>{totalVotes} avis</span>
-          </>
-        ) : (
-          <span style={{ fontSize: 11, color: 'var(--fg-7)', textAlign: 'center' }}>—</span>
-        )}
-      </div>
-
-      {/* Rang moyen */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-        {entry.avgRank !== null ? (
-          <>
-            <span style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>#{entry.avgRank.toFixed(1)}</span>
-            <span style={{ fontSize: 9.5, color: 'var(--fg-6)' }}>{entry.rankCount} cl.</span>
-          </>
-        ) : (
-          <span style={{ fontSize: 11, color: 'var(--fg-7)' }}>—</span>
-        )}
-      </div>
-
-      {/* En tête */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-        {entry.favoriteCount > 0 ? (
-          <>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
-              <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>★</span>
-              <span style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>{entry.favoriteCount}</span>
-            </span>
-            <span style={{ fontSize: 9.5, color: 'var(--fg-6)' }}>liste{entry.favoriteCount > 1 ? 's' : ''}</span>
-          </>
-        ) : (
-          <span style={{ fontSize: 11, color: 'var(--fg-7)' }}>—</span>
-        )}
+              <span style={{ fontSize: 9.5, color: 'var(--fg-6)' }}>liste{entry.favoriteCount > 1 ? 's' : ''}</span>
+            </>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--fg-7)' }}>—</span>
+          )}
+        </div>
       </div>
 
       {/* Action */}
@@ -319,6 +317,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
         <button
           onClick={onAdd}
           title={myTier ? 'Modifier' : 'Ajouter à ma liste'}
+          className="col-action"
           style={{
             width: 28, height: 28, borderRadius: 7, cursor: 'pointer',
             background: myTier ? 'transparent' : 'var(--bg-subtle)',
@@ -334,6 +333,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
         <Link
           href={`/${lang}/auth/login`}
           title={lang === 'fr' ? 'Connecte-toi pour noter' : 'Sign in to rate'}
+          className="col-action"
           style={{
             width: 28, height: 28, borderRadius: 7, textDecoration: 'none',
             background: 'var(--bg-subtle)',
