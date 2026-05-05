@@ -115,16 +115,21 @@ nav, [data-nav] {
 /* community rank table */
 .rank-row {
   display: grid;
-  grid-template-columns: 34px 53px minmax(0, 1fr) 94px 106px 84px 60px 116px;
+  grid-template-columns: 34px 53px minmax(0, 1fr) 94px 150px 84px 60px 116px;
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.rank-row:hover {
+  border-color: var(--fg-7) !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,.04);
 }
 .rank-row > .col-metrics { display: contents; }
 
 .rank-header {
   display: grid;
-  grid-template-columns: 34px 53px minmax(0, 1fr) 94px 106px 84px 60px 116px;
+  grid-template-columns: 34px 53px minmax(0, 1fr) 94px 150px 84px 60px 116px;
   align-items: center;
   gap: 12px;
   padding: 8px 20px;

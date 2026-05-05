@@ -196,15 +196,45 @@ function majorityTier(distribution: Record<string, number>): string | null {
   return best
 }
 
-function buildTierGradient(distribution: Record<string, number>, total: number): string | null {
-  if (total === 0) return null
-  const stops: string[] = []
-  let cum = 0
+const TIER_VALUE: Record<string, number> = { EX: 7, TB: 6, BO: 5, AB: 4, PA: 3, IN: 2, MA: 1 }
+const TIER_BY_VALUE: Record<number, string> = { 7: 'EX', 6: 'TB', 5: 'BO', 4: 'AB', 3: 'PA', 2: 'IN', 1: 'MA' }
+
+// Median of the vote values (1..7). More robust to outliers than the mean,
+// and avoids the modal tie-break that would surface "Excellent" on a 2-2
+// split between EX and TB.
+function medianTierValue(distribution: Record<string, number>): number | null {
+  const values: number[] = []
   for (const tier of TIERS) {
     const count = distribution[tier] ?? 0
-    if (count === 0) continue
+    const v = TIER_VALUE[tier]
+    for (let i = 0; i < count; i++) values.push(v)
+  }
+  if (values.length === 0) return null
+  values.sort((a, b) => a - b)
+  const mid = Math.floor(values.length / 2)
+  return values.length % 2 === 0
+    ? Math.round((values[mid - 1] + values[mid]) / 2)
+    : values[mid]
+}
+
+function buildTierGradient(distribution: Record<string, number>, total: number): string | null {
+  if (total === 0) return null
+  const visible = TIERS.filter(t => (distribution[t] ?? 0) > 0)
+  if (visible.length === 0) return null
+  const stops: string[] = []
+  let cum = 0
+  for (let i = 0; i < visible.length; i++) {
+    const tier = visible[i]
+    const count = distribution[tier] ?? 0
     const pct = (count / total) * 100
-    stops.push(`${TIER_COLOR[tier]} ${cum.toFixed(2)}% ${(cum + pct).toFixed(2)}%`)
+    const isFirst = i === 0
+    const isLast = i === visible.length - 1
+    // Adaptive blend so even tiny slices stay visible
+    const blend = Math.min(1.5, pct / 3)
+    const solidStart = isFirst ? cum : cum + blend
+    const solidEnd = isLast ? cum + pct : cum + pct - blend
+    stops.push(`${TIER_COLOR[tier]} ${solidStart.toFixed(2)}%`)
+    stops.push(`${TIER_COLOR[tier]} ${solidEnd.toFixed(2)}%`)
     cum += pct
   }
   return `linear-gradient(90deg, ${stops.join(', ')})`
@@ -257,33 +287,50 @@ function TableHeader() {
               ⓘ
             </span>
           </button>
-          <span style={{ fontSize: 8.5, fontWeight: 400, opacity: sortMode === 'popular' ? 1 : 0.6, textTransform: 'none', letterSpacing: 0, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-            Rang + Mention +{' '}
-            <button
-              type="button"
-              onClick={() => setSortMode('popular')}
-              style={{ ...headerBtnStyle('popular'), display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'inherit', textTransform: 'none', letterSpacing: 0, fontWeight: sortMode === 'popular' ? 700 : 400 }}
-            >
-              Popularité
-              {arrow('popular')}
-            </button>
+          <span style={{ fontSize: 8.5, fontWeight: 400, opacity: 0.6, textTransform: 'none', letterSpacing: 0, whiteSpace: 'nowrap' }}>
+            Rang + Mention
           </span>
+          <button
+            type="button"
+            onClick={() => setSortMode('popular')}
+            style={{ ...headerBtnStyle('popular'), display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 8.5, textTransform: 'none', letterSpacing: 0, fontWeight: sortMode === 'popular' ? 700 : 400, opacity: sortMode === 'popular' ? 1 : 0.65 }}
+          >
+            Popularité
+            {arrow('popular')}
+          </button>
         </span>
         <button
           type="button"
           onClick={() => setSortMode('tier')}
           className="col-mention"
-          style={{ ...headerBtnStyle('tier'), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}
+          style={{ ...headerBtnStyle('tier'), display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 4 }}
         >
-          Mention
-          {arrow('tier')}
-          <span
-            title="Chaque tier a sa couleur : Excellent (bleu), Très bon (vert foncé), Bon (vert clair), Assez bien (jaune-vert), Passable (jaune), Insuffisant (orange), Mauvais (rouge). La barre dégradée montre la part de chaque tier dans les votes du film ; le label affiche la mention majoritaire."
-            onClick={e => e.stopPropagation()}
-            style={infoStyle}
-            aria-label="Comment lire la mention"
-          >
-            ⓘ
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+            Mention
+            {arrow('tier')}
+            <span
+              title="Chaque tier a sa couleur : Excellent (bleu), Très bon (vert foncé), Bon (vert clair), Assez bien (jaune-vert), Passable (jaune), Insuffisant (orange), Mauvais (rouge). La barre dégradée montre la part de chaque tier dans les votes du film ; le label affiche la mention majoritaire."
+              onClick={e => e.stopPropagation()}
+              style={infoStyle}
+              aria-label="Comment lire la mention"
+            >
+              ⓘ
+            </span>
+          </span>
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span
+              title={TIERS.map(t => TIER_LABEL[t]).join(' › ')}
+              style={{
+                height: 6,
+                borderRadius: 3,
+                background: `linear-gradient(90deg, ${TIERS.map(t => TIER_COLOR[t]).join(', ')})`,
+                boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.06)',
+              }}
+            />
+            <span style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>
+              <span style={{ color: TIER_COLOR['EX'] }}>Excellent</span>
+              <span style={{ color: TIER_COLOR['MA'] }}>Mauvais</span>
+            </span>
           </span>
         </button>
         <button
@@ -332,7 +379,8 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
   const isTop3 = rank <= 3
   const myTierColor = myTier ? TIER_COLOR[myTier] : null
   const totalVotes = Object.values(entry.tierDistribution).reduce((s, n) => s + n, 0)
-  const mention = majorityTier(entry.tierDistribution)
+  const medianVal = medianTierValue(entry.tierDistribution)
+  const mention = medianVal !== null ? TIER_BY_VALUE[medianVal] : null
   const tierGradient = buildTierGradient(entry.tierDistribution, totalVotes)
 
   return (
@@ -366,25 +414,57 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
 
       <div className="col-metrics">
         {/* Score combiné */}
-        <div className="col-score" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 600, color: 'var(--fg-3)' }}>
-            {combinedScore(entry).toFixed(1)}
-          </span>
+        <div className="col-score" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
+          {(() => {
+            const score = combinedScore(entry).toFixed(1)
+            const [intPart, decPart] = score.split('.')
+            return (
+              <span style={{ fontFamily: "'Fraunces', serif", color: 'var(--fg-2)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                <span style={{ fontSize: 19, fontWeight: 700, letterSpacing: -0.4 }}>{intPart}</span>
+                <span style={{ fontSize: 14, fontWeight: 500, opacity: 0.55 }}>.{decPart}</span>
+              </span>
+            )
+          })()}
         </div>
 
         {/* Mention */}
-        <div className="col-mention" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 3, minWidth: 0 }}>
+        <div className="col-mention" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 4, minWidth: 0 }}>
           {mention && tierGradient ? (
             <>
               <div
                 title={TIERS.filter(t => entry.tierDistribution[t]).map(t => `${TIER_LABEL[t]} : ${entry.tierDistribution[t]}`).join(' · ')}
-                style={{ position: 'relative', height: 32, borderRadius: 7, background: tierGradient, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(0,0,0,.12)', overflow: 'hidden' }}
+                style={{
+                  position: 'relative',
+                  height: 14,
+                  borderRadius: 7,
+                  background: tierGradient,
+                  boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.07), 0 0 0 1px rgba(255,255,255,.4)',
+                  overflow: 'hidden',
+                }}
               >
-                <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontSize: 16, fontWeight: 600, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,.55), 0 0 6px rgba(0,0,0,.25)', letterSpacing: '.01em' }}>
+                <span aria-hidden style={{
+                  position: 'absolute', inset: 0,
+                  background: 'linear-gradient(180deg, rgba(255,255,255,.32) 0%, rgba(255,255,255,.08) 40%, rgba(0,0,0,0) 60%, rgba(0,0,0,.12) 100%)',
+                  pointerEvents: 'none',
+                }} />
+              </div>
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', justifyContent: 'center', gap: 6, lineHeight: 1.1 }}>
+                <span style={{
+                  fontFamily: "'Fraunces', serif",
+                  fontStyle: 'italic',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: TIER_COLOR[mention],
+                }}>
                   {TIER_LABEL[mention]}
                 </span>
-              </div>
-              <span style={{ fontSize: 11, color: 'var(--fg-6)', textAlign: 'center', letterSpacing: '.02em' }}>{totalVotes} avis</span>
+                {entry.avgTierScore !== null && (
+                  <span style={{ fontFamily: "'Fraunces', serif", fontSize: 13, fontWeight: 600, color: 'var(--fg-3)', fontVariantNumeric: 'tabular-nums' }}>
+                    {entry.avgTierScore.toFixed(1)}<span style={{ fontSize: 9.5, fontWeight: 400, opacity: 0.55 }}>/7</span>
+                  </span>
+                )}
+              </span>
+              <span style={{ fontSize: 10.5, color: 'var(--fg-6)', textAlign: 'center', letterSpacing: '.04em' }}>{totalVotes} avis</span>
             </>
           ) : (
             <span style={{ fontSize: 11, color: 'var(--fg-7)', textAlign: 'center' }}>—</span>
