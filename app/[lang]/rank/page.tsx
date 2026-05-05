@@ -53,7 +53,7 @@ async function RankHomeInner({ params }: { params: Promise<{ lang: string }> }) 
       {topics.length === 0 ? (
         <p style={{ color: 'var(--fg-5)', textAlign: 'center', fontSize: 14 }}>{t.rank.noRankableTopics}</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 14 }}>
           {topics.map(topic => {
             const tr = topic.translations[0]
             const title = tr?.title ?? topic.title
@@ -62,7 +62,7 @@ async function RankHomeInner({ params }: { params: Promise<{ lang: string }> }) 
               <Link
                 key={topic.id}
                 href={`/${lang}/rank/${topic.slug}`}
-                style={{ display: 'block', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow)', padding: 20, textDecoration: 'none' }}
+                style={{ flex: '0 1 320px', maxWidth: 360, display: 'block', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow)', padding: 20, textDecoration: 'none' }}
                 className="group hover:[border-color:#3a3a3a] hover:[-webkit-transform:translateY(-2px)] hover:[transform:translateY(-2px)]"
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
