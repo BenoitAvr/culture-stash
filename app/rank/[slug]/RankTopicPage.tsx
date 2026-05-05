@@ -598,12 +598,12 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
             aria-label={`Rang ${rank}`}
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 36, height: 36, borderRadius: '50%',
+              width: 26, height: 26, borderRadius: '50%',
               background: MEDAL[rank].bg,
               border: `1px solid ${MEDAL[rank].border}`,
               color: MEDAL[rank].fg,
               fontFamily: "'Fraunces', serif",
-              fontWeight: 700, fontSize: 19, letterSpacing: -0.5,
+              fontWeight: 700, fontSize: 15, letterSpacing: -0.3,
               lineHeight: 1, fontVariantNumeric: 'tabular-nums',
             }}
           >
@@ -613,7 +613,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
       ) : (
         <span className="col-rank" style={{
           fontFamily: "'Fraunces', serif",
-          fontSize: 17,
+          fontSize: 14,
           fontWeight: 400,
           color: 'var(--fg-5)',
           textAlign: 'center', lineHeight: 1,
@@ -622,27 +622,27 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
 
       {/* Poster */}
       {entry.cover
-        ? <img className="col-poster" src={entry.cover} alt={displayTitle} loading="lazy" style={{ width: 64, height: 96, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
-        : <div className="col-poster" style={{ width: 64, height: 96, borderRadius: 6, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }} />
+        ? <img className="col-poster" src={entry.cover} alt={displayTitle} loading="lazy" style={{ width: 48, height: 72, objectFit: 'cover', borderRadius: 5, border: '1px solid var(--border)' }} />
+        : <div className="col-poster" style={{ width: 48, height: 72, borderRadius: 5, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }} />
       }
 
       {/* Title */}
       <div className="col-title" style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 17, fontWeight: 500, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayTitle}</div>
-        {entry.year && <div style={{ fontSize: 13, color: 'var(--fg-5)', marginTop: 4 }}>{entry.year}</div>}
+        <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.25 }}>{displayTitle}</div>
+        {entry.year && <div style={{ fontSize: 12, color: 'var(--fg-5)', marginTop: 1 }}>{entry.year}</div>}
       </div>
 
       <div className="col-metrics">
         {/* Score combiné */}
-        <div className="col-score" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px' }}>
+        <div className="col-score" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
           {(() => {
             const score = combinedScore(entry)
             return (
               <span style={{
                 fontFamily: "'Fraunces', serif",
-                fontSize: isTop3 ? 32 : 28,
+                fontSize: isTop3 ? 24 : 22,
                 fontWeight: 700,
-                letterSpacing: -0.8,
+                letterSpacing: -0.6,
                 color: scoreColor(score),
                 fontVariantNumeric: 'tabular-nums',
                 lineHeight: 1,
@@ -654,50 +654,45 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
         </div>
 
         {/* Mention */}
-        <div className="col-mention" style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+        <div className="col-mention" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
           {mention ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 7,
-                  padding: '5px 11px 5px 9px',
-                  borderRadius: 14,
-                  fontSize: 13, fontWeight: 600,
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '2px 8px 2px 7px',
+                  borderRadius: 11,
+                  fontSize: 12, fontWeight: 600,
                   background: TIER_COLOR_SOFT[mention].bg,
                   color: TIER_COLOR_SOFT[mention].fg,
                   border: `1px solid ${TIER_COLOR_SOFT[mention].border}`,
                   whiteSpace: 'nowrap',
                 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: TIER_COLOR[mention], flexShrink: 0 }} />
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: TIER_COLOR[mention], flexShrink: 0 }} />
                   {TIER_LABEL[mention]}
                 </span>
                 {entry.avgTierScore !== null && (
-                  <span style={{ fontSize: 13, color: 'var(--fg-3)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ fontSize: 12, color: 'var(--fg-3)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                     {entry.avgTierScore.toFixed(1)}<span style={{ color: 'var(--fg-6)', fontWeight: 400 }}>/7</span>
                   </span>
                 )}
               </div>
-              <div>
-                <div
-                  title={TIERS.filter(t => entry.tierDistribution[t]).map(t => `${TIER_LABEL[t]} : ${entry.tierDistribution[t]}`).join(' · ')}
-                  style={{
-                    display: 'flex',
-                    height: 6,
-                    borderRadius: 3,
-                    overflow: 'hidden',
-                    background: 'var(--bg-subtle)',
-                  }}
-                >
-                  {TIERS.map(tier => {
-                    const count = entry.tierDistribution[tier] ?? 0
-                    if (count === 0) return null
-                    const pct = (count / totalVotes) * 100
-                    return <span key={tier} style={{ width: `${pct}%`, background: TIER_COLOR[tier] }} />
-                  })}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--fg-6)', marginTop: 4 }}>
-                  {describeDistribution(entry.tierDistribution, totalVotes)}
-                </div>
+              <div
+                title={`${describeDistribution(entry.tierDistribution, totalVotes)}\n${TIERS.filter(t => entry.tierDistribution[t]).map(t => `${TIER_LABEL[t]} : ${entry.tierDistribution[t]}`).join(' · ')}`}
+                style={{
+                  display: 'flex',
+                  height: 4,
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  background: 'var(--bg-subtle)',
+                }}
+              >
+                {TIERS.map(tier => {
+                  const count = entry.tierDistribution[tier] ?? 0
+                  if (count === 0) return null
+                  const pct = (count / totalVotes) * 100
+                  return <span key={tier} style={{ width: `${pct}%`, background: TIER_COLOR[tier] }} />
+                })}
               </div>
             </>
           ) : (
@@ -706,12 +701,14 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
         </div>
 
         {/* Rang moyen */}
-        <div className="col-avg" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+        <div className="col-avg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {entry.avgRank !== null ? (
-            <>
-              <span style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 700, color: 'var(--fg)' }}>#{entry.avgRank.toFixed(1)}</span>
-              <span style={{ fontSize: 11, color: 'var(--fg-6)' }}>sur {entry.rankCount} liste{entry.rankCount > 1 ? 's' : ''}</span>
-            </>
+            <span
+              title={`Sur ${entry.rankCount} liste${entry.rankCount > 1 ? 's' : ''} classée${entry.rankCount > 1 ? 's' : ''}`}
+              style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 700, color: 'var(--fg)', cursor: 'help' }}
+            >
+              #{entry.avgRank.toFixed(1)}
+            </span>
           ) : (
             <span style={{ fontSize: 13, color: 'var(--fg-7)' }}>—</span>
           )}
@@ -725,8 +722,8 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
             className="col-mynote"
             style={{
               position: 'relative',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
-              padding: '5px 8px', minHeight: 48, borderRadius: 8, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '4px 6px', minHeight: 32, borderRadius: 7, cursor: 'pointer',
               background: isOpen ? 'var(--bg-subtle)' : 'transparent',
               border: `1px solid ${isOpen ? 'var(--fg-3)' : 'transparent'}`,
               fontFamily: 'inherit',
@@ -744,12 +741,12 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
                     <span
                       title="Même avis que la communauté"
                       style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
                         fontSize: 12, color: 'var(--fg-6)',
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      <span aria-hidden style={{ fontSize: 13, color: 'var(--fg-7)', fontWeight: 500 }}>=</span>
+                      <span aria-hidden style={{ fontSize: 12, color: 'var(--fg-7)', fontWeight: 500 }}>=</span>
                       {TIER_LABEL[myTier]}
                     </span>
                   ) : (
@@ -762,17 +759,17 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
                             : `${Math.abs(diff)} tier en-dessous de la communauté`
                       }
                       style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        padding: '5px 10px 5px 9px',
-                        borderRadius: 14,
-                        fontSize: 13, fontWeight: 600,
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '2px 8px 2px 7px',
+                        borderRadius: 11,
+                        fontSize: 12, fontWeight: 600,
                         background: TIER_COLOR_SOFT[myTier].bg,
                         color: TIER_COLOR_SOFT[myTier].fg,
                         border: `1px solid ${TIER_COLOR_SOFT[myTier].border}`,
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: TIER_COLOR[myTier], flexShrink: 0 }} />
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: TIER_COLOR[myTier], flexShrink: 0 }} />
                       {TIER_LABEL[myTier]}
                       {diff !== 0 && (
                         <span aria-hidden style={{ fontSize: 11, opacity: 0.75, fontWeight: 700, marginLeft: 1 }}>
@@ -781,20 +778,17 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
                       )}
                     </span>
                   )}
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {myPosition != null && (
-                      <span style={{ fontSize: 11, color: 'var(--fg-6)', fontFamily: "'Fraunces', serif" }}>
-                        #{myPosition}
-                      </span>
-                    )}
-                    <span aria-hidden style={{ fontSize: 13, color: 'var(--fg-5)', opacity: 0.7, lineHeight: 1 }}>✎</span>
-                  </span>
+                  {myPosition != null && (
+                    <span style={{ fontSize: 11, color: 'var(--fg-6)', fontFamily: "'Fraunces', serif" }}>
+                      #{myPosition}
+                    </span>
+                  )}
                 </>
               )
             })() : (
               <span style={{
-                padding: '4px 10px',
-                borderRadius: 12,
+                padding: '3px 9px',
+                borderRadius: 11,
                 color: 'var(--fg-6)',
                 fontSize: 12,
                 fontWeight: 500,
@@ -812,9 +806,9 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
             className="col-mynote"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              minHeight: 48, borderRadius: 8, textDecoration: 'none',
+              minHeight: 32, borderRadius: 7, textDecoration: 'none',
               border: '1px solid transparent',
-              fontSize: 22, color: 'var(--fg-4)',
+              fontSize: 18, color: 'var(--fg-4)',
             }}
           >
             +
@@ -990,8 +984,8 @@ function UserAwareEntryList({
 export function CommunityListSkeleton() {
   return (
     <div className="rank-table" style={{ opacity: 0.55 }}>
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="rank-row" style={{ height: 72 }} />
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div key={i} className="rank-row" style={{ height: 64 }} />
       ))}
     </div>
   )

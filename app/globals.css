@@ -128,10 +128,10 @@ nav, [data-nav] {
 
 .rank-row {
   display: grid;
-  grid-template-columns: 44px 64px minmax(0, 1fr) 130px 200px 84px 124px;
+  grid-template-columns: 36px 48px minmax(0, 1fr) 96px 180px 80px 108px;
   align-items: center;
-  gap: 14px;
-  padding: 12px 20px;
+  gap: 10px;
+  padding: 8px 18px;
   transition: background-color .12s ease;
 }
 .rank-row:hover {
@@ -141,10 +141,10 @@ nav, [data-nav] {
 
 .rank-header {
   display: grid;
-  grid-template-columns: 44px 64px minmax(0, 1fr) 130px 200px 84px 124px;
+  grid-template-columns: 36px 48px minmax(0, 1fr) 96px 180px 80px 108px;
   align-items: center;
-  gap: 14px;
-  padding: 10px 20px;
+  gap: 10px;
+  padding: 8px 18px;
   background: var(--bg-subtle);
 }
 .rank-header > .col-metrics { display: contents; }
