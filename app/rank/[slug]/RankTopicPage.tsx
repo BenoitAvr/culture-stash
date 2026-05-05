@@ -50,7 +50,7 @@ function QuickAddPanel({
   onToggleRanking: (tier: string) => Promise<void>
   onClose: () => void
 }) {
-  const { lang } = useParams() as { lang: string }
+  const { lang, slug } = useParams() as { lang: string; slug: string }
   const rankedTiers = (myTierList?.rankedTiers ?? '').split(',').filter(Boolean)
   const currentTierOfEntry = myTierList?.items.find(i => i.entryId === entry.id)?.tier ?? null
 
@@ -153,7 +153,7 @@ function QuickAddPanel({
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
         <button
           onClick={handleConfirm}
           disabled={!selectedTier || isPending}
@@ -164,6 +164,12 @@ function QuickAddPanel({
         <button onClick={onClose} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-6)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>
           Annuler
         </button>
+        <Link
+          href={`/${lang}/rank/${slug}/edit`}
+          style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--fg-5)', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}
+        >
+          Voir ma liste →
+        </Link>
       </div>
     </div>
   )
