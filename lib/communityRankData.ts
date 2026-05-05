@@ -184,12 +184,7 @@ export async function getCommunityEntries(slug: string, lang: string): Promise<C
   const data = await getCommunityData(slug, lang)
   if (!data) return null
 
-  const sorted = [...data.entries].sort((a, b) => {
-    const aSolo = a.tierCount <= 1 ? 1 : 0
-    const bSolo = b.tierCount <= 1 ? 1 : 0
-    if (aSolo !== bSolo) return aSolo - bSolo
-    return combinedScore(b) - combinedScore(a)
-  })
+  const sorted = [...data.entries].sort((a, b) => combinedScore(b) - combinedScore(a))
   return {
     initialEntries: sorted.slice(0, INITIAL_COUNT),
     totalEntries: sorted.length,

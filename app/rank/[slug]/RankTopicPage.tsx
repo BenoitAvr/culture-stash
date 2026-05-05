@@ -240,13 +240,12 @@ function TableHeader() {
       <span className="col-poster" />
       <span className="col-title">Titre</span>
       <div className="col-metrics">
-        <button
-          type="button"
-          onClick={() => setSortMode('combined')}
-          className="col-score"
-          style={{ ...headerBtnStyle('combined'), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}
-        >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+        <span className="col-score" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+          <button
+            type="button"
+            onClick={() => setSortMode('combined')}
+            style={{ ...headerBtnStyle('combined'), display: 'inline-flex', alignItems: 'center', gap: 3 }}
+          >
             Score
             {arrow('combined')}
             <span
@@ -257,11 +256,19 @@ function TableHeader() {
             >
               ⓘ
             </span>
+          </button>
+          <span style={{ fontSize: 8.5, fontWeight: 400, opacity: sortMode === 'popular' ? 1 : 0.6, textTransform: 'none', letterSpacing: 0, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            Rang + Mention +{' '}
+            <button
+              type="button"
+              onClick={() => setSortMode('popular')}
+              style={{ ...headerBtnStyle('popular'), display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'inherit', textTransform: 'none', letterSpacing: 0, fontWeight: sortMode === 'popular' ? 700 : 400 }}
+            >
+              Popularité
+              {arrow('popular')}
+            </button>
           </span>
-          <span style={{ fontSize: 8.5, fontWeight: 400, opacity: 0.6, textTransform: 'none', letterSpacing: 0, whiteSpace: 'nowrap' }}>
-            Rang + Mention
-          </span>
-        </button>
+        </span>
         <button
           type="button"
           onClick={() => setSortMode('tier')}
@@ -622,9 +629,6 @@ export function RankCommunityBody({
   useEffect(() => { setDisplayCount(100) }, [sortMode])
 
   const sorted = [...allEntries].sort((a, b) => {
-    const aSolo = a.tierCount <= 1 ? 1 : 0
-    const bSolo = b.tierCount <= 1 ? 1 : 0
-    if (aSolo !== bSolo) return aSolo - bSolo
     if (sortMode === 'tier') {
       if (a.avgTierScore === null && b.avgTierScore === null) return 0
       if (a.avgTierScore === null) return 1
