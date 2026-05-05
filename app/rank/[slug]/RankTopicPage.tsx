@@ -640,9 +640,9 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
             return (
               <span style={{
                 fontFamily: "'Fraunces', serif",
-                fontSize: isTop3 ? 24 : 22,
+                fontSize: 16,
                 fontWeight: 700,
-                letterSpacing: -0.6,
+                letterSpacing: -0.4,
                 color: scoreColor(score),
                 fontVariantNumeric: 'tabular-nums',
                 lineHeight: 1,

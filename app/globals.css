@@ -128,7 +128,7 @@ nav, [data-nav] {
 
 .rank-row {
   display: grid;
-  grid-template-columns: 36px 48px minmax(0, 1fr) 96px 180px 80px 108px;
+  grid-template-columns: 36px 48px minmax(0, 1fr) 64px 212px 80px 108px;
   align-items: center;
   gap: 10px;
   padding: 8px 18px;
@@ -141,7 +141,7 @@ nav, [data-nav] {
 
 .rank-header {
   display: grid;
-  grid-template-columns: 36px 48px minmax(0, 1fr) 96px 180px 80px 108px;
+  grid-template-columns: 36px 48px minmax(0, 1fr) 64px 212px 80px 108px;
   align-items: center;
   gap: 10px;
   padding: 8px 18px;
