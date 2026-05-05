@@ -130,7 +130,7 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
             favoriteCount: favoriteData[e.id] ?? 0,
             tierDistribution: tierDistData[e.id] ?? {},
           }
-        }),
+        }).filter(e => e.tierCount > 1),
       }
     },
     [`rank-community-${slug}-${lang}`],
