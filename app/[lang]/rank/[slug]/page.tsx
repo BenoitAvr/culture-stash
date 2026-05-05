@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale, LOCALES } from '@/dictionaries'
 import { notFound } from 'next/navigation'
-import { getRankTopicHeader, getCommunityEntries } from '@/lib/communityRankData'
+import { getRankTopicHeader, getRankTopicStats, getCommunityEntries } from '@/lib/communityRankData'
 import { getRankHost } from '@/lib/host'
 import {
   RankCommunityBody,
@@ -160,10 +160,28 @@ async function RankSlugInner({
   const { lang, slug } = await params
   if (!hasLocale(lang)) notFound()
 
-  const header = await getRankTopicHeader(slug, lang)
+  const [header, stats] = await Promise.all([
+    getRankTopicHeader(slug, lang),
+    getRankTopicStats(slug),
+  ])
   if (!header) notFound()
 
   const dict = getDictionary(lang)
+  const subtitle = (() => {
+    const u = stats?.userCount ?? 0
+    const v = stats?.voteCount ?? 0
+    if (lang === 'fr') {
+      if (v === 0) return 'En attente du premier avis · sois le premier'
+      const userLabel = u > 1 ? 'contributeurs' : 'contributeur'
+      const voteLabel = v > 1 ? 'avis' : 'avis'
+      return `En construction · ${u} ${userLabel} · ${v} ${voteLabel}`
+    } else {
+      if (v === 0) return 'Awaiting first ratings · be the first'
+      const userLabel = u > 1 ? 'contributors' : 'contributor'
+      const voteLabel = v > 1 ? 'ratings' : 'rating'
+      return `Under construction · ${u} ${userLabel} · ${v} ${voteLabel}`
+    }
+  })()
 
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 24px 60px' }}>
@@ -195,7 +213,7 @@ async function RankSlugInner({
               {dict.rank.communityTitle.replace('{topic}', header.topicTitle.toLowerCase())}
             </h1>
             <div style={{ fontSize: 12, color: 'var(--fg-5)', marginTop: 2, fontWeight: 300 }}>
-              {lang === 'fr' ? 'Classement collectif · mis à jour en continu' : 'Collective ranking · updated continuously'}
+              {subtitle}
             </div>
           </div>
         </div>

@@ -36,6 +36,48 @@ export type CommunityData = RankTopicHeader & {
   entries: RankEntry[]
 }
 
+export type RankTopicStats = {
+  userCount: number
+  voteCount: number
+}
+
+export function getRankTopicStats(slug: string): Promise<RankTopicStats | null> {
+  return unstable_cache(
+    async () => {
+      const topic = await prisma.topic.findUnique({
+        where: { slug },
+        select: {
+          rankable: true,
+          userEntryLists: {
+            where: { type: 'TIER' },
+            select: {
+              userId: true,
+              items: { select: { tier: true } },
+            },
+          },
+        },
+      })
+      if (!topic || !topic.rankable) return null
+
+      const userIds = new Set<string>()
+      let voteCount = 0
+      for (const list of topic.userEntryLists) {
+        let listHasVote = false
+        for (const item of list.items) {
+          if (item.tier && TIER_SCORE[item.tier] !== undefined) {
+            voteCount += 1
+            listHasVote = true
+          }
+        }
+        if (listHasVote) userIds.add(list.userId)
+      }
+      return { userCount: userIds.size, voteCount }
+    },
+    [`rank-stats-${slug}`],
+    { tags: [`rank-${slug}`] }
+  )()
+}
+
 export function getRankTopicHeader(slug: string, lang: string): Promise<RankTopicHeader | null> {
   return unstable_cache(
     async () => {
