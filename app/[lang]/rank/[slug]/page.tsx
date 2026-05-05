@@ -210,16 +210,10 @@ async function RankSlugInner({
             </span>
           ) : (
             <>
-              <span style={{
-                background: '#fef3c7',
-                color: '#92400e',
-                padding: '2px 10px',
-                borderRadius: 12,
-                fontSize: 12,
-                fontWeight: 600,
-              }}>
-                {isFr ? 'En construction' : 'Under construction'}
+              <span style={{ color: '#a16207', fontStyle: 'italic' }}>
+                {isFr ? 'en construction' : 'under construction'}
               </span>
+              <span style={{ color: 'var(--fg-7)' }}>·</span>
               <span>{userCount} {userLabel}</span>
               <span style={{ color: 'var(--fg-7)' }}>·</span>
               <span>{voteCount} {voteLabel}</span>

@@ -143,21 +143,20 @@ export function PersonalActions({
   }
 
   const editBtn: React.CSSProperties = {
-    padding: '13px 24px',
-    borderRadius: 11,
-    background: '#16a34a',
-    color: '#ffffff',
-    border: 'none',
-    fontSize: 16,
+    padding: '8px 16px',
+    borderRadius: 8,
+    background: '#dcfce7',
+    color: '#15803d',
+    border: '1px solid #86efac',
+    fontSize: 14,
     fontWeight: 600,
     fontFamily: 'inherit',
     cursor: 'pointer',
     textDecoration: 'none',
     display: 'inline-flex',
     alignItems: 'center',
-    gap: 9,
+    gap: 7,
     whiteSpace: 'nowrap',
-    boxShadow: '0 1px 3px rgba(22,163,74,.25)',
   }
 
   return (
