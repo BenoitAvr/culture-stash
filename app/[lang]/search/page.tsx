@@ -25,7 +25,7 @@ async function SearchPageContent({
 
   if (!query) {
     return (
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '60px 24px', textAlign: 'center' }}>
+      <div className="page-md" style={{ margin: '0 auto', padding: '60px 24px', textAlign: 'center' }}>
         <p style={{ color: 'var(--fg-6)' }}>{t.search.enter}</p>
       </div>
     )
@@ -50,7 +50,7 @@ async function SearchPageContent({
   const total = topics.length + resources.length
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 24px' }}>
+    <div className="page-md" style={{ margin: '0 auto', padding: '40px 24px' }}>
       <p style={{ color: 'var(--fg-6)', fontSize: 13, marginBottom: 32 }}>
         {total} {total !== 1 ? t.search.results : t.search.result} {t.search.for}{' '}
         <span style={{ color: 'var(--fg)' }}>&ldquo;{query}&rdquo;</span>

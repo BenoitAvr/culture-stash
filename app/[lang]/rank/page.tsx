@@ -40,7 +40,7 @@ async function RankHomeInner({ params }: { params: Promise<{ lang: string }> }) 
   const topics = await getRankableTopics(lang)
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
+    <div className="page-lg" style={{ margin: '0 auto', padding: '0 24px' }}>
       <div style={{ textAlign: 'center', padding: '64px 0 48px' }}>
         <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 64, fontWeight: 900, letterSpacing: -2, marginBottom: 16, lineHeight: 1.05 }}>
           Culture <span style={{ color: 'var(--accent-fg)' }}>Rank</span>

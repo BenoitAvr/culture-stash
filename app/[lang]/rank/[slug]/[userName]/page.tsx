@@ -71,7 +71,7 @@ async function UserListInner({
   const activeTiers = TIERS.filter(tier => list.items.some(i => i.tier === tier))
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 20px 60px' }}>
+    <div className="page-md" style={{ margin: '0 auto', padding: '0 20px 60px' }}>
 
       {/* Breadcrumb */}
       <div style={{ padding: '28px 0 24px', display: 'flex', alignItems: 'center', gap: 6 }}>

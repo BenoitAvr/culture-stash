@@ -127,7 +127,7 @@ async function TopicPageContent({
 
   if (lang !== 'fr' && !tr) {
     return (
-      <div style={{ maxWidth: 700, margin: '0 auto', padding: '80px 24px', textAlign: 'center' }}>
+      <div className="page-md" style={{ margin: '0 auto', padding: '80px 24px', textAlign: 'center' }}>
         <span style={{ fontSize: 48 }}>{topic.emoji}</span>
         <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 28, fontWeight: 900, color: 'var(--fg)', margin: '24px 0 12px' }}>
           {lang === 'en' ? 'Not available in English yet' : 'Pas encore disponible dans cette langue'}
@@ -166,7 +166,7 @@ async function TopicPageContent({
   }))
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
+    <div className="page-lg" style={{ margin: '0 auto', padding: '0 24px' }}>
       <div style={{ padding: '28px 0 24px', borderBottom: '1px solid var(--border)' }}>
 
         {/* Breadcrumb + actions */}

@@ -103,6 +103,15 @@ nav, [data-nav] {
   -webkit-backdrop-filter: blur(10px);
 }
 
+/* page wrappers — modest widening on 24" Full HD, larger on 27" QHD+ */
+.page-md { max-width: 760px; }
+@media (min-width: 1700px) { .page-md { max-width: 880px; } }
+@media (min-width: 2200px) { .page-md { max-width: 1000px; } }
+
+.page-lg { max-width: 1100px; }
+@media (min-width: 1700px) { .page-lg { max-width: 1240px; } }
+@media (min-width: 2200px) { .page-lg { max-width: 1400px; } }
+
 /* community rank table */
 .rank-row {
   display: grid;

@@ -184,7 +184,7 @@ async function RankSlugInner({
   })()
 
   return (
-    <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 24px 60px' }}>
+    <div className="page-md" style={{ margin: '0 auto', padding: '0 24px 60px' }}>
 
       {/* Header — fully static for known slugs (generateStaticParams), with personal controls suspended */}
       <div style={{ padding: '20px 0 0' }}>

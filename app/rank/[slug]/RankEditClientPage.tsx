@@ -38,7 +38,7 @@ export function RankEditClientPage({
   }
 
   return (
-    <div className="rank-edit-shell" style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 24px 60px' }}>
+    <div className="rank-edit-shell page-lg" style={{ margin: '0 auto', padding: '24px 24px 60px' }}>
       <UserEntryListSection
         topicSlug={topicSlug}
         entries={entries}
