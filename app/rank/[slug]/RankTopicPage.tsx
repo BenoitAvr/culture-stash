@@ -53,12 +53,14 @@ function QuickAddPanel({
   myTierList,
   onAdd,
   onToggleRanking,
+  onRemove,
   onClose,
 }: {
   entry: Entry
   myTierList: UserEntryListData | null
   onAdd: (tier: string, insertBeforeId?: string) => Promise<void>
   onToggleRanking: (tier: string) => Promise<void>
+  onRemove: () => Promise<void>
   onClose: () => void
 }) {
   const { lang, slug } = useParams() as { lang: string; slug: string }
@@ -175,6 +177,16 @@ function QuickAddPanel({
         <button onClick={onClose} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-6)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>
           Annuler
         </button>
+        {currentTierOfEntry && (
+          <button
+            onClick={async () => { setIsPending(true); await onRemove() }}
+            disabled={isPending}
+            title="Retirer ce film de ma liste"
+            style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid #e0a0a0', background: 'none', color: '#c0392b', fontSize: 12, fontFamily: 'inherit', cursor: isPending ? 'not-allowed' : 'pointer', opacity: isPending ? 0.5 : 1 }}
+          >
+            Supprimer de ma liste
+          </button>
+        )}
         <Link
           href={`/${lang}/rank/${slug}/edit`}
           style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--fg-5)', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}
@@ -604,6 +616,34 @@ function UserAwareEntryList({
     setQuickAddId(null)
   }
 
+  async function handleRemove(entryId: string) {
+    if (!myTierList) return
+    const rankedTiers = (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
+    const removed = myTierList.items.find(i => i.entryId === entryId)
+    if (!removed) return
+    const removedTier = removed.tier
+    const remaining = myTierList.items.filter(i => i.entryId !== entryId)
+
+    let newItems: Array<{ entryId: string; tier?: string; position?: number }>
+    if (removedTier && rankedTiers.includes(removedTier)) {
+      // Recompact positions in the affected ranked tier (1, 2, 3, …)
+      const tierItems = remaining
+        .filter(i => i.tier === removedTier)
+        .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+        .map((item, i) => ({ entryId: item.entryId, tier: item.tier ?? undefined, position: i + 1 }))
+      const others = remaining
+        .filter(i => i.tier !== removedTier)
+        .map(i => ({ entryId: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined }))
+      newItems = [...others, ...tierItems]
+    } else {
+      newItems = remaining.map(i => ({ entryId: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined }))
+    }
+
+    const updated = await saveUserEntryLists(topicSlug, [], newItems, rankedTiers)
+    setLists(prev => [...prev.filter(l => l.userId !== currentUserId), ...updated])
+    setQuickAddId(null)
+  }
+
   async function handleToggleRanking(tier: string) {
     if (!myTierList) return
     const currentRankedTiers = (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
@@ -651,6 +691,7 @@ function UserAwareEntryList({
               myTierList={myTierList}
               onAdd={(tier, insertBeforeId) => handleQuickAdd(entry.id, tier, insertBeforeId)}
               onToggleRanking={handleToggleRanking}
+              onRemove={() => handleRemove(entry.id)}
               onClose={() => setQuickAddId(null)}
             />
           )}
