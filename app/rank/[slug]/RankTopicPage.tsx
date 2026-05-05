@@ -1,6 +1,6 @@
 'use client'
 
-import React, { use, useState, useEffect, Suspense } from 'react'
+import React, { use, useState, useEffect, useContext, createContext, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { getDict } from '@/dictionaries/client'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
@@ -20,6 +20,17 @@ const TIER_COLOR: Record<string, string> = {
 }
 
 type SortMode = 'combined' | 'tier' | 'rank' | 'favorite' | 'popular'
+
+const RankSortContext = createContext<{ sortMode: SortMode; setSortMode: (m: SortMode) => void } | null>(null)
+
+export function RankSortProvider({ children }: { children: React.ReactNode }) {
+  const [sortMode, setSortMode] = useState<SortMode>('combined')
+  return (
+    <RankSortContext.Provider value={{ sortMode, setSortMode }}>
+      {children}
+    </RankSortContext.Provider>
+  )
+}
 
 type Entry = RankEntry
 
@@ -200,6 +211,26 @@ function buildTierGradient(distribution: Record<string, number>, total: number):
 }
 
 function TableHeader() {
+  const ctx = useContext(RankSortContext)
+  const sortMode = ctx?.sortMode ?? 'combined'
+  const setSortMode = ctx?.setSortMode ?? (() => {})
+
+  const headerBtnStyle = (mode: SortMode): React.CSSProperties => ({
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    fontFamily: 'inherit',
+    fontSize: 'inherit',
+    textTransform: 'inherit',
+    letterSpacing: 'inherit',
+    color: sortMode === mode ? 'var(--fg-3)' : 'var(--fg-6)',
+    fontWeight: sortMode === mode ? 700 : 600,
+    cursor: 'pointer',
+  })
+  const arrow = (mode: SortMode) =>
+    sortMode === mode ? <span aria-hidden style={{ fontSize: 10, opacity: 0.85 }}>↓</span> : null
+  const infoStyle: React.CSSProperties = { cursor: 'help', opacity: 0.55, fontSize: 10, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }
+
   return (
     <div className="rank-header" style={{
       fontSize: 12, textTransform: 'uppercase', letterSpacing: '.06em',
@@ -209,15 +240,19 @@ function TableHeader() {
       <span className="col-poster" />
       <span className="col-title">Titre</span>
       <div className="col-metrics">
-        <span
+        <button
+          type="button"
+          onClick={() => setSortMode('combined')}
           className="col-score"
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}
+          style={{ ...headerBtnStyle('combined'), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
             Score
+            {arrow('combined')}
             <span
               title="Score combiné qui détermine le classement : mention × 3 + bonus de rang + favoris + popularité × 0.2."
-              style={{ cursor: 'help', opacity: 0.55, fontSize: 10, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={infoStyle}
               aria-label="Comment ce score est calculé"
             >
               ⓘ
@@ -226,28 +261,50 @@ function TableHeader() {
           <span style={{ fontSize: 8.5, fontWeight: 400, opacity: 0.6, textTransform: 'none', letterSpacing: 0, whiteSpace: 'nowrap' }}>
             Rang + Mention
           </span>
-        </span>
-        <span className="col-mention" style={{ textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+        </button>
+        <button
+          type="button"
+          onClick={() => setSortMode('tier')}
+          className="col-mention"
+          style={{ ...headerBtnStyle('tier'), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}
+        >
           Mention
+          {arrow('tier')}
           <span
             title="Chaque tier a sa couleur : Excellent (bleu), Très bon (vert foncé), Bon (vert clair), Assez bien (jaune-vert), Passable (jaune), Insuffisant (orange), Mauvais (rouge). La barre dégradée montre la part de chaque tier dans les votes du film ; le label affiche la mention majoritaire."
-            style={{ cursor: 'help', opacity: 0.55, fontSize: 10, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}
+            onClick={e => e.stopPropagation()}
+            style={infoStyle}
             aria-label="Comment lire la mention"
           >
             ⓘ
           </span>
-        </span>
-        <span className="col-avg" style={{ textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+        </button>
+        <button
+          type="button"
+          onClick={() => setSortMode('rank')}
+          className="col-avg"
+          style={{ ...headerBtnStyle('rank'), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}
+        >
           Rang moyen
+          {arrow('rank')}
           <span
             title="Moyenne géométrique des positions de chaque classement. Plus sensible aux rangs proches de 1 que la moyenne classique : un vote #1 + un vote #100 donne 10 (vs 50 en moyenne classique)."
-            style={{ cursor: 'help', opacity: 0.55, fontSize: 10, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}
+            onClick={e => e.stopPropagation()}
+            style={infoStyle}
             aria-label="Comment ce rang est calculé"
           >
             ⓘ
           </span>
-        </span>
-        <span className="col-fav" style={{ textAlign: 'center' }}>En tête</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setSortMode('favorite')}
+          className="col-fav"
+          style={{ ...headerBtnStyle('favorite'), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}
+        >
+          En tête
+          {arrow('favorite')}
+        </button>
         <span className="col-mynote" style={{ textAlign: 'center' }}>Ma note</span>
       </div>
     </div>
@@ -519,26 +576,14 @@ function UserAwareEntryList({
 
 export function CommunityListSkeleton() {
   return (
-    <>
-      <div style={{ display: 'flex', gap: 2, paddingBottom: 12, flexWrap: 'wrap' }}>
-        {(['combined', 'tier', 'rank', 'favorite', 'popular'] as const).map(mode => (
-          <div key={mode} style={{
-            padding: '6px 14px', borderRadius: 8, fontSize: 13,
-            border: '1px solid transparent', color: 'var(--fg-5)',
-          }}>
-            {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Mention' : mode === 'rank' ? 'Rang' : mode === 'favorite' ? 'Favoris' : 'Popularité'}
-          </div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} style={{
-            height: 90, background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: 12, opacity: 0.5,
-          }} />
-        ))}
-      </div>
-    </>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} style={{
+          height: 90, background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 12, opacity: 0.5,
+        }} />
+      ))}
+    </div>
   )
 }
 
@@ -558,7 +603,8 @@ export function RankCommunityBody({
   const initialEntries = data?.initialEntries ?? []
   const totalEntries = data?.totalEntries ?? 0
 
-  const [sortMode, setSortMode] = useState<SortMode>('combined')
+  const ctx = useContext(RankSortContext)
+  const sortMode = ctx?.sortMode ?? 'combined'
   const [quickAddId, setQuickAddId] = useState<string | null>(null)
   const [displayCount, setDisplayCount] = useState(100)
   const [allEntries, setAllEntries] = useState(initialEntries)
@@ -572,6 +618,8 @@ export function RankCommunityBody({
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => { setDisplayCount(100) }, [sortMode])
 
   const sorted = [...allEntries].sort((a, b) => {
     const aSolo = a.tierCount <= 1 ? 1 : 0
@@ -602,19 +650,6 @@ export function RankCommunityBody({
 
   return (
     <>
-      <div style={{ display: 'flex', gap: 3, paddingBottom: 14, flexWrap: 'wrap' }}>
-        {(['combined', 'tier', 'rank', 'favorite', 'popular'] as SortMode[]).map(mode => (
-          <button key={mode} onClick={() => { setSortMode(mode); setDisplayCount(100) }} style={{
-            padding: '7px 17px', borderRadius: 9, fontFamily: 'inherit', cursor: 'pointer', fontSize: 16,
-            border: sortMode === mode ? '1px solid var(--border)' : '1px solid transparent',
-            background: sortMode === mode ? 'var(--bg-card)' : 'transparent',
-            color: sortMode === mode ? 'var(--fg)' : 'var(--fg-5)',
-            fontWeight: sortMode === mode ? 500 : 400,
-          }}>
-            {mode === 'combined' ? 'Combiné' : mode === 'tier' ? 'Mention' : mode === 'rank' ? 'Rang' : mode === 'favorite' ? 'Favoris' : 'Popularité'}
-          </button>
-        ))}
-      </div>
       {sorted.length === 0 ? (
         <p style={{ color: 'var(--fg-5)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
       ) : (

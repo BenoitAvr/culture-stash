@@ -11,6 +11,7 @@ import { getRankHost } from '@/lib/host'
 import {
   RankCommunityBody,
   CommunityListSkeleton,
+  RankSortProvider,
   type PersonalRankData,
 } from '@/app/rank/[slug]/RankTopicPage'
 import { PersonalActions } from '@/app/rank/[slug]/PersonalActions'
@@ -185,6 +186,7 @@ async function RankSlugInner({
 
   return (
     <div className="page-md" style={{ margin: '0 auto', padding: '0 24px 60px' }}>
+      <RankSortProvider>
 
       {/* Header — fully static for known slugs (generateStaticParams), with personal controls suspended */}
       <div style={{ padding: '20px 0 0' }}>
@@ -220,7 +222,7 @@ async function RankSlugInner({
       </div>
 
       {/* Community body — suspended (creates personalDataPromise inside) */}
-      <div style={{ paddingTop: 10 }}>
+      <div style={{ paddingTop: 16 }}>
         <Suspense fallback={<CommunityListSkeleton />}>
           <CommunityBody
             topicId={header.topicId}
@@ -230,6 +232,8 @@ async function RankSlugInner({
           />
         </Suspense>
       </div>
+
+      </RankSortProvider>
     </div>
   )
 }
