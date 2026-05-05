@@ -183,9 +183,6 @@ async function RankSlugInner({
     <div className="page-md" style={{ margin: '0 auto', padding: '24px 24px 60px' }}>
       <RankSortProvider>
 
-      {/* Légende des mentions — toujours visible, tout en haut */}
-      <MentionLegend />
-
       {/* Header */}
       <div style={{ padding: '8px 0 0' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
@@ -206,7 +203,7 @@ async function RankSlugInner({
           {dict.rank.communityTitle.replace('{topic}', header.topicTitle.toLowerCase())}
         </h1>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--fg-5)', marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, fontSize: 14, color: 'var(--fg-5)', marginBottom: 24 }}>
           {voteCount === 0 ? (
             <span style={{ fontStyle: 'italic' }}>
               {isFr ? 'En attente du premier avis · sois le premier' : 'Awaiting first ratings · be the first'}
@@ -228,6 +225,9 @@ async function RankSlugInner({
               <span>{voteCount} {voteLabel}</span>
             </>
           )}
+          <span style={{ marginLeft: 'auto' }}>
+            <MentionLegend lang={lang as 'fr' | 'en'} />
+          </span>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { use, useState, useEffect, useContext, createContext, Suspense } from 'react'
+import React, { use, useState, useEffect, useRef, useContext, createContext, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { getDict } from '@/dictionaries/client'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
@@ -389,51 +389,94 @@ function buildTierGradient(distribution: Record<string, number>, total: number):
   return `linear-gradient(90deg, ${stops.join(', ')})`
 }
 
-export function MentionLegend() {
+export function MentionLegend({ lang }: { lang: 'fr' | 'en' }) {
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const label = lang === 'fr' ? 'Échelle des mentions' : 'Rating scale'
+
   return (
-    <div style={{
-      background: 'var(--bg-card)',
-      borderRadius: 14,
-      padding: '18px 22px',
-      marginBottom: 18,
-      border: '1px solid var(--border)',
-    }}>
-      <div style={{
-        fontSize: 12, color: 'var(--fg-6)',
-        textTransform: 'uppercase', letterSpacing: '.05em',
-        fontWeight: 600, marginBottom: 12,
-      }}>
-        L&apos;échelle des mentions
-      </div>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
-        {TIERS.map(tier => {
-          const c = TIER_COLOR_SOFT[tier]
-          return (
-            <div
-              key={tier}
-              style={{
-                flex: 1,
-                padding: '8px 10px',
-                borderRadius: 8,
-                textAlign: 'center',
-                fontSize: 12,
-                fontWeight: 600,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-                border: `1px solid ${c.border}`,
-                background: c.bg,
-                color: c.fg,
-              }}
-            >
-              {TIER_LABEL[tier]}
-              <span style={{ fontSize: 10, opacity: 0.6, fontWeight: 500 }}>
-                {TIER_VALUE[tier]}/7
-              </span>
-            </div>
-          )
-        })}
-      </div>
+    <div ref={wrapperRef} style={{ position: 'relative', display: 'inline-flex' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '3px 10px', borderRadius: 12,
+          background: open ? 'var(--bg-subtle)' : 'transparent',
+          border: '1px solid var(--border)',
+          color: 'var(--fg-5)', fontSize: 12, fontWeight: 500,
+          cursor: 'pointer', fontFamily: 'inherit',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <span aria-hidden style={{ fontSize: 11, opacity: 0.7 }}>ⓘ</span>
+        {label}
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label={label}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            left: 0,
+            zIndex: 30,
+            background: 'var(--bg-card)',
+            borderRadius: 12,
+            padding: 12,
+            border: '1px solid var(--border)',
+            boxShadow: '0 12px 32px rgba(0,0,0,.12)',
+            display: 'flex',
+            gap: 6,
+            width: 'min(620px, calc(100vw - 48px))',
+          }}
+        >
+          {TIERS.map(tier => {
+            const c = TIER_COLOR_SOFT[tier]
+            return (
+              <div
+                key={tier}
+                style={{
+                  flex: 1,
+                  padding: '8px 6px',
+                  borderRadius: 8,
+                  textAlign: 'center',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  border: `1px solid ${c.border}`,
+                  background: c.bg,
+                  color: c.fg,
+                }}
+              >
+                {TIER_LABEL[tier]}
+                <span style={{ fontSize: 10, opacity: 0.6, fontWeight: 500 }}>
+                  {TIER_VALUE[tier]}/7
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
