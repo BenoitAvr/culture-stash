@@ -513,6 +513,9 @@ export function RankCommunityBody({
   }, [])
 
   const sorted = [...allEntries].sort((a, b) => {
+    const aSolo = a.tierCount <= 1 ? 1 : 0
+    const bSolo = b.tierCount <= 1 ? 1 : 0
+    if (aSolo !== bSolo) return aSolo - bSolo
     if (sortMode === 'tier') {
       if (a.avgTierScore === null && b.avgTierScore === null) return 0
       if (a.avgTierScore === null) return 1
