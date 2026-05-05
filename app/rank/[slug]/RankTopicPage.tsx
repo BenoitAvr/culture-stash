@@ -204,7 +204,16 @@ function TableHeader() {
       <span className="col-title">Titre</span>
       <div className="col-metrics">
         <span className="col-mention" style={{ textAlign: 'center' }}>Mention</span>
-        <span className="col-avg" style={{ textAlign: 'center' }}>Rang moyen</span>
+        <span className="col-avg" style={{ textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+          Rang moyen
+          <span
+            title="Moyenne géométrique des positions de chaque classement. Plus sensible aux rangs proches de 1 que la moyenne classique : un vote #1 + un vote #100 donne 10 (vs 50 en moyenne classique)."
+            style={{ cursor: 'help', opacity: 0.55, fontSize: 10, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}
+            aria-label="Comment ce rang est calculé"
+          >
+            ⓘ
+          </span>
+        </span>
         <span className="col-fav" style={{ textAlign: 'center' }}>En tête</span>
       </div>
       <span className="col-action" />

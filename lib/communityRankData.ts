@@ -80,7 +80,7 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
       })
       if (!topic || !topic.rankable) return null
 
-      const rankData: Record<string, { total: number; count: number }> = {}
+      const rankData: Record<string, { sumLog: number; count: number }> = {}
       const tierData: Record<string, { totalScore: number; count: number }> = {}
       const favoriteData: Record<string, number> = {}
       const tierDistData: Record<string, Record<string, number>> = {}
@@ -95,9 +95,9 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
           tierData[item.entryId].count += 1
           if (!tierDistData[item.entryId]) tierDistData[item.entryId] = {}
           tierDistData[item.entryId][item.tier] = (tierDistData[item.entryId][item.tier] ?? 0) + 1
-          if (item.position !== null && rts.includes(item.tier)) {
-            if (!rankData[item.entryId]) rankData[item.entryId] = { total: 0, count: 0 }
-            rankData[item.entryId].total += item.position
+          if (item.position !== null && item.position >= 1 && rts.includes(item.tier)) {
+            if (!rankData[item.entryId]) rankData[item.entryId] = { sumLog: 0, count: 0 }
+            rankData[item.entryId].sumLog += Math.log(item.position)
             rankData[item.entryId].count += 1
           }
         }
@@ -123,7 +123,7 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
             titleEn: e.titleEn,
             year: e.year,
             cover: e.cover || null,
-            avgRank: rd && rd.count > 0 ? rd.total / rd.count : null,
+            avgRank: rd && rd.count > 0 ? Math.exp(rd.sumLog / rd.count) : null,
             rankCount: rd?.count ?? 0,
             avgTierScore: td && td.count > 0 ? td.totalScore / td.count : null,
             tierCount: td?.count ?? 0,
