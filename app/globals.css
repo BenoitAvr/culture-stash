@@ -128,9 +128,9 @@ nav, [data-nav] {
 
 .rank-row {
   display: grid;
-  grid-template-columns: 34px 53px minmax(0, 1fr) 130px 200px 84px 124px;
+  grid-template-columns: 44px 64px minmax(0, 1fr) 130px 200px 84px 124px;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   padding: 12px 20px;
   transition: background-color .12s ease;
 }
@@ -141,9 +141,9 @@ nav, [data-nav] {
 
 .rank-header {
   display: grid;
-  grid-template-columns: 34px 53px minmax(0, 1fr) 130px 200px 84px 124px;
+  grid-template-columns: 44px 64px minmax(0, 1fr) 130px 200px 84px 124px;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   padding: 10px 20px;
   background: var(--bg-subtle);
 }
@@ -153,7 +153,7 @@ nav, [data-nav] {
   .rank-header { display: none; }
 
   .rank-row {
-    grid-template-columns: 34px 53px minmax(0, 1fr);
+    grid-template-columns: 44px 64px minmax(0, 1fr);
     grid-template-rows: auto auto;
     column-gap: 12px;
     row-gap: 10px;

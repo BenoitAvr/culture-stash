@@ -28,6 +28,12 @@ const TIER_COLOR_SOFT: Record<string, { bg: string; fg: string; border: string }
   MA: { bg: '#fafafa', fg: '#525252', border: '#e5e5e5' },
 }
 
+const MEDAL: Record<number, { bg: string; fg: string; border: string }> = {
+  1: { bg: '#fef3c7', fg: '#b45309', border: '#fcd34d' },
+  2: { bg: '#f1f5f9', fg: '#475569', border: '#cbd5e1' },
+  3: { bg: '#ffedd5', fg: '#9a3412', border: '#fdba74' },
+}
+
 type SortMode = 'combined' | 'tier' | 'rank' | 'favorite' | 'popular'
 
 const RankSortContext = createContext<{ sortMode: SortMode; setSortMode: (m: SortMode) => void } | null>(null)
@@ -586,18 +592,38 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
   return (
     <div className="rank-row" style={{ cursor: 'default', background: isOpen ? 'var(--bg-subtle)' : undefined }}>
       {/* Rank */}
-      <span className="col-rank" style={{
-        fontFamily: "'Fraunces', serif",
-        fontSize: rank === 1 ? 20 : isTop3 ? 18 : 17,
-        fontWeight: rank === 1 ? 700 : 400,
-        color: isTop3 ? 'var(--fg)' : 'var(--fg-5)',
-        textAlign: 'center', lineHeight: 1,
-      }}>{rank}</span>
+      {isTop3 ? (
+        <div className="col-rank" style={{ display: 'flex', justifyContent: 'center' }}>
+          <span
+            aria-label={`Rang ${rank}`}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 36, height: 36, borderRadius: '50%',
+              background: MEDAL[rank].bg,
+              border: `1px solid ${MEDAL[rank].border}`,
+              color: MEDAL[rank].fg,
+              fontFamily: "'Fraunces', serif",
+              fontWeight: 700, fontSize: 19, letterSpacing: -0.5,
+              lineHeight: 1, fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {rank}
+          </span>
+        </div>
+      ) : (
+        <span className="col-rank" style={{
+          fontFamily: "'Fraunces', serif",
+          fontSize: 17,
+          fontWeight: 400,
+          color: 'var(--fg-5)',
+          textAlign: 'center', lineHeight: 1,
+        }}>{rank}</span>
+      )}
 
       {/* Poster */}
       {entry.cover
-        ? <img className="col-poster" src={entry.cover} alt={displayTitle} loading="lazy" style={{ width: 53, height: 72, objectFit: 'cover', borderRadius: 5, border: '1px solid var(--border)' }} />
-        : <div className="col-poster" style={{ width: 53, height: 72, borderRadius: 5, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }} />
+        ? <img className="col-poster" src={entry.cover} alt={displayTitle} loading="lazy" style={{ width: 64, height: 96, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+        : <div className="col-poster" style={{ width: 64, height: 96, borderRadius: 6, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }} />
       }
 
       {/* Title */}
