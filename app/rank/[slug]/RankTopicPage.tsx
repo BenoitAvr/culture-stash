@@ -340,20 +340,6 @@ function describeDistribution(
   return `${totalVotes} avis · consensus positif`
 }
 
-// Map combinedScore → color along a yellow-lime-green gradient. Higher
-// scores get a deeper, more saturated green; low scores fade toward muted
-// yellow/grey so the colour itself signals "how good".
-function scoreColor(score: number): string {
-  if (score >= 28) return '#15803d' // green-700
-  if (score >= 25) return '#16a34a' // green-600
-  if (score >= 22) return '#4d9c11' // green-lime mix
-  if (score >= 19) return '#65a30d' // lime-700
-  if (score >= 16) return '#84cc16' // lime-500
-  if (score >= 13) return '#ca8a04' // yellow-600
-  if (score >= 10) return '#a16207' // yellow-700
-  return '#9ca3af'                  // gray-400
-}
-
 // Median of the vote values (1..7). More robust to outliers than the mean,
 // and avoids the modal tie-break that would surface "Excellent" on a 2-2
 // split between EX and TB.
@@ -643,7 +629,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
                 fontSize: 16,
                 fontWeight: 700,
                 letterSpacing: -0.4,
-                color: scoreColor(score),
+                color: 'var(--fg-3)',
                 fontVariantNumeric: 'tabular-nums',
                 lineHeight: 1,
               }}>
