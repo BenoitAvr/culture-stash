@@ -61,7 +61,8 @@ export async function saveUserEntryLists(
   topicSlug: string,
   rankItems: EntryListItem[],
   tierItems: EntryListItem[],
-  rankedTiers: string[] = []
+  rankedTiers: string[] = [],
+  options: { revalidate?: boolean } = {}
 ): Promise<SavedEntryList[]> {
   const session = await getSession()
   if (!session) return []
@@ -96,7 +97,8 @@ export async function saveUserEntryLists(
     },
   })
 
-  revalidateTag(`rank-${topicSlug}`, 'max')
+  // Default to revalidating to keep older callers (the dedicated edit page) honest
+  if (options.revalidate ?? true) revalidateTag(`rank-${topicSlug}`, 'max')
 
   return fresh.map(l => ({
     id: l.id,

@@ -211,6 +211,93 @@ function majorityTier(distribution: Record<string, number>): string | null {
 const TIER_VALUE: Record<string, number> = { EX: 7, TB: 6, BO: 5, AB: 4, PA: 3, IN: 2, MA: 1 }
 const TIER_BY_VALUE: Record<number, string> = { 7: 'EX', 6: 'TB', 5: 'BO', 4: 'AB', 3: 'PA', 2: 'IN', 1: 'MA' }
 
+// User's "favorite" entry: the #1 of the highest ranked tier they have voted on.
+// Mirrors the favoriteCount aggregation in lib/communityRankData.ts.
+function findUserFavorite(items: ListItemData[], rankedTiers: string[]): string | null {
+  for (const tier of TIERS) {
+    if (!rankedTiers.includes(tier)) continue
+    const top = items.find(i => i.tier === tier && i.position === 1)
+    if (top) return top.entryId
+  }
+  return null
+}
+
+// Optimistic update of the community entries to reflect a change in the
+// current user's list — re-applies the same aggregation as
+// getCommunityData but incrementally (no DB call).
+function applyMyListChange(
+  entries: Entry[],
+  prevItems: ListItemData[],
+  newItems: ListItemData[],
+  prevRanked: string[],
+  newRanked: string[],
+): Entry[] {
+  const prevMap = new Map<string, ListItemData>()
+  for (const i of prevItems) prevMap.set(i.entryId, i)
+  const newMap = new Map<string, ListItemData>()
+  for (const i of newItems) newMap.set(i.entryId, i)
+
+  const prevFav = findUserFavorite(prevItems, prevRanked)
+  const newFav = findUserFavorite(newItems, newRanked)
+
+  const affected = new Set<string>()
+  for (const id of prevMap.keys()) affected.add(id)
+  for (const id of newMap.keys()) affected.add(id)
+  if (prevFav) affected.add(prevFav)
+  if (newFav) affected.add(newFav)
+
+  return entries.map(e => {
+    if (!affected.has(e.id)) return e
+
+    const prev = prevMap.get(e.id) ?? null
+    const next = newMap.get(e.id) ?? null
+
+    // tierDistribution + tierCount + avgTierScore
+    const newDist: Record<string, number> = { ...e.tierDistribution }
+    if (prev?.tier) newDist[prev.tier] = Math.max(0, (newDist[prev.tier] ?? 0) - 1)
+    if (next?.tier) newDist[next.tier] = (newDist[next.tier] ?? 0) + 1
+
+    let totalScore = 0
+    let totalCount = 0
+    for (const [t, c] of Object.entries(newDist)) {
+      const v = TIER_VALUE[t]
+      if (v === undefined) continue
+      totalScore += v * c
+      totalCount += c
+    }
+
+    // avgRank + rankCount via geometric mean (sumLog = log(avgRank) × rankCount)
+    let sumLog = e.avgRank !== null && e.rankCount > 0 ? Math.log(e.avgRank) * e.rankCount : 0
+    let newRankCount = e.rankCount
+    const prevWasRanked = !!(prev?.tier && prev.position && prev.position >= 1 && prevRanked.includes(prev.tier))
+    const nextIsRanked = !!(next?.tier && next.position && next.position >= 1 && newRanked.includes(next.tier))
+    if (prevWasRanked && prev!.position) {
+      sumLog -= Math.log(prev!.position!)
+      newRankCount -= 1
+    }
+    if (nextIsRanked && next!.position) {
+      sumLog += Math.log(next!.position!)
+      newRankCount += 1
+    }
+    const newAvgRank = newRankCount > 0 ? Math.exp(sumLog / newRankCount) : null
+
+    // favoriteCount delta
+    let favCount = e.favoriteCount
+    if (prevFav === e.id) favCount = Math.max(0, favCount - 1)
+    if (newFav === e.id) favCount += 1
+
+    return {
+      ...e,
+      tierDistribution: newDist,
+      tierCount: totalCount,
+      avgTierScore: totalCount > 0 ? totalScore / totalCount : null,
+      avgRank: newAvgRank,
+      rankCount: newRankCount,
+      favoriteCount: favCount,
+    }
+  })
+}
+
 // Median of the vote values (1..7). More robust to outliers than the mean,
 // and avoids the modal tie-break that would surface "Excellent" on a 2-2
 // split between EX and TB.
@@ -570,12 +657,14 @@ function UserAwareEntryList({
   topicSlug,
   quickAddId,
   setQuickAddId,
+  onApplyMyChange,
 }: {
   personalDataPromise: Promise<PersonalRankData>
   entries: Entry[]
   topicSlug: string
   quickAddId: string | null
   setQuickAddId: (id: string | null) => void
+  onApplyMyChange: (prev: ListItemData[], next: ListItemData[], prevRanked: string[], nextRanked: string[]) => void
 }) {
   const { userLists: initialLists, currentUserId, isLoggedIn } = use(personalDataPromise)
   const [lists, setLists] = useState(initialLists)
@@ -611,7 +700,14 @@ function UserAwareEntryList({
       ]
     }
 
-    const updated = await saveUserEntryLists(topicSlug, [], newItems, rankedTiers)
+    const updated = await saveUserEntryLists(topicSlug, [], newItems, rankedTiers, { revalidate: false })
+    const newMy = updated.find(l => l.type === 'TIER' || l.type === 'BOTH') ?? null
+    onApplyMyChange(
+      myTierList?.items ?? [],
+      newMy?.items ?? [],
+      (myTierList?.rankedTiers ?? '').split(',').filter(Boolean),
+      (newMy?.rankedTiers ?? '').split(',').filter(Boolean),
+    )
     setLists(prev => [...prev.filter(l => l.userId !== currentUserId), ...updated])
     setQuickAddId(null)
   }
@@ -639,7 +735,14 @@ function UserAwareEntryList({
       newItems = remaining.map(i => ({ entryId: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined }))
     }
 
-    const updated = await saveUserEntryLists(topicSlug, [], newItems, rankedTiers)
+    const updated = await saveUserEntryLists(topicSlug, [], newItems, rankedTiers, { revalidate: false })
+    const newMy = updated.find(l => l.type === 'TIER' || l.type === 'BOTH') ?? null
+    onApplyMyChange(
+      myTierList?.items ?? [],
+      newMy?.items ?? [],
+      (myTierList?.rankedTiers ?? '').split(',').filter(Boolean),
+      (newMy?.rankedTiers ?? '').split(',').filter(Boolean),
+    )
     setLists(prev => [...prev.filter(l => l.userId !== currentUserId), ...updated])
     setQuickAddId(null)
   }
@@ -665,7 +768,14 @@ function UserAwareEntryList({
       }
     })
 
-    const updated = await saveUserEntryLists(topicSlug, [], newItems, newRankedTiers)
+    const updated = await saveUserEntryLists(topicSlug, [], newItems, newRankedTiers, { revalidate: false })
+    const newMy = updated.find(l => l.type === 'TIER' || l.type === 'BOTH') ?? null
+    onApplyMyChange(
+      myTierList.items,
+      newMy?.items ?? [],
+      (myTierList.rankedTiers ?? '').split(',').filter(Boolean),
+      (newMy?.rankedTiers ?? '').split(',').filter(Boolean),
+    )
     setLists(prev => [...prev.filter(l => l.userId !== currentUserId), ...updated])
   }
 
@@ -804,6 +914,9 @@ export function RankCommunityBody({
               topicSlug={topicSlug}
               quickAddId={quickAddId}
               setQuickAddId={setQuickAddId}
+              onApplyMyChange={(prev, next, prevR, nextR) =>
+                setAllEntries(curr => applyMyListChange(curr, prev, next, prevR, nextR))
+              }
             />
           </Suspense>
           {isLoadingFull && sorted.length <= displayCount && (
