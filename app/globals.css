@@ -115,7 +115,7 @@ nav, [data-nav] {
 /* community rank table */
 .rank-row {
   display: grid;
-  grid-template-columns: 28px 44px minmax(0, 1fr) 92px 70px 50px 96px;
+  grid-template-columns: 28px 44px minmax(0, 1fr) 78px 88px 70px 50px 96px;
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
@@ -124,7 +124,7 @@ nav, [data-nav] {
 
 .rank-header {
   display: grid;
-  grid-template-columns: 28px 44px minmax(0, 1fr) 92px 70px 50px 96px;
+  grid-template-columns: 28px 44px minmax(0, 1fr) 78px 88px 70px 50px 96px;
   align-items: center;
   gap: 10px;
   padding: 6px 16px;
@@ -152,6 +152,7 @@ nav, [data-nav] {
     align-items: stretch;
   }
   .rank-row > .col-metrics > .col-mention { flex: 1; min-width: 0; }
+  .rank-row > .col-metrics > .col-score,
   .rank-row > .col-metrics > .col-avg,
   .rank-row > .col-metrics > .col-fav,
   .rank-row > .col-metrics > .col-mynote { flex: 0 0 auto; }

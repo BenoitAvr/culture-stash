@@ -209,6 +209,24 @@ function TableHeader() {
       <span className="col-poster" />
       <span className="col-title">Titre</span>
       <div className="col-metrics">
+        <span
+          className="col-score"
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            Score
+            <span
+              title="Score combiné qui détermine le classement : mention × 3 + bonus de rang + favoris + popularité × 0.2."
+              style={{ cursor: 'help', opacity: 0.55, fontSize: 10, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}
+              aria-label="Comment ce score est calculé"
+            >
+              ⓘ
+            </span>
+          </span>
+          <span style={{ fontSize: 8.5, fontWeight: 400, opacity: 0.6, textTransform: 'none', letterSpacing: 0, whiteSpace: 'nowrap' }}>
+            Rang + Mention
+          </span>
+        </span>
         <span className="col-mention" style={{ textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
           Mention
           <span
@@ -283,6 +301,13 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
       </div>
 
       <div className="col-metrics">
+        {/* Score combiné */}
+        <div className="col-score" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontWeight: 600, color: 'var(--fg-3)' }}>
+            {combinedScore(entry).toFixed(1)}
+          </span>
+        </div>
+
         {/* Mention */}
         <div className="col-mention" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 3, minWidth: 0 }}>
           {mention && tierGradient ? (
