@@ -31,5 +31,5 @@ export function combinedScore(e: RankEntry) {
     rankBonus = rawRankBonus * (e.tierCount / (e.tierCount + RANK_SHRINKAGE_K))
   }
 
-  return shrunkTier * 3 + rankBonus + e.favoriteCount + e.tierCount * 0.2
+  return shrunkTier * 3 + rankBonus + e.favoriteCount
 }
