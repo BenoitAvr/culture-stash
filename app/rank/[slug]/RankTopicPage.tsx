@@ -203,7 +203,16 @@ function TableHeader() {
       <span className="col-poster" />
       <span className="col-title">Titre</span>
       <div className="col-metrics">
-        <span className="col-mention" style={{ textAlign: 'center' }}>Mention</span>
+        <span className="col-mention" style={{ textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+          Mention
+          <span
+            title="Chaque tier a sa couleur : Excellent (bleu), Très bon (vert foncé), Bon (vert clair), Assez bien (jaune-vert), Passable (jaune), Insuffisant (orange), Mauvais (rouge). La barre dégradée montre la part de chaque tier dans les votes du film ; le label affiche la mention majoritaire."
+            style={{ cursor: 'help', opacity: 0.55, fontSize: 10, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}
+            aria-label="Comment lire la mention"
+          >
+            ⓘ
+          </span>
+        </span>
         <span className="col-avg" style={{ textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
           Rang moyen
           <span
@@ -215,17 +224,18 @@ function TableHeader() {
           </span>
         </span>
         <span className="col-fav" style={{ textAlign: 'center' }}>En tête</span>
+        <span className="col-mynote" style={{ textAlign: 'center' }}>Ma note</span>
       </div>
-      <span className="col-action" />
     </div>
   )
 }
 
-function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
+function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }: {
   entry: Entry
   rank: number
   isLoggedIn: boolean
   myTier: string | null
+  myPosition: number | null
   isOpen: boolean
   onAdd: () => void
 }) {
@@ -263,14 +273,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
       {/* Title */}
       <div className="col-title" style={{ minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayTitle}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
-          {entry.year && <span style={{ fontSize: 11, color: 'var(--fg-5)' }}>{entry.year}</span>}
-          {myTierColor && myTier && (
-            <span title="Ma note" style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 6px', borderRadius: 3, background: `${myTierColor}18`, color: myTierColor }}>
-              ma note · {TIER_LABEL[myTier]}
-            </span>
-          )}
-        </div>
+        {entry.year && <div style={{ fontSize: 11, color: 'var(--fg-5)', marginTop: 3 }}>{entry.year}</div>}
       </div>
 
       <div className="col-metrics">
@@ -319,42 +322,56 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, isOpen, onAdd }: {
             <span style={{ fontSize: 11, color: 'var(--fg-7)' }}>—</span>
           )}
         </div>
-      </div>
 
-      {/* Action */}
-      {isLoggedIn ? (
-        <button
-          onClick={onAdd}
-          title={myTier ? 'Modifier' : 'Ajouter à ma liste'}
-          className="col-action"
-          style={{
-            width: 28, height: 28, borderRadius: 7, cursor: 'pointer',
-            background: myTier ? 'transparent' : 'var(--bg-subtle)',
-            border: `1px solid ${isOpen ? 'var(--fg-3)' : 'var(--border)'}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: myTier ? 13 : 18, color: isOpen ? 'var(--fg)' : 'var(--fg-4)',
-            justifySelf: 'end',
-          }}
-        >
-          {myTier ? '✎' : (isOpen ? '×' : '+')}
-        </button>
-      ) : (
-        <Link
-          href={`/${lang}/auth/login`}
-          title={lang === 'fr' ? 'Connecte-toi pour noter' : 'Sign in to rate'}
-          className="col-action"
-          style={{
-            width: 28, height: 28, borderRadius: 7, textDecoration: 'none',
-            background: 'var(--bg-subtle)',
-            border: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, color: 'var(--fg-4)',
-            justifySelf: 'end',
-          }}
-        >
-          +
-        </Link>
-      )}
+        {/* Ma note (cliquable : modifier/ajouter) */}
+        {isLoggedIn ? (
+          <button
+            onClick={onAdd}
+            title={myTier ? 'Modifier ma note' : 'Noter ce film'}
+            className="col-mynote"
+            style={{
+              position: 'relative',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+              padding: '4px 6px', minHeight: 40, borderRadius: 7, cursor: 'pointer',
+              background: isOpen ? 'var(--bg-subtle)' : 'transparent',
+              border: `1px solid ${isOpen ? 'var(--fg-3)' : 'transparent'}`,
+              fontFamily: 'inherit',
+            }}
+          >
+            {myTierColor && myTier ? (
+              <>
+                <span style={{ fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: `${myTierColor}18`, color: myTierColor, whiteSpace: 'nowrap' }}>
+                  {TIER_LABEL[myTier]}
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  {myPosition != null && (
+                    <span style={{ fontSize: 9.5, color: 'var(--fg-6)', fontFamily: "'Fraunces', serif" }}>
+                      #{myPosition}
+                    </span>
+                  )}
+                  <span aria-hidden style={{ fontSize: 11, color: 'var(--fg-5)', opacity: 0.7, lineHeight: 1 }}>✎</span>
+                </span>
+              </>
+            ) : (
+              <span style={{ fontSize: 18, color: 'var(--fg-4)', lineHeight: 1 }}>{isOpen ? '×' : '+'}</span>
+            )}
+          </button>
+        ) : (
+          <Link
+            href={`/${lang}/auth/login`}
+            title={lang === 'fr' ? 'Connecte-toi pour noter' : 'Sign in to rate'}
+            className="col-mynote"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              minHeight: 40, borderRadius: 7, textDecoration: 'none',
+              border: '1px solid transparent',
+              fontSize: 18, color: 'var(--fg-4)',
+            }}
+          >
+            +
+          </Link>
+        )}
+      </div>
     </div>
   )
 }
@@ -440,13 +457,16 @@ function UserAwareEntryList({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <TableHeader />
-      {entries.map((entry, i) => (
+      {entries.map((entry, i) => {
+        const myItem = myTierList?.items.find(item => item.entryId === entry.id) ?? null
+        return (
         <React.Fragment key={entry.id}>
           <EntryRow
             entry={entry}
             rank={i + 1}
             isLoggedIn={isLoggedIn}
-            myTier={myTierList?.items.find(item => item.entryId === entry.id)?.tier ?? null}
+            myTier={myItem?.tier ?? null}
+            myPosition={myItem?.position ?? null}
             isOpen={quickAddId === entry.id}
             onAdd={() => setQuickAddId(quickAddId === entry.id ? null : entry.id)}
           />
@@ -460,7 +480,8 @@ function UserAwareEntryList({
             />
           )}
         </React.Fragment>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -578,6 +599,7 @@ export function RankCommunityBody({
                     rank={i + 1}
                     isLoggedIn={false}
                     myTier={null}
+                    myPosition={null}
                     isOpen={false}
                     onAdd={() => {}}
                   />

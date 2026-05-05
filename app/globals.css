@@ -106,18 +106,18 @@ nav, [data-nav] {
 /* community rank table */
 .rank-row {
   display: grid;
-  grid-template-columns: 28px 44px minmax(0, 1fr) 110px 86px 64px 32px;
+  grid-template-columns: 28px 44px minmax(0, 1fr) 92px 70px 50px 96px;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 10px 16px;
 }
 .rank-row > .col-metrics { display: contents; }
 
 .rank-header {
   display: grid;
-  grid-template-columns: 28px 44px minmax(0, 1fr) 110px 86px 64px 32px;
+  grid-template-columns: 28px 44px minmax(0, 1fr) 92px 70px 50px 96px;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 6px 16px;
 }
 .rank-header > .col-metrics { display: contents; }
@@ -126,7 +126,7 @@ nav, [data-nav] {
   .rank-header { display: none; }
 
   .rank-row {
-    grid-template-columns: 28px 44px minmax(0, 1fr) 32px;
+    grid-template-columns: 28px 44px minmax(0, 1fr);
     grid-template-rows: auto auto;
     column-gap: 10px;
     row-gap: 8px;
@@ -135,7 +135,6 @@ nav, [data-nav] {
   .rank-row > .col-rank    { grid-row: 1; grid-column: 1; }
   .rank-row > .col-poster  { grid-row: 1; grid-column: 2; }
   .rank-row > .col-title   { grid-row: 1; grid-column: 3; }
-  .rank-row > .col-action  { grid-row: 1; grid-column: 4; justify-self: end; }
   .rank-row > .col-metrics {
     display: flex;
     grid-row: 2;
@@ -145,7 +144,8 @@ nav, [data-nav] {
   }
   .rank-row > .col-metrics > .col-mention { flex: 1; min-width: 0; }
   .rank-row > .col-metrics > .col-avg,
-  .rank-row > .col-metrics > .col-fav { flex: 0 0 auto; }
+  .rank-row > .col-metrics > .col-fav,
+  .rank-row > .col-metrics > .col-mynote { flex: 0 0 auto; }
 }
 
 /* tier editor rows */
