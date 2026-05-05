@@ -113,17 +113,29 @@ nav, [data-nav] {
 @media (min-width: 2200px) { .page-lg { max-width: 1680px; } }
 
 /* community rank table */
+.rank-table {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.rank-table > * + * {
+  border-top: 1px solid var(--border);
+}
+.rank-table > .rank-quick-add {
+  border-top: none;
+}
+
 .rank-row {
   display: grid;
   grid-template-columns: 34px 53px minmax(0, 1fr) 130px 200px 84px 124px;
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+  transition: background-color .12s ease;
 }
 .rank-row:hover {
-  border-color: var(--fg-7) !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,.04);
+  background: var(--bg-subtle);
 }
 .rank-row > .col-metrics { display: contents; }
 
@@ -132,7 +144,8 @@ nav, [data-nav] {
   grid-template-columns: 34px 53px minmax(0, 1fr) 130px 200px 84px 124px;
   align-items: center;
   gap: 12px;
-  padding: 8px 20px;
+  padding: 10px 20px;
+  background: var(--bg-subtle);
 }
 .rank-header > .col-metrics { display: contents; }
 

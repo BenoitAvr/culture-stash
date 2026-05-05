@@ -94,7 +94,7 @@ function QuickAddPanel({
   }
 
   return (
-    <div style={{ padding: '14px 16px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 12px 12px', marginBottom: 0 }}>
+    <div className="rank-quick-add" style={{ padding: '14px 20px', background: 'var(--bg-subtle)' }}>
       <div style={{ fontSize: 12, color: 'var(--fg-5)', marginBottom: 10 }}>
         Ajouter à ma liste : <span style={{ color: 'var(--fg-2)', fontWeight: 600 }}>{pickTitle(entry, lang)}</span>
         {currentTierOfEntry && (
@@ -584,13 +584,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
   const tierGradient = buildTierGradient(entry.tierDistribution, totalVotes)
 
   return (
-    <div className="rank-row" style={{
-      background: 'var(--bg-card)', border: '1px solid var(--border)',
-      borderRadius: 10, cursor: 'default',
-      borderBottomColor: isOpen ? 'transparent' : undefined,
-      borderBottomLeftRadius: isOpen ? 0 : 10,
-      borderBottomRightRadius: isOpen ? 0 : 10,
-    }}>
+    <div className="rank-row" style={{ cursor: 'default', background: isOpen ? 'var(--bg-subtle)' : undefined }}>
       {/* Rank */}
       <span className="col-rank" style={{
         fontFamily: "'Fraunces', serif",
@@ -935,7 +929,7 @@ function UserAwareEntryList({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div className="rank-table">
       <TableHeader />
       {entries.map((entry, i) => {
         const myItem = myTierList?.items.find(item => item.entryId === entry.id) ?? null
@@ -969,12 +963,9 @@ function UserAwareEntryList({
 
 export function CommunityListSkeleton() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div className="rank-table" style={{ opacity: 0.55 }}>
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} style={{
-          height: 90, background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 12, opacity: 0.5,
-        }} />
+        <div key={i} className="rank-row" style={{ height: 72 }} />
       ))}
     </div>
   )
@@ -1046,7 +1037,7 @@ export function RankCommunityBody({
         <>
           <Suspense
             fallback={
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div className="rank-table">
                 <TableHeader />
                 {visibleEntries.map((entry, i) => (
                   <EntryRow
