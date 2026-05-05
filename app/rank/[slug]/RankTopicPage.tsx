@@ -378,7 +378,7 @@ function TableHeader() {
             Score
             {arrow('combined')}
             <span
-              title="Score combiné qui détermine le classement : mention × 3 + bonus de rang + favoris."
+              title="Score combiné qui détermine le classement : mention × 4 + bonus de rang."
               onClick={e => e.stopPropagation()}
               style={infoStyle}
               aria-label="Comment ce score est calculé"
