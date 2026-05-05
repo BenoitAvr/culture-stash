@@ -206,13 +206,13 @@ async function RankSlugInner({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-          <span style={{ fontSize: 28, lineHeight: 1 }}>{header.topicEmoji}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, borderTop: '1px solid var(--border)', paddingTop: 18 }}>
+          <span style={{ fontSize: 34, lineHeight: 1 }}>{header.topicEmoji}</span>
           <div>
-            <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 24, fontWeight: 900, color: 'var(--fg)', letterSpacing: -0.3, lineHeight: 1.1 }}>
+            <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 29, fontWeight: 900, color: 'var(--fg)', letterSpacing: -0.3, lineHeight: 1.1 }}>
               {dict.rank.communityTitle.replace('{topic}', header.topicTitle.toLowerCase())}
             </h1>
-            <div style={{ fontSize: 12, color: 'var(--fg-5)', marginTop: 2, fontWeight: 300 }}>
+            <div style={{ fontSize: 14, color: 'var(--fg-5)', marginTop: 3, fontWeight: 300 }}>
               {subtitle}
             </div>
           </div>
