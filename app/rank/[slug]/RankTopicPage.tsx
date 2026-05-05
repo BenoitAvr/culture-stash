@@ -522,7 +522,7 @@ function TableHeader() {
           {arrow('combined')}
           <Info
             label="Comment ce score est calculé"
-            tip="Score combiné qui détermine le classement : mention × 4 + bonus de rang. Plus c'est élevé, mieux c'est."
+            tip={`Score = mention ajustée × 4 + bonus de rang.\n\n• Mention ajustée : moyenne des avis sur 7, lissée vers « Assez bien » (4) tant qu'il y a peu de votes — un seul "Excellent" pèse moins qu'un consensus à dix avis.\n\n• Bonus de rang : récompense logarithmique des hautes positions (#1 vaut bien plus que #10), pondérée par le nombre de classements.\n\nLe tout favorise les films à la fois bien notés et bien classés, sans laisser un avis isolé fausser le résultat.`}
           />
         </button>
         <button
@@ -663,22 +663,27 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
                   </span>
                 )}
               </div>
-              <div
-                title={`${describeDistribution(entry.tierDistribution, totalVotes)}\n${TIERS.filter(t => entry.tierDistribution[t]).map(t => `${TIER_LABEL[t]} : ${entry.tierDistribution[t]}`).join(' · ')}`}
-                style={{
-                  display: 'flex',
-                  height: 4,
-                  borderRadius: 2,
-                  overflow: 'hidden',
-                  background: 'var(--bg-subtle)',
-                }}
-              >
-                {TIERS.map(tier => {
-                  const count = entry.tierDistribution[tier] ?? 0
-                  if (count === 0) return null
-                  const pct = (count / totalVotes) * 100
-                  return <span key={tier} style={{ width: `${pct}%`, background: TIER_COLOR[tier] }} />
-                })}
+              <div>
+                <div
+                  title={`${describeDistribution(entry.tierDistribution, totalVotes)}\n${TIERS.filter(t => entry.tierDistribution[t]).map(t => `${TIER_LABEL[t]} : ${entry.tierDistribution[t]}`).join(' · ')}`}
+                  style={{
+                    display: 'flex',
+                    height: 4,
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                    background: 'var(--bg-subtle)',
+                  }}
+                >
+                  {TIERS.map(tier => {
+                    const count = entry.tierDistribution[tier] ?? 0
+                    if (count === 0) return null
+                    const pct = (count / totalVotes) * 100
+                    return <span key={tier} style={{ width: `${pct}%`, background: TIER_COLOR[tier] }} />
+                  })}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--fg-6)', marginTop: 4 }}>
+                  {totalVotes} avis
+                </div>
               </div>
             </>
           ) : (
@@ -687,14 +692,16 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
         </div>
 
         {/* Rang moyen */}
-        <div className="col-avg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="col-avg" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
           {entry.avgRank !== null ? (
-            <span
-              title={`Sur ${entry.rankCount} liste${entry.rankCount > 1 ? 's' : ''} classée${entry.rankCount > 1 ? 's' : ''}`}
-              style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 700, color: 'var(--fg)', cursor: 'help' }}
-            >
-              #{entry.avgRank.toFixed(1)}
-            </span>
+            <>
+              <span style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>
+                #{entry.avgRank.toFixed(1)}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--fg-6)' }}>
+                {entry.rankCount} classement{entry.rankCount > 1 ? 's' : ''}
+              </span>
+            </>
           ) : (
             <span style={{ fontSize: 13, color: 'var(--fg-7)' }}>—</span>
           )}
