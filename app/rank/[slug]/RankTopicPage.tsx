@@ -712,39 +712,74 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
               fontFamily: 'inherit',
             }}
           >
-            {myTier ? (
-              <>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 7,
-                  padding: '5px 11px 5px 9px',
-                  borderRadius: 14,
-                  fontSize: 13, fontWeight: 600,
-                  background: TIER_COLOR_SOFT[myTier].bg,
-                  color: TIER_COLOR_SOFT[myTier].fg,
-                  border: `1px solid ${TIER_COLOR_SOFT[myTier].border}`,
-                  whiteSpace: 'nowrap',
-                }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: TIER_COLOR[myTier], flexShrink: 0 }} />
-                  {TIER_LABEL[myTier]}
-                </span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  {myPosition != null && (
-                    <span style={{ fontSize: 11, color: 'var(--fg-6)', fontFamily: "'Fraunces', serif" }}>
-                      #{myPosition}
+            {myTier ? (() => {
+              const myVal = TIER_VALUE[myTier]
+              const commVal = mention !== null ? TIER_VALUE[mention] : null
+              const diff = commVal !== null ? myVal - commVal : 0
+              const agrees = commVal !== null && diff === 0
+
+              return (
+                <>
+                  {agrees ? (
+                    <span
+                      title="Même avis que la communauté"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        fontSize: 12, color: 'var(--fg-6)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <span aria-hidden style={{ fontSize: 13, color: 'var(--fg-7)', fontWeight: 500 }}>=</span>
+                      {TIER_LABEL[myTier]}
+                    </span>
+                  ) : (
+                    <span
+                      title={
+                        commVal === null
+                          ? undefined
+                          : diff > 0
+                            ? `${Math.abs(diff)} tier au-dessus de la communauté`
+                            : `${Math.abs(diff)} tier en-dessous de la communauté`
+                      }
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '5px 10px 5px 9px',
+                        borderRadius: 14,
+                        fontSize: 13, fontWeight: 600,
+                        background: TIER_COLOR_SOFT[myTier].bg,
+                        color: TIER_COLOR_SOFT[myTier].fg,
+                        border: `1px solid ${TIER_COLOR_SOFT[myTier].border}`,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: TIER_COLOR[myTier], flexShrink: 0 }} />
+                      {TIER_LABEL[myTier]}
+                      {diff !== 0 && (
+                        <span aria-hidden style={{ fontSize: 11, opacity: 0.75, fontWeight: 700, marginLeft: 1 }}>
+                          {diff > 0 ? '↑' : '↓'}
+                        </span>
+                      )}
                     </span>
                   )}
-                  <span aria-hidden style={{ fontSize: 13, color: 'var(--fg-5)', opacity: 0.7, lineHeight: 1 }}>✎</span>
-                </span>
-              </>
-            ) : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {myPosition != null && (
+                      <span style={{ fontSize: 11, color: 'var(--fg-6)', fontFamily: "'Fraunces', serif" }}>
+                        #{myPosition}
+                      </span>
+                    )}
+                    <span aria-hidden style={{ fontSize: 13, color: 'var(--fg-5)', opacity: 0.7, lineHeight: 1 }}>✎</span>
+                  </span>
+                </>
+              )
+            })() : (
               <span style={{
-                padding: '5px 11px',
-                borderRadius: 14,
-                border: '1px dashed var(--fg-7)',
-                color: 'var(--fg-5)',
+                padding: '4px 10px',
+                borderRadius: 12,
+                color: 'var(--fg-6)',
                 fontSize: 12,
                 fontWeight: 500,
                 background: isOpen ? 'var(--bg-subtle)' : 'transparent',
+                border: isOpen ? '1px solid var(--fg-7)' : '1px solid transparent',
               }}>
                 {isOpen ? '×' : '+ noter'}
               </span>
