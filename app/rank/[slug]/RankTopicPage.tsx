@@ -16,7 +16,16 @@ const TIER_LABEL: Record<string, string> = {
   EX: 'Excellent', TB: 'Très bon', BO: 'Bon', AB: 'Assez bien', PA: 'Passable', IN: 'Insuffisant', MA: 'Mauvais',
 }
 const TIER_COLOR: Record<string, string> = {
-  EX: '#5b8dee', TB: '#388e3c', BO: '#66bb6a', AB: '#a3c940', PA: '#f9c933', IN: '#f5a623', MA: '#e05555',
+  EX: '#3b82f6', TB: '#22c55e', BO: '#84cc16', AB: '#eab308', PA: '#f97316', IN: '#ef4444', MA: '#737373',
+}
+const TIER_COLOR_SOFT: Record<string, { bg: string; fg: string; border: string }> = {
+  EX: { bg: '#eff6ff', fg: '#1e40af', border: '#dbeafe' },
+  TB: { bg: '#f0fdf4', fg: '#166534', border: '#dcfce7' },
+  BO: { bg: '#f7fee7', fg: '#4d7c0f', border: '#ecfccb' },
+  AB: { bg: '#fefce8', fg: '#854d0e', border: '#fef9c3' },
+  PA: { bg: '#fff7ed', fg: '#9a3412', border: '#ffedd5' },
+  IN: { bg: '#fef2f2', fg: '#991b1b', border: '#fee2e2' },
+  MA: { bg: '#fafafa', fg: '#525252', border: '#e5e5e5' },
 }
 
 type SortMode = 'combined' | 'tier' | 'rank' | 'favorite' | 'popular'
@@ -298,6 +307,47 @@ function applyMyListChange(
   })
 }
 
+// Build a short, plain-French summary of how the votes are distributed.
+// Drives the descriptive line under the per-row distribution bar.
+function describeDistribution(
+  distribution: Record<string, number>,
+  totalVotes: number,
+): string {
+  if (totalVotes === 0) return ''
+  const counts = TIERS
+    .map(t => ({ tier: t, count: distribution[t] ?? 0 }))
+    .filter(c => c.count > 0)
+    .sort((a, b) => b.count - a.count)
+  if (totalVotes === 1) {
+    return counts[0].tier === 'EX' ? '1 avis · culte mais confidentiel' : '1 avis'
+  }
+  if (counts.length === 1) return `${totalVotes} avis · unanime`
+  if (counts.length === 2 && totalVotes <= 6) {
+    return `${totalVotes} avis · ${counts[0].count}× ${TIER_LABEL[counts[0].tier]}, ${counts[1].count}× ${TIER_LABEL[counts[1].tier]}`
+  }
+  if (counts.length >= 3) {
+    const dominantPct = counts[0].count / totalVotes
+    if (dominantPct < 0.5) return `${totalVotes} avis · opinions partagées`
+  }
+  const dominantPct = counts[0].count / totalVotes
+  if (dominantPct >= 0.65) return `${totalVotes} avis · majoritairement ${TIER_LABEL[counts[0].tier]}`
+  return `${totalVotes} avis · consensus positif`
+}
+
+// Map combinedScore → color along a yellow-lime-green gradient. Higher
+// scores get a deeper, more saturated green; low scores fade toward muted
+// yellow/grey so the colour itself signals "how good".
+function scoreColor(score: number): string {
+  if (score >= 28) return '#15803d' // green-700
+  if (score >= 25) return '#16a34a' // green-600
+  if (score >= 22) return '#4d9c11' // green-lime mix
+  if (score >= 19) return '#65a30d' // lime-700
+  if (score >= 16) return '#84cc16' // lime-500
+  if (score >= 13) return '#ca8a04' // yellow-600
+  if (score >= 10) return '#a16207' // yellow-700
+  return '#9ca3af'                  // gray-400
+}
+
 // Median of the vote values (1..7). More robust to outliers than the mean,
 // and avoids the modal tie-break that would surface "Excellent" on a 2-2
 // split between EX and TB.
@@ -339,6 +389,55 @@ function buildTierGradient(distribution: Record<string, number>, total: number):
   return `linear-gradient(90deg, ${stops.join(', ')})`
 }
 
+export function MentionLegend() {
+  return (
+    <div style={{
+      background: 'var(--bg-card)',
+      borderRadius: 14,
+      padding: '18px 22px',
+      marginBottom: 18,
+      border: '1px solid var(--border)',
+    }}>
+      <div style={{
+        fontSize: 12, color: 'var(--fg-6)',
+        textTransform: 'uppercase', letterSpacing: '.05em',
+        fontWeight: 600, marginBottom: 12,
+      }}>
+        L&apos;échelle des mentions
+      </div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+        {TIERS.map(tier => {
+          const c = TIER_COLOR_SOFT[tier]
+          return (
+            <div
+              key={tier}
+              style={{
+                flex: 1,
+                padding: '8px 10px',
+                borderRadius: 8,
+                textAlign: 'center',
+                fontSize: 12,
+                fontWeight: 600,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+                border: `1px solid ${c.border}`,
+                background: c.bg,
+                color: c.fg,
+              }}
+            >
+              {TIER_LABEL[tier]}
+              <span style={{ fontSize: 10, opacity: 0.6, fontWeight: 500 }}>
+                {TIER_VALUE[tier]}/7
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function TableHeader() {
   const ctx = useContext(RankSortContext)
   const sortMode = ctx?.sortMode ?? 'combined'
@@ -358,107 +457,66 @@ function TableHeader() {
   })
   const arrow = (mode: SortMode) =>
     sortMode === mode ? <span aria-hidden style={{ fontSize: 10, opacity: 0.85 }}>↓</span> : null
-  const infoStyle: React.CSSProperties = { cursor: 'help', opacity: 0.55, fontSize: 10, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }
+  const Info = ({ tip, label }: { tip: string; label: string }) => (
+    <span
+      title={tip}
+      onClick={e => e.stopPropagation()}
+      aria-label={label}
+      style={{ cursor: 'help', opacity: 0.55, fontSize: 11, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}
+    >
+      ⓘ
+    </span>
+  )
 
   return (
     <div className="rank-header" style={{
-      fontSize: 12, textTransform: 'uppercase', letterSpacing: '.06em',
+      fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em',
       color: 'var(--fg-6)', fontWeight: 600,
     }}>
       <span className="col-rank" style={{ textAlign: 'center' }}>#</span>
       <span className="col-poster" />
       <span className="col-title">Titre</span>
       <div className="col-metrics">
-        <span className="col-score" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-          <button
-            type="button"
-            onClick={() => setSortMode('combined')}
-            style={{ ...headerBtnStyle('combined'), display: 'inline-flex', alignItems: 'center', gap: 3 }}
-          >
-            Score
-            {arrow('combined')}
-            <span
-              title="Score combiné qui détermine le classement : mention × 4 + bonus de rang."
-              onClick={e => e.stopPropagation()}
-              style={infoStyle}
-              aria-label="Comment ce score est calculé"
-            >
-              ⓘ
-            </span>
-          </button>
-          <span style={{ fontSize: 8.5, fontWeight: 400, opacity: 0.6, textTransform: 'none', letterSpacing: 0, whiteSpace: 'nowrap' }}>
-            Rang + Mention
-          </span>
-          <button
-            type="button"
-            onClick={() => setSortMode('popular')}
-            style={{ ...headerBtnStyle('popular'), display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 8.5, textTransform: 'none', letterSpacing: 0, fontWeight: sortMode === 'popular' ? 700 : 400, opacity: sortMode === 'popular' ? 1 : 0.65 }}
-          >
-            Popularité
-            {arrow('popular')}
-          </button>
-        </span>
+        <button
+          type="button"
+          onClick={() => setSortMode('combined')}
+          className="col-score"
+          style={{ ...headerBtnStyle('combined'), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+        >
+          Score
+          {arrow('combined')}
+          <Info
+            label="Comment ce score est calculé"
+            tip="Score combiné qui détermine le classement : mention × 4 + bonus de rang. Plus c'est élevé, mieux c'est."
+          />
+        </button>
         <button
           type="button"
           onClick={() => setSortMode('tier')}
           className="col-mention"
-          style={{ ...headerBtnStyle('tier'), display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 4 }}
+          style={{ ...headerBtnStyle('tier'), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-            Mention
-            {arrow('tier')}
-            <span
-              title="Chaque tier a sa couleur : Excellent (bleu), Très bon (vert foncé), Bon (vert clair), Assez bien (jaune-vert), Passable (jaune), Insuffisant (orange), Mauvais (rouge). La barre dégradée montre la part de chaque tier dans les votes du film ; le label affiche la mention majoritaire."
-              onClick={e => e.stopPropagation()}
-              style={infoStyle}
-              aria-label="Comment lire la mention"
-            >
-              ⓘ
-            </span>
-          </span>
-          <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span
-              title={TIERS.map(t => TIER_LABEL[t]).join(' › ')}
-              style={{
-                height: 6,
-                borderRadius: 3,
-                background: `linear-gradient(90deg, ${TIERS.map(t => TIER_COLOR[t]).join(', ')})`,
-                boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.06)',
-              }}
-            />
-            <span style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>
-              <span style={{ color: TIER_COLOR['EX'] }}>Excellent</span>
-              <span style={{ color: TIER_COLOR['MA'] }}>Mauvais</span>
-            </span>
-          </span>
+          Mention communauté
+          {arrow('tier')}
+          <Info
+            label="Comment lire la mention"
+            tip="La pastille reprend la mention médiane des votes (plus robuste aux outliers que la moyenne). Le score à droite est la moyenne arithmétique sur 7. La barre montre la répartition des votes par tier."
+          />
         </button>
         <button
           type="button"
           onClick={() => setSortMode('rank')}
           className="col-avg"
-          style={{ ...headerBtnStyle('rank'), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}
+          style={{ ...headerBtnStyle('rank'), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
         >
           Rang moyen
           {arrow('rank')}
-          <span
-            title="Moyenne géométrique des positions de chaque classement. Plus sensible aux rangs proches de 1 que la moyenne classique : un vote #1 + un vote #100 donne 10 (vs 50 en moyenne classique)."
-            onClick={e => e.stopPropagation()}
-            style={infoStyle}
-            aria-label="Comment ce rang est calculé"
-          >
-            ⓘ
-          </span>
+          <Info
+            label="Comment ce rang est calculé"
+            tip="Moyenne géométrique des positions de chaque classement personnel — un vote #1 + un vote #100 donne 10 (vs 50 en moyenne arithmétique). Plus le rang est petit, mieux c'est."
+          />
         </button>
-        <button
-          type="button"
-          onClick={() => setSortMode('favorite')}
-          className="col-fav"
-          style={{ ...headerBtnStyle('favorite'), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}
-        >
-          En tête
-          {arrow('favorite')}
-        </button>
-        <span className="col-mynote" style={{ textAlign: 'center' }}>Ma note</span>
+        <span className="col-mynote" style={{ textAlign: 'center' }}>Ma mention</span>
       </div>
     </div>
   )
@@ -513,57 +571,71 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
 
       <div className="col-metrics">
         {/* Score combiné */}
-        <div className="col-score" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
+        <div className="col-score" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px' }}>
           {(() => {
-            const score = combinedScore(entry).toFixed(1)
-            const [intPart, decPart] = score.split('.')
+            const score = combinedScore(entry)
             return (
-              <span style={{ fontFamily: "'Fraunces', serif", color: 'var(--fg-2)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                <span style={{ fontSize: 19, fontWeight: 700, letterSpacing: -0.4 }}>{intPart}</span>
-                <span style={{ fontSize: 14, fontWeight: 500, opacity: 0.55 }}>.{decPart}</span>
+              <span style={{
+                fontFamily: "'Fraunces', serif",
+                fontSize: isTop3 ? 32 : 28,
+                fontWeight: 700,
+                letterSpacing: -0.8,
+                color: scoreColor(score),
+                fontVariantNumeric: 'tabular-nums',
+                lineHeight: 1,
+              }}>
+                {score.toFixed(1)}
               </span>
             )
           })()}
         </div>
 
         {/* Mention */}
-        <div className="col-mention" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 4, minWidth: 0 }}>
-          {mention && tierGradient ? (
+        <div className="col-mention" style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+          {mention ? (
             <>
-              <div
-                title={TIERS.filter(t => entry.tierDistribution[t]).map(t => `${TIER_LABEL[t]} : ${entry.tierDistribution[t]}`).join(' · ')}
-                style={{
-                  position: 'relative',
-                  height: 14,
-                  borderRadius: 7,
-                  background: tierGradient,
-                  boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.07), 0 0 0 1px rgba(255,255,255,.4)',
-                  overflow: 'hidden',
-                }}
-              >
-                <span aria-hidden style={{
-                  position: 'absolute', inset: 0,
-                  background: 'linear-gradient(180deg, rgba(255,255,255,.32) 0%, rgba(255,255,255,.08) 40%, rgba(0,0,0,0) 60%, rgba(0,0,0,.12) 100%)',
-                  pointerEvents: 'none',
-                }} />
-              </div>
-              <span style={{ display: 'inline-flex', alignItems: 'baseline', justifyContent: 'center', gap: 6, lineHeight: 1.1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{
-                  fontFamily: "'Fraunces', serif",
-                  fontStyle: 'italic',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: TIER_COLOR[mention],
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  padding: '5px 11px 5px 9px',
+                  borderRadius: 14,
+                  fontSize: 13, fontWeight: 600,
+                  background: TIER_COLOR_SOFT[mention].bg,
+                  color: TIER_COLOR_SOFT[mention].fg,
+                  border: `1px solid ${TIER_COLOR_SOFT[mention].border}`,
+                  whiteSpace: 'nowrap',
                 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: TIER_COLOR[mention], flexShrink: 0 }} />
                   {TIER_LABEL[mention]}
                 </span>
                 {entry.avgTierScore !== null && (
-                  <span style={{ fontFamily: "'Fraunces', serif", fontSize: 13, fontWeight: 600, color: 'var(--fg-3)', fontVariantNumeric: 'tabular-nums' }}>
-                    {entry.avgTierScore.toFixed(1)}<span style={{ fontSize: 9.5, fontWeight: 400, opacity: 0.55 }}>/7</span>
+                  <span style={{ fontSize: 13, color: 'var(--fg-3)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                    {entry.avgTierScore.toFixed(1)}<span style={{ color: 'var(--fg-6)', fontWeight: 400 }}>/7</span>
                   </span>
                 )}
-              </span>
-              <span style={{ fontSize: 10.5, color: 'var(--fg-6)', textAlign: 'center', letterSpacing: '.04em' }}>{totalVotes} avis</span>
+              </div>
+              <div>
+                <div
+                  title={TIERS.filter(t => entry.tierDistribution[t]).map(t => `${TIER_LABEL[t]} : ${entry.tierDistribution[t]}`).join(' · ')}
+                  style={{
+                    display: 'flex',
+                    height: 6,
+                    borderRadius: 3,
+                    overflow: 'hidden',
+                    background: 'var(--bg-subtle)',
+                  }}
+                >
+                  {TIERS.map(tier => {
+                    const count = entry.tierDistribution[tier] ?? 0
+                    if (count === 0) return null
+                    const pct = (count / totalVotes) * 100
+                    return <span key={tier} style={{ width: `${pct}%`, background: TIER_COLOR[tier] }} />
+                  })}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--fg-6)', marginTop: 4 }}>
+                  {describeDistribution(entry.tierDistribution, totalVotes)}
+                </div>
+              </div>
             </>
           ) : (
             <span style={{ fontSize: 11, color: 'var(--fg-7)', textAlign: 'center' }}>—</span>
@@ -575,22 +647,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
           {entry.avgRank !== null ? (
             <>
               <span style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 700, color: 'var(--fg)' }}>#{entry.avgRank.toFixed(1)}</span>
-              <span style={{ fontSize: 11, color: 'var(--fg-6)' }}>{entry.rankCount} cl.</span>
-            </>
-          ) : (
-            <span style={{ fontSize: 13, color: 'var(--fg-7)' }}>—</span>
-          )}
-        </div>
-
-        {/* En tête */}
-        <div className="col-fav" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-          {entry.favoriteCount > 0 ? (
-            <>
-              <span style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                <span style={{ fontSize: 13, color: 'var(--fg-5)' }}>★</span>
-                <span style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 700, color: 'var(--fg)' }}>{entry.favoriteCount}</span>
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--fg-6)' }}>liste{entry.favoriteCount > 1 ? 's' : ''}</span>
+              <span style={{ fontSize: 11, color: 'var(--fg-6)' }}>sur {entry.rankCount} liste{entry.rankCount > 1 ? 's' : ''}</span>
             </>
           ) : (
             <span style={{ fontSize: 13, color: 'var(--fg-7)' }}>—</span>
@@ -612,9 +669,19 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
               fontFamily: 'inherit',
             }}
           >
-            {myTierColor && myTier ? (
+            {myTier ? (
               <>
-                <span style={{ fontSize: 13, fontWeight: 600, padding: '3px 9px', borderRadius: 5, background: `${myTierColor}18`, color: myTierColor, whiteSpace: 'nowrap' }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  padding: '5px 11px 5px 9px',
+                  borderRadius: 14,
+                  fontSize: 13, fontWeight: 600,
+                  background: TIER_COLOR_SOFT[myTier].bg,
+                  color: TIER_COLOR_SOFT[myTier].fg,
+                  border: `1px solid ${TIER_COLOR_SOFT[myTier].border}`,
+                  whiteSpace: 'nowrap',
+                }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: TIER_COLOR[myTier], flexShrink: 0 }} />
                   {TIER_LABEL[myTier]}
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -627,7 +694,17 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
                 </span>
               </>
             ) : (
-              <span style={{ fontSize: 22, color: 'var(--fg-4)', lineHeight: 1 }}>{isOpen ? '×' : '+'}</span>
+              <span style={{
+                padding: '5px 11px',
+                borderRadius: 14,
+                border: '1px dashed var(--fg-7)',
+                color: 'var(--fg-5)',
+                fontSize: 12,
+                fontWeight: 500,
+                background: isOpen ? 'var(--bg-subtle)' : 'transparent',
+              }}>
+                {isOpen ? '×' : '+ noter'}
+              </span>
             )}
           </button>
         ) : (

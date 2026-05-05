@@ -142,15 +142,22 @@ export function PersonalActions({
     })
   }
 
-  const linkStyle: React.CSSProperties = {
-    fontSize: 11,
-    color: 'var(--fg-5)',
-    textDecoration: 'none',
-    background: 'none',
+  const editBtn: React.CSSProperties = {
+    padding: '13px 24px',
+    borderRadius: 11,
+    background: '#16a34a',
+    color: '#ffffff',
     border: 'none',
-    cursor: 'pointer',
+    fontSize: 16,
+    fontWeight: 600,
     fontFamily: 'inherit',
-    padding: 0,
+    cursor: 'pointer',
+    textDecoration: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 9,
+    whiteSpace: 'nowrap',
+    boxShadow: '0 1px 3px rgba(22,163,74,.25)',
   }
 
   return (
@@ -159,27 +166,15 @@ export function PersonalActions({
         href={myList
           ? `/${lang}/rank/${topicSlug}/${encodeURIComponent(myList.username)}/edit`
           : `/${lang}/rank/${topicSlug}/edit`}
-        style={{
-          padding: '10px 22px', borderRadius: 8,
-          background: 'var(--bg-card)', color: 'var(--fg)',
-          border: '1px solid var(--border)',
-          fontSize: 14, fontWeight: 600, textDecoration: 'none',
-        }}
+        style={editBtn}
       >
-        {myList ? labels.edit : labels.create}
+        <span aria-hidden>✏️</span>
+        {lang === 'fr' ? 'Ma liste' : 'My list'}
       </Link>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', minHeight: 16 }}>
-        {feedback ? (
-          <span style={{ fontSize: 11, color: 'var(--accent-fg)' }}>{feedback}</span>
-        ) : (
-          <>
-            {myList && <button onClick={handleShare} style={linkStyle}>{labels.share}</button>}
-            {myList && <button onClick={handleCopyMarkdown} style={linkStyle}>{labels.copyList}</button>}
-            <button onClick={openImport} style={linkStyle}>{labels.import}</button>
-          </>
-        )}
-      </div>
+      {feedback && (
+        <span style={{ fontSize: 11, color: 'var(--accent-fg)' }}>{feedback}</span>
+      )}
 
       {importOpen && (
         <div

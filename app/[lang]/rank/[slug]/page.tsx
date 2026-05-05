@@ -12,6 +12,7 @@ import {
   RankCommunityBody,
   CommunityListSkeleton,
   RankSortProvider,
+  MentionLegend,
   type PersonalRankData,
 } from '@/app/rank/[slug]/RankTopicPage'
 import { PersonalActions } from '@/app/rank/[slug]/PersonalActions'
@@ -168,56 +169,65 @@ async function RankSlugInner({
   if (!header) notFound()
 
   const dict = getDictionary(lang)
-  const subtitle = (() => {
-    const u = stats?.userCount ?? 0
-    const v = stats?.voteCount ?? 0
-    if (lang === 'fr') {
-      if (v === 0) return 'En attente du premier avis · sois le premier'
-      const userLabel = u > 1 ? 'contributeurs' : 'contributeur'
-      const voteLabel = v > 1 ? 'avis' : 'avis'
-      return `En construction · ${u} ${userLabel} · ${v} ${voteLabel}`
-    } else {
-      if (v === 0) return 'Awaiting first ratings · be the first'
-      const userLabel = u > 1 ? 'contributors' : 'contributor'
-      const voteLabel = v > 1 ? 'ratings' : 'rating'
-      return `Under construction · ${u} ${userLabel} · ${v} ${voteLabel}`
-    }
-  })()
+  const userCount = stats?.userCount ?? 0
+  const voteCount = stats?.voteCount ?? 0
+  const isFr = lang === 'fr'
+  const userLabel = isFr
+    ? (userCount > 1 ? 'contributeurs' : 'contributeur')
+    : (userCount > 1 ? 'contributors' : 'contributor')
+  const voteLabel = isFr
+    ? 'avis'
+    : (voteCount > 1 ? 'ratings' : 'rating')
 
   return (
-    <div className="page-md" style={{ margin: '0 auto', padding: '0 24px 60px' }}>
+    <div className="page-md" style={{ margin: '0 auto', padding: '24px 24px 60px' }}>
       <RankSortProvider>
 
-      {/* Header — fully static for known slugs (generateStaticParams), with personal controls suspended */}
-      <div style={{ padding: '20px 0 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Link href={`/${lang}/rank`} style={{ fontSize: 12, color: 'var(--fg-3)', textDecoration: 'none' }}>
+      {/* Légende des mentions — toujours visible, tout en haut */}
+      <MentionLegend />
+
+      {/* Header */}
+      <div style={{ padding: '8px 0 0' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--fg-5)' }}>
+            <Link href={`/${lang}/rank`} style={{ color: 'var(--fg-5)', textDecoration: 'none' }}>
               {lang === 'fr' ? 'Classer' : 'Rank'}
             </Link>
-            <span style={{ color: 'var(--fg-9)' }}>/</span>
-            <span style={{ fontSize: 12, color: 'var(--fg-3)', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 20, padding: '1px 9px' }}>
-              {header.topicBadge}
-            </span>
+            <span style={{ color: 'var(--fg-7)' }}>/</span>
+            <span>{header.topicBadge}</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <Suspense fallback={<div style={{ width: 180, height: 60, borderRadius: 9, background: 'var(--bg-subtle)' }} />}>
-              <PersonalActionsWrapper topicId={header.topicId} topicSlug={slug} topicTitle={header.topicTitle} topicEmoji={header.topicEmoji} lang={lang} dict={dict} />
-            </Suspense>
-          </div>
+          <Suspense fallback={<div style={{ width: 320, height: 42, borderRadius: 9, background: 'var(--bg-subtle)' }} />}>
+            <PersonalActionsWrapper topicId={header.topicId} topicSlug={slug} topicTitle={header.topicTitle} topicEmoji={header.topicEmoji} lang={lang} dict={dict} />
+          </Suspense>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, borderTop: '1px solid var(--border)', paddingTop: 18 }}>
-          <span style={{ fontSize: 34, lineHeight: 1 }}>{header.topicEmoji}</span>
-          <div>
-            <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 29, fontWeight: 900, color: 'var(--fg)', letterSpacing: -0.3, lineHeight: 1.1 }}>
-              {dict.rank.communityTitle.replace('{topic}', header.topicTitle.toLowerCase())}
-            </h1>
-            <div style={{ fontSize: 14, color: 'var(--fg-5)', marginTop: 3, fontWeight: 300 }}>
-              {subtitle}
-            </div>
-          </div>
+        <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 42, fontWeight: 900, color: 'var(--fg)', letterSpacing: -0.8, lineHeight: 1.05, marginBottom: 10 }}>
+          {dict.rank.communityTitle.replace('{topic}', header.topicTitle.toLowerCase())}
+        </h1>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--fg-5)', marginBottom: 24 }}>
+          {voteCount === 0 ? (
+            <span style={{ fontStyle: 'italic' }}>
+              {isFr ? 'En attente du premier avis · sois le premier' : 'Awaiting first ratings · be the first'}
+            </span>
+          ) : (
+            <>
+              <span style={{
+                background: '#fef3c7',
+                color: '#92400e',
+                padding: '2px 10px',
+                borderRadius: 12,
+                fontSize: 12,
+                fontWeight: 600,
+              }}>
+                {isFr ? 'En construction' : 'Under construction'}
+              </span>
+              <span>{userCount} {userLabel}</span>
+              <span style={{ color: 'var(--fg-7)' }}>·</span>
+              <span>{voteCount} {voteLabel}</span>
+            </>
+          )}
         </div>
       </div>
 
