@@ -470,6 +470,65 @@ export function MentionLegend({ lang }: { lang: 'fr' | 'en' }) {
   )
 }
 
+const SORT_OPTIONS: { mode: SortMode; label: string; tip: string }[] = [
+  { mode: 'combined', label: 'Score', tip: 'Mention ajustée + bonus de rang' },
+  { mode: 'tier', label: 'Mention', tip: 'Moyenne des mentions sur 7' },
+  { mode: 'rank', label: 'Rang moyen', tip: 'Position moyenne dans les classements perso' },
+  { mode: 'favorite', label: 'Favoris', tip: 'Nombre de fois en #1 d’un classement' },
+  { mode: 'popular', label: 'Avis', tip: 'Nombre total de mentions' },
+]
+
+function RankToolbar() {
+  const ctx = useContext(RankSortContext)
+  const sortMode = ctx?.sortMode ?? 'combined'
+  const setSortMode = ctx?.setSortMode ?? (() => {})
+
+  const pillStyle = (active: boolean): React.CSSProperties => ({
+    padding: '5px 12px',
+    borderRadius: 999,
+    border: `1px solid ${active ? 'var(--fg-4)' : 'var(--border)'}`,
+    background: active ? 'var(--bg-subtle)' : 'transparent',
+    color: active ? 'var(--fg-2)' : 'var(--fg-5)',
+    fontWeight: active ? 600 : 500,
+    fontSize: 12.5,
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    lineHeight: 1.3,
+  })
+
+  const groupLabelStyle: React.CSSProperties = {
+    fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em',
+    color: 'var(--fg-6)', fontWeight: 600, marginRight: 4,
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex', flexDirection: 'column', gap: 10,
+        padding: '12px 0 14px',
+        borderBottom: '1px solid var(--border)',
+        marginBottom: 4,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+        <span style={groupLabelStyle}>Trier</span>
+        {SORT_OPTIONS.map(opt => (
+          <button
+            key={opt.mode}
+            type="button"
+            title={opt.tip}
+            onClick={() => setSortMode(opt.mode)}
+            style={pillStyle(sortMode === opt.mode)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function TableHeader() {
   const ctx = useContext(RankSortContext)
   const sortMode = ctx?.sortMode ?? 'combined'
@@ -707,7 +766,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
             className="col-mynote"
             style={{
               position: 'relative',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
               padding: '4px 6px', minHeight: 32, borderRadius: 7, cursor: 'pointer',
               background: isOpen ? 'var(--bg-subtle)' : 'transparent',
               border: `1px solid ${isOpen ? 'var(--fg-3)' : 'transparent'}`,
@@ -766,9 +825,10 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
                   {myPosition != null && (
                     <span
                       title="Ma position dans mon classement personnel"
-                      style={{ fontSize: 11, color: 'var(--fg-6)', fontFamily: "'Fraunces', serif" }}
+                      style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, fontSize: 11, color: 'var(--fg-6)', whiteSpace: 'nowrap' }}
                     >
-                      #{myPosition}
+                      <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>{myPosition}<sup style={{ fontSize: 8, fontWeight: 400 }}>e</sup></span>
+                      <span>chez moi</span>
                     </span>
                   )}
                 </>
@@ -1039,6 +1099,7 @@ export function RankCommunityBody({
 
   return (
     <>
+      <RankToolbar />
       {sorted.length === 0 ? (
         <p style={{ color: 'var(--fg-5)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
       ) : (
