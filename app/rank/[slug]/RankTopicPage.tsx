@@ -461,9 +461,6 @@ export function MentionLegend({ lang }: { lang: 'fr' | 'en' }) {
                 }}
               >
                 {TIER_LABEL[tier]}
-                <span style={{ fontSize: 10, opacity: 0.6, fontWeight: 500 }}>
-                  {TIER_VALUE[tier]}/7
-                </span>
               </div>
             )
           })}
@@ -535,7 +532,7 @@ function TableHeader() {
           {arrow('tier')}
           <Info
             label="Comment lire la mention"
-            tip="La pastille reprend la mention médiane des votes (plus robuste aux outliers que la moyenne). Le score à droite est la moyenne arithmétique sur 7. La barre montre la répartition des votes par tier."
+            tip="La pastille reprend la mention médiane des votes (plus robuste aux outliers que la moyenne). La barre montre la répartition des votes par tier."
           />
         </button>
         <button
@@ -657,11 +654,6 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: TIER_COLOR[mention], flexShrink: 0 }} />
                   {TIER_LABEL[mention]}
                 </span>
-                {entry.avgTierScore !== null && (
-                  <span style={{ fontSize: 12, color: 'var(--fg-3)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                    {entry.avgTierScore.toFixed(1)}<span style={{ color: 'var(--fg-6)', fontWeight: 400 }}>/7</span>
-                  </span>
-                )}
               </div>
               <div>
                 <div
