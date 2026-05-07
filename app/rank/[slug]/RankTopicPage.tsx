@@ -578,7 +578,7 @@ function TableHeader() {
           {arrow('combined')}
           <Info
             label="Comment ce score est calculé"
-            tip={`Score = mention ajustée × 4 + bonus de rang.\n\n• Mention ajustée : médiane des avis sur 7, lissée vers « Assez bien » (4) tant qu'il y a peu de votes — un seul "Excellent" pèse moins qu'un consensus à dix avis, et un troll isolé ne fait pas couler la note.\n\n• Bonus de rang : récompense logarithmique des hautes positions (#1 vaut bien plus que #10), pondérée par le nombre de classements.\n\nLe tout favorise les films à la fois bien notés et bien classés, sans laisser un avis extrême fausser le résultat.`}
+            tip={`Score = mention ajustée × 5 + bonus de rang.\n\n• Mention ajustée : moyenne pondérée par la valeur des votes (un Excellent pèse 7× plus qu'un Mauvais), puis lissée vers « Assez bien » (4) tant qu'il y a peu de votes. Un seul « Excellent » pèse moins qu'un consensus à dix avis, et un avis très bas pénalise la note sans la couler.\n\n• Bonus de rang : récompense logarithmique des hautes positions (#1 vaut bien plus que #10), pondérée par le nombre de classements.\n\nLe tout favorise les films bien notés et bien classés, avec un biais positif assumé : les bonnes notes pèsent plus lourd que les mauvaises, et la mention domine sur le rang.`}
           />
         </button>
         <button
