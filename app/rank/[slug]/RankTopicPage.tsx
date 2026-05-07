@@ -739,7 +739,7 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      <span aria-hidden style={{ fontSize: 12, color: 'var(--fg-7)', fontWeight: 500 }}>=</span>
+                      <span aria-hidden style={{ fontSize: 11, color: 'var(--fg-7)', fontWeight: 600 }}>✓</span>
                       {TIER_LABEL[myTier]}
                     </span>
                   ) : (
@@ -772,7 +772,10 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
                     </span>
                   )}
                   {myPosition != null && (
-                    <span style={{ fontSize: 11, color: 'var(--fg-6)', fontFamily: "'Fraunces', serif" }}>
+                    <span
+                      title="Ma position dans mon classement personnel"
+                      style={{ fontSize: 11, color: 'var(--fg-6)', fontFamily: "'Fraunces', serif" }}
+                    >
                       #{myPosition}
                     </span>
                   )}
