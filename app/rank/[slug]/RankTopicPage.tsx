@@ -20,8 +20,10 @@ const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
 const TIER_LABEL: Record<string, string> = {
   EX: 'Excellent', TB: 'Très bon', BO: 'Bon', AB: 'Assez bien', PA: 'Passable', IN: 'Insuffisant', MA: 'Mauvais',
 }
+// TB darker green / BO brighter lime so the two greens read as distinct
+// in the per-row distribution bar where they're adjacent stops.
 const TIER_COLOR: Record<string, string> = {
-  EX: '#3b82f6', TB: '#22c55e', BO: '#84cc16', AB: '#eab308', PA: '#f97316', IN: '#ef4444', MA: '#737373',
+  EX: '#3b82f6', TB: '#16a34a', BO: '#a3e635', AB: '#eab308', PA: '#f97316', IN: '#ef4444', MA: '#737373',
 }
 const TIER_COLOR_SOFT: Record<string, { bg: string; fg: string; border: string }> = {
   EX: { bg: '#eff6ff', fg: '#1e40af', border: '#dbeafe' },
