@@ -561,35 +561,50 @@ export function RankingEditor({
         {addError && (
           <div style={{ background: 'var(--error-bg)', border: '1px solid var(--error-border)', borderRadius: 6, padding: '8px 12px', marginBottom: 8, color: 'var(--error-text)', fontSize: 13 }}>{addError}</div>
         )}
-        {addFormAction && (
-          <form action={addFormAction} className="rank-add-form" style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 10 }}>
+        {/* Search bar always renders. Adding a NEW film to the catalog is a
+            server action, so the year input + submit button are gated behind
+            a session — guests can still filter the existing catalog. */}
+        {(() => {
+          const SearchInput = (
             <input
-              name="title"
+              name={addFormAction ? 'title' : undefined}
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Rechercher…"
-              required
+              required={!!addFormAction}
               autoComplete="off"
               className="rank-add-title"
               style={{ flex: 1, minWidth: 0, padding: '10px 14px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, fontFamily: 'inherit', outline: 'none', transition: 'border-color .15s, box-shadow .15s' }}
               onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-fg)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-faint)' }}
               onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
             />
-            <input
-              name="year"
-              type="number"
-              min={1888}
-              max={2099}
-              placeholder="Année"
-              className="rank-add-year"
-              style={{ width: 90, padding: '10px 12px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }}
-            />
-            <button type="submit" disabled={addPending || !search.trim()} title="Si le titre n'est pas dans la liste, ajoute-le au site" className="rank-add-submit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1, padding: '6px 18px', borderRadius: 9, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontFamily: 'inherit', cursor: addPending || !search.trim() ? 'default' : 'pointer', opacity: addPending || !search.trim() ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
-              <span style={{ fontSize: 9.5, fontWeight: 400, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '.05em' }}>Pas dans la liste&nbsp;?</span>
-              <span style={{ fontSize: 14, fontWeight: 700, marginTop: 1 }}>{addPending ? '…' : '+ Ajoute-le'}</span>
-            </button>
-          </form>
-        )}
+          )
+          if (addFormAction) {
+            return (
+              <form action={addFormAction} className="rank-add-form" style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 10 }}>
+                {SearchInput}
+                <input
+                  name="year"
+                  type="number"
+                  min={1888}
+                  max={2099}
+                  placeholder="Année"
+                  className="rank-add-year"
+                  style={{ width: 90, padding: '10px 12px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }}
+                />
+                <button type="submit" disabled={addPending || !search.trim()} title="Si le titre n'est pas dans la liste, ajoute-le au site" className="rank-add-submit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1, padding: '6px 18px', borderRadius: 9, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontFamily: 'inherit', cursor: addPending || !search.trim() ? 'default' : 'pointer', opacity: addPending || !search.trim() ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 400, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '.05em' }}>Pas dans la liste&nbsp;?</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, marginTop: 1 }}>{addPending ? '…' : '+ Ajoute-le'}</span>
+                </button>
+              </form>
+            )
+          }
+          return (
+            <div className="rank-add-form" style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 10 }}>
+              {SearchInput}
+            </div>
+          )
+        })()}
         {(() => {
           const unclassified = items.filter(item => !tierItems.some(i => i.id === item.id) && (!search.trim() || normalizeTitle(item.label).includes(normalizeTitle(search))))
           const visibleUnclassified = search.trim() ? unclassified : unclassified.slice(0, unclassifiedLimit)
@@ -610,9 +625,14 @@ export function RankingEditor({
                 style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 5, minHeight: visibleUnclassified.length === 0 ? 0 : 70 }}
               >
               {visibleUnclassified.length === 0 ? (
-                search.trim() && addFormAction ? (
+                search.trim() ? (
                   <span style={{ color: 'var(--fg-5)', fontSize: 12, fontStyle: 'italic' }}>
-                    « {search} » n&apos;est pas dans la liste — utilise <strong style={{ color: 'var(--fg-4)' }}>Ajoute-le</strong> au-dessus.
+                    « {search} » n&apos;est pas dans la liste
+                    {addFormAction ? (
+                      <> — utilise <strong style={{ color: 'var(--fg-4)' }}>Ajoute-le</strong> au-dessus.</>
+                    ) : (
+                      <> — connecte-toi pour l&apos;ajouter au catalogue.</>
+                    )}
                   </span>
                 ) : null
               ) : (

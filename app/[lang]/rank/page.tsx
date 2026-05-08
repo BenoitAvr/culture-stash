@@ -182,33 +182,50 @@ async function RankHomeInner({ params }: { params: Promise<{ lang: string }> }) 
             ))}
           </div>
 
-          <p style={{ color: 'var(--fg-2)', fontSize: 16, maxWidth: 640, margin: '0 auto 4px', lineHeight: 1.45, fontWeight: 600 }}>
+          <p style={{ color: 'var(--fg-2)', fontSize: 16, maxWidth: 640, margin: '0 auto 6px', lineHeight: 1.45, fontWeight: 600 }}>
             {isFr ? 'Le tier-list maker rencontre IMDB.' : 'Where tier-list maker meets IMDB.'}
           </p>
-          <p style={{ color: 'var(--fg-5)', fontSize: 13, maxWidth: 620, margin: '0 auto 18px', lineHeight: 1.5 }}>
+          <p style={{ color: 'var(--fg-4)', fontSize: 14, maxWidth: 640, margin: '0 auto 4px', lineHeight: 1.5 }}>
             {isFr
-              ? 'Range tes œuvres en 7 mentions, classe-les à l’intérieur, compare ton goût avec un score qui combine la mention et le rang.'
-              : 'Sort your works into 7 mentions, rank them inside, and compare with a score that blends mention and rank.'}
+              ? 'Crée ta tier list, et classe tes préférences à l’intérieur de chaque mention.'
+              : 'Build your tier list, then rank your favourites inside each mention.'}
+          </p>
+          <p style={{ color: 'var(--fg-5)', fontSize: 13, maxWidth: 640, margin: '0 auto 18px', lineHeight: 1.5 }}>
+            {isFr
+              ? 'Découvre ce que la communauté préfère grâce à un algorithme qui privilégie les œuvres marquantes — celles qui reviennent souvent dans les premières positions des classements.'
+              : 'See what the community values most, thanks to an algorithm that surfaces standout works — the ones that keep landing in the top positions.'}
           </p>
           {ctaTopicSlug && (
-            <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
               <Link
-                href={`/${lang}/rank/${ctaTopicSlug}`}
+                href={`/${lang}/rank/${ctaTopicSlug}/edit`}
                 style={{
-                  display: 'inline-block',
-                  padding: '12px 28px', borderRadius: 10,
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '12px 26px', borderRadius: 10,
                   background: 'var(--btn)', color: 'var(--btn-text)',
                   fontSize: 15, fontWeight: 700, textDecoration: 'none',
                   boxShadow: '0 8px 22px rgba(22, 163, 74, .22)',
                   transition: 'transform .12s, box-shadow .12s',
                 }}
-                className="hover:[transform:translateY(-1px)]"
+                className="hover:[transform:translateY(-1px)] hover:shadow-[0_12px_28px_rgba(22,163,74,.28)]"
               >
                 {isFr ? 'Commencer à classer' : 'Start ranking'}
+                <span aria-hidden style={{ fontSize: 13, opacity: 0.8 }}>→</span>
               </Link>
-              <span style={{ color: 'var(--fg-6)', fontSize: 11 }}>
-                {isFr ? 'Sans compte — sauvegardé dans ton navigateur' : 'No account — saved in your browser'}
-              </span>
+              <Link
+                href={`/${lang}/rank/${ctaTopicSlug}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '11px 22px', borderRadius: 10,
+                  background: 'var(--bg-card)', color: 'var(--fg-2)',
+                  border: '1px solid var(--border)',
+                  fontSize: 14, fontWeight: 600, textDecoration: 'none',
+                  transition: 'border-color .12s, transform .12s, background .12s',
+                }}
+                className="hover:[border-color:var(--accent-muted)] hover:[transform:translateY(-1px)]"
+              >
+                {isFr ? 'Voir le classement de la communauté' : 'See the community ranking'}
+              </Link>
             </div>
           )}
         </div>
@@ -283,21 +300,39 @@ async function RankHomeInner({ params }: { params: Promise<{ lang: string }> }) 
             </h2>
             <Link
               href={`/${lang}/rank/${featured.slug}`}
-              style={{ fontSize: 12, color: 'var(--accent-fg)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '5px 12px', borderRadius: 999,
+                fontSize: 12, color: 'var(--accent-fg)', textDecoration: 'none',
+                fontWeight: 600, whiteSpace: 'nowrap',
+                background: 'var(--accent-faint)',
+                border: '1px solid var(--accent-muted)',
+                transition: 'transform .12s, background .12s',
+              }}
+              className="hover:[transform:translateX(2px)]"
             >
-              <span style={{ marginRight: 4 }}>{featured.emoji}</span>
-              {isFr ? `Voir le classement ${featured.title.toLowerCase()} →` : `See ${featured.title.toLowerCase()} ranking →`}
+              <span aria-hidden>{featured.emoji}</span>
+              {isFr ? `Voir le classement ${featured.title.toLowerCase()}` : `See ${featured.title.toLowerCase()} ranking`}
+              <span aria-hidden style={{ fontSize: 12 }}>→</span>
             </Link>
           </div>
 
           <div style={{
+            position: 'relative',
             display: 'flex', flexDirection: 'column', gap: 4,
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
             borderRadius: 12,
             padding: 8,
-            boxShadow: '0 8px 28px rgba(0,0,0,.06)',
+            boxShadow: '0 10px 30px rgba(0,0,0,.06)',
+            overflow: 'hidden',
           }}>
+            {/* Subtle spotlight at the top to make the card feel like a stage */}
+            <div aria-hidden style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: 60,
+              background: 'linear-gradient(180deg, var(--accent-faint) 0%, transparent 100%)',
+              opacity: 0.45, pointerEvents: 'none',
+            }} />
             {allTiers.map(tier => {
               const items = (featured.tierGroups[tier] ?? []).slice(0, 24)
               const totalInTier = featured.tierGroups[tier]?.length ?? 0
@@ -309,6 +344,7 @@ async function RankHomeInner({ params }: { params: Promise<{ lang: string }> }) 
                   key={tier}
                   href={`/${lang}/rank/${featured.slug}`}
                   style={{
+                    position: 'relative', zIndex: 1,
                     display: 'grid',
                     gridTemplateColumns: '76px 1fr',
                     gap: 6, alignItems: 'stretch',
@@ -319,11 +355,21 @@ async function RankHomeInner({ params }: { params: Promise<{ lang: string }> }) 
                     background: `${TIER_COLOR[tier]}24`,
                     border: `1px solid ${TIER_COLOR[tier]}66`,
                     borderRadius: 6,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: "'Fraunces', serif", fontWeight: 800, fontSize: 11,
-                    color: c.fg, padding: '4px', textAlign: 'center', lineHeight: 1.1,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    fontFamily: "'Fraunces', serif", padding: '4px 4px',
+                    color: c.fg, textAlign: 'center', lineHeight: 1.1,
+                    gap: 1,
                   }}>
-                    {tierLabels[tier]}
+                    <span style={{ fontWeight: 800, fontSize: 11 }}>{tierLabels[tier]}</span>
+                    {totalInTier > 0 && (
+                      <span style={{
+                        fontFamily: 'inherit', fontWeight: 600, fontSize: 9.5,
+                        opacity: 0.7, fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {totalInTier}
+                      </span>
+                    )}
                   </div>
                   <div style={{
                     position: 'relative',
@@ -391,18 +437,23 @@ async function RankHomeInner({ params }: { params: Promise<{ lang: string }> }) 
                     )}
                     {overflow > 0 && (
                       <span style={{
-                        marginLeft: 4, fontSize: 11, fontWeight: 700, color: c.fg,
+                        position: 'absolute', right: 6, top: '50%',
+                        transform: 'translateY(-50%)',
+                        fontSize: 11, fontWeight: 700, color: c.fg,
                         whiteSpace: 'nowrap', flexShrink: 0,
-                        background: `${TIER_COLOR[tier]}1a`,
-                        padding: '2px 8px', borderRadius: 8,
+                        background: `${TIER_COLOR[tier]}26`,
+                        border: `1px solid ${TIER_COLOR[tier]}66`,
+                        padding: '3px 9px', borderRadius: 999,
+                        boxShadow: '0 2px 8px rgba(0,0,0,.04)',
+                        zIndex: 2,
                       }}>
                         +{overflow}
                       </span>
                     )}
-                    {/* right-edge fade so the row doesn't end abruptly */}
-                    {items.length > 0 && (
+                    {/* right-edge fade so the row doesn't end abruptly when items don't overflow */}
+                    {items.length > 0 && overflow === 0 && (
                       <span aria-hidden style={{
-                        position: 'absolute', right: 0, top: 0, bottom: 0, width: 32,
+                        position: 'absolute', right: 0, top: 0, bottom: 0, width: 40,
                         background: `linear-gradient(to right, transparent, ${TIER_COLOR[tier]}0d 60%)`,
                         pointerEvents: 'none',
                       }} />
