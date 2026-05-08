@@ -55,23 +55,16 @@ export function PersonalActions({
     l => l.userId === data.currentUserId && (l.type === 'TIER' || l.type === 'BOTH')
   ) ?? null
 
-  if (!data.isLoggedIn) {
-    return (
-      <Link
-        href={`/${lang}/auth/login`}
-        style={{
-          padding: '10px 22px', borderRadius: 8,
-          background: 'var(--bg-card)', color: 'var(--fg)',
-          border: '1px solid var(--border)',
-          fontSize: 14, fontWeight: 600, textDecoration: 'none',
-        }}
-      >
-        {labels.login}
-      </Link>
-    )
-  }
+  // Guests: keep the "Ma liste" entry-point so they can start ranking without
+  // signing up. The list itself lives in localStorage until login.
+  const isGuest = !data.isLoggedIn
 
   function handleShare() {
+    if (isGuest) {
+      const back = `/${lang}/rank/${topicSlug}`
+      window.location.href = `/${lang}/auth/login?redirect=${encodeURIComponent(back)}`
+      return
+    }
     if (!myList) return
     const url = `${window.location.origin}/${lang}/rank/${topicSlug}/${encodeURIComponent(myList.username)}`
     navigator.clipboard.writeText(url).then(() => {

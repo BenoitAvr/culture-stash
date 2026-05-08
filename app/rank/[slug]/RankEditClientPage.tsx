@@ -18,8 +18,8 @@ export function RankEditClientPage({
   topicSlug: string
   entries: EntryItem[]
   initialLists: UserEntryListData[]
-  currentUserId: string
-  ownerUsername?: string
+  currentUserId: string | null
+  ownerUsername: string | null
   t: Dict['rankings']
 }) {
   const router = useRouter()
@@ -27,14 +27,13 @@ export function RankEditClientPage({
   const [lists, setLists] = useState<UserEntryListData[]>(initialLists)
 
   function handleSetIsEditing(v: boolean) {
-    if (!v) {
-      // Once edits are saved, send the user to their public list view —
-      // that's the URL they'd want to share.
-      const target = ownerUsername
-        ? `/${lang}/rank/${topicSlug}/${encodeURIComponent(ownerUsername)}`
-        : `/${lang}/rank/${topicSlug}`
-      router.push(target)
-    }
+    if (v) return
+    // Logged-in users land on their shareable public URL after closing.
+    // Guests have no public list yet — bring them back to the community page.
+    const target = ownerUsername
+      ? `/${lang}/rank/${topicSlug}/${encodeURIComponent(ownerUsername)}`
+      : `/${lang}/rank/${topicSlug}`
+    router.push(target)
   }
 
   return (

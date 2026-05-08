@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { hasLocale, LOCALES, getDictionary } from '@/dictionaries'
 import { Nav } from '@/app/components/Nav'
 import { FeedbackWidget } from '@/app/components/FeedbackWidget'
+import { MergeAfterLogin } from '@/app/components/MergeAfterLogin'
 import { isRankHost, getRankHost, getMainHost } from '@/lib/host'
 import { getSession } from '@/lib/session'
 
@@ -16,6 +17,12 @@ async function FeedbackWidgetWithSession({ lang }: { lang: string }) {
   const session = await getSession()
   const dict = getDictionary(lang as 'fr' | 'en')
   return <FeedbackWidget labels={dict.feedback} loggedInName={session?.name ?? null} />
+}
+
+async function MergeAfterLoginIfSignedIn({ lang }: { lang: 'fr' | 'en' }) {
+  const session = await getSession()
+  if (!session) return null
+  return <MergeAfterLogin lang={lang} />
 }
 
 const NAV_FALLBACK_HEIGHT = 57
@@ -82,6 +89,9 @@ export default async function LangLayout({
       <main>{children}</main>
       <Suspense fallback={null}>
         <FeedbackWidgetWithSession lang={lang} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <MergeAfterLoginIfSignedIn lang={lang as 'fr' | 'en'} />
       </Suspense>
     </>
   )

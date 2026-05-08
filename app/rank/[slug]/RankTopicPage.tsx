@@ -9,6 +9,11 @@ import { type UserEntryListData } from './UserEntryListSection'
 import type { RankEntry, CommunityEntries } from '@/lib/communityRankData'
 import { combinedScore } from '@/lib/communityRankScore'
 import { pickTitle } from '@/lib/i18n'
+import {
+  GUEST_USER_ID,
+  hydrateGuestList,
+  saveGuestEntryLists,
+} from '@/lib/guestListAdapter'
 import Link from 'next/link'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
@@ -613,10 +618,9 @@ function TableHeader() {
   )
 }
 
-function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }: {
+function EntryRow({ entry, rank, myTier, myPosition, isOpen, onAdd }: {
   entry: Entry
   rank: number
-  isLoggedIn: boolean
   myTier: string | null
   myPosition: number | null
   isOpen: boolean
@@ -758,8 +762,8 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
           )}
         </div>
 
-        {/* Ma note (cliquable : modifier/ajouter) */}
-        {isLoggedIn ? (
+        {/* Ma note (cliquable : modifier/ajouter) — accessible aux invités via localStorage */}
+        {(
           <button
             onClick={onAdd}
             title={myTier ? 'Modifier ma note' : 'Noter ce film'}
@@ -847,20 +851,6 @@ function EntryRow({ entry, rank, isLoggedIn, myTier, myPosition, isOpen, onAdd }
               </span>
             )}
           </button>
-        ) : (
-          <Link
-            href={`/${lang}/auth/login`}
-            title={lang === 'fr' ? 'Connecte-toi pour noter' : 'Sign in to rate'}
-            className="col-mynote"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              minHeight: 32, borderRadius: 7, textDecoration: 'none',
-              border: '1px solid transparent',
-              fontSize: 18, color: 'var(--fg-4)',
-            }}
-          >
-            +
-          </Link>
         )}
       </div>
     </div>
@@ -885,7 +875,30 @@ function UserAwareEntryList({
 }) {
   const { userLists: initialLists, currentUserId, isLoggedIn } = use(personalDataPromise)
   const [lists, setLists] = useState(initialLists)
-  const myTierList = lists.find(l => l.userId === currentUserId && (l.type === 'TIER' || l.type === 'BOTH')) ?? null
+  const isGuest = !isLoggedIn
+  const ownerId = currentUserId ?? GUEST_USER_ID
+
+  // For guests, hydrate the local-only list from localStorage so my tier
+  // badges + QuickAddPanel reflect the in-progress stash.
+  useEffect(() => {
+    if (!isGuest) return
+    const guestList = hydrateGuestList(topicSlug, entries)
+    if (guestList) setLists(prev => [...prev.filter(l => l.userId !== GUEST_USER_ID), guestList])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest, topicSlug])
+
+  const myTierList = lists.find(l => l.userId === ownerId && (l.type === 'TIER' || l.type === 'BOTH')) ?? null
+
+  async function persist(
+    newItems: Array<{ entryId: string; tier?: string; position?: number; note?: string }>,
+    rankedTiers: string[],
+  ): Promise<UserEntryListData[]> {
+    if (isGuest) {
+      const guestList = saveGuestEntryLists(topicSlug, entries, newItems, rankedTiers)
+      return guestList ? [guestList] : []
+    }
+    return saveUserEntryLists(topicSlug, [], newItems, rankedTiers, { revalidate: false })
+  }
 
   async function handleQuickAdd(entryId: string, tier: string, insertBeforeId?: string) {
     const currentItems = myTierList?.items ?? []
@@ -917,7 +930,7 @@ function UserAwareEntryList({
       ]
     }
 
-    const updated = await saveUserEntryLists(topicSlug, [], newItems, rankedTiers, { revalidate: false })
+    const updated = await persist(newItems, rankedTiers)
     const newMy = updated.find(l => l.type === 'TIER' || l.type === 'BOTH') ?? null
     onApplyMyChange(
       myTierList?.items ?? [],
@@ -925,7 +938,7 @@ function UserAwareEntryList({
       (myTierList?.rankedTiers ?? '').split(',').filter(Boolean),
       (newMy?.rankedTiers ?? '').split(',').filter(Boolean),
     )
-    setLists(prev => [...prev.filter(l => l.userId !== currentUserId), ...updated])
+    setLists(prev => [...prev.filter(l => l.userId !== ownerId), ...updated])
     setQuickAddId(null)
   }
 
@@ -952,7 +965,7 @@ function UserAwareEntryList({
       newItems = remaining.map(i => ({ entryId: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined }))
     }
 
-    const updated = await saveUserEntryLists(topicSlug, [], newItems, rankedTiers, { revalidate: false })
+    const updated = await persist(newItems, rankedTiers)
     const newMy = updated.find(l => l.type === 'TIER' || l.type === 'BOTH') ?? null
     onApplyMyChange(
       myTierList?.items ?? [],
@@ -960,7 +973,7 @@ function UserAwareEntryList({
       (myTierList?.rankedTiers ?? '').split(',').filter(Boolean),
       (newMy?.rankedTiers ?? '').split(',').filter(Boolean),
     )
-    setLists(prev => [...prev.filter(l => l.userId !== currentUserId), ...updated])
+    setLists(prev => [...prev.filter(l => l.userId !== ownerId), ...updated])
     setQuickAddId(null)
   }
 
@@ -985,7 +998,7 @@ function UserAwareEntryList({
       }
     })
 
-    const updated = await saveUserEntryLists(topicSlug, [], newItems, newRankedTiers, { revalidate: false })
+    const updated = await persist(newItems, newRankedTiers)
     const newMy = updated.find(l => l.type === 'TIER' || l.type === 'BOTH') ?? null
     onApplyMyChange(
       myTierList.items,
@@ -993,7 +1006,7 @@ function UserAwareEntryList({
       (myTierList.rankedTiers ?? '').split(',').filter(Boolean),
       (newMy?.rankedTiers ?? '').split(',').filter(Boolean),
     )
-    setLists(prev => [...prev.filter(l => l.userId !== currentUserId), ...updated])
+    setLists(prev => [...prev.filter(l => l.userId !== ownerId), ...updated])
   }
 
   return (
@@ -1006,7 +1019,6 @@ function UserAwareEntryList({
           <EntryRow
             entry={entry}
             rank={i + 1}
-            isLoggedIn={isLoggedIn}
             myTier={myItem?.tier ?? null}
             myPosition={myItem?.position ?? null}
             isOpen={quickAddId === entry.id}
@@ -1113,7 +1125,6 @@ export function RankCommunityBody({
                     key={entry.id}
                     entry={entry}
                     rank={i + 1}
-                    isLoggedIn={false}
                     myTier={null}
                     myPosition={null}
                     isOpen={false}
