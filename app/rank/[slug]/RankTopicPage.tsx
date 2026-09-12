@@ -43,12 +43,21 @@ const MEDAL: Record<number, { bg: string; fg: string; border: string }> = {
 
 type SortMode = 'combined' | 'tier' | 'rank' | 'favorite' | 'popular'
 
-const RankSortContext = createContext<{ sortMode: SortMode; setSortMode: (m: SortMode) => void } | null>(null)
+// null = all decades; number = the decade start year (e.g. 2020 for the 2020s).
+type DecadeFilter = number | null
+
+const RankSortContext = createContext<{
+  sortMode: SortMode
+  setSortMode: (m: SortMode) => void
+  decade: DecadeFilter
+  setDecade: (d: DecadeFilter) => void
+} | null>(null)
 
 export function RankSortProvider({ children }: { children: React.ReactNode }) {
   const [sortMode, setSortMode] = useState<SortMode>('combined')
+  const [decade, setDecade] = useState<DecadeFilter>(null)
   return (
-    <RankSortContext.Provider value={{ sortMode, setSortMode }}>
+    <RankSortContext.Provider value={{ sortMode, setSortMode, decade, setDecade }}>
       {children}
     </RankSortContext.Provider>
   )
@@ -477,18 +486,156 @@ export function MentionLegend({ lang }: { lang: 'fr' | 'en' }) {
   )
 }
 
-const SORT_OPTIONS: { mode: SortMode; label: string; tip: string }[] = [
-  { mode: 'combined', label: 'Score', tip: 'Mention ajustée + bonus de rang' },
-  { mode: 'tier', label: 'Mention', tip: 'Moyenne des mentions sur 7' },
-  { mode: 'rank', label: 'Rang moyen', tip: 'Position moyenne dans les classements perso' },
-  { mode: 'favorite', label: 'Favoris', tip: 'Nombre de fois en #1 d’un classement' },
-  { mode: 'popular', label: 'Avis', tip: 'Nombre total de mentions' },
+const SORT_OPTIONS: { mode: SortMode; label: string; tip: string; labelEn?: string; tipEn?: string }[] = [
+  { mode: 'combined', label: 'Score', tip: 'Mention ajustée + bonus de rang', labelEn: 'Score', tipEn: 'Adjusted mention + rank bonus' },
+  { mode: 'tier', label: 'Mention', tip: 'Moyenne des mentions sur 7', labelEn: 'Mention', tipEn: 'Average of mentions on 7' },
+  { mode: 'rank', label: 'Rang moyen', tip: 'Position moyenne dans les classements perso', labelEn: 'Avg rank', tipEn: 'Average position across personal rankings' },
+  { mode: 'favorite', label: 'Favoris', tip: 'Nombre de fois en #1 d’un classement', labelEn: 'Favourites', tipEn: 'Times ranked #1 in a personal list' },
+  { mode: 'popular', label: 'Avis', tip: 'Nombre total de mentions', labelEn: 'Ratings', tipEn: 'Total number of ratings' },
 ]
 
-function RankToolbar() {
+function DecadeDropdown({
+  decadeCounts,
+  decade,
+  setDecade,
+  isFr,
+}: {
+  decadeCounts: Array<{ decade: number; count: number }>
+  decade: number | null
+  setDecade: (d: number | null) => void
+  isFr: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const total = decadeCounts.reduce((s, d) => s + d.count, 0)
+  const active = decade !== null
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', display: 'inline-flex' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        title={active ? (isFr ? `Filtré : années ${decade}` : `Filtered: ${decade}s`) : (isFr ? 'Filtrer par décennie' : 'Filter by decade')}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '5px 12px',
+          borderRadius: 999,
+          border: `1px solid ${active ? 'var(--accent-fg)' : 'var(--border)'}`,
+          background: active ? 'var(--accent-faint)' : (open ? 'var(--bg-subtle)' : 'transparent'),
+          color: active ? 'var(--accent-fg)' : 'var(--fg-5)',
+          fontWeight: active ? 700 : 500,
+          fontSize: 12.5,
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          lineHeight: 1.3,
+        }}
+      >
+        <span>{isFr ? 'Décennie' : 'Decade'}{active ? ` : ${decade}s` : ''}</span>
+        <span aria-hidden style={{ fontSize: 14, opacity: 0.75, lineHeight: 1 }}>▾</span>
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label={isFr ? 'Filtrer par décennie' : 'Filter by decade'}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            zIndex: 30,
+            background: 'var(--bg-card)',
+            borderRadius: 10,
+            border: '1px solid var(--border)',
+            boxShadow: '0 12px 32px rgba(0,0,0,.12)',
+            minWidth: 220,
+            padding: 5,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            maxHeight: 340,
+            overflowY: 'auto',
+          }}
+        >
+          <button
+            type="button"
+            role="option"
+            aria-selected={decade === null}
+            onClick={() => { setDecade(null); setOpen(false) }}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, padding: '7px 12px', borderRadius: 6,
+              border: 'none', background: decade === null ? 'var(--bg-subtle)' : 'transparent',
+              color: decade === null ? 'var(--fg-2)' : 'var(--fg-3)',
+              fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+              fontWeight: decade === null ? 600 : 500,
+              textAlign: 'left',
+            }}
+          >
+            <span>{isFr ? 'Toutes les décennies' : 'All decades'}</span>
+            <span style={{ fontSize: 11, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums' }}>{total}</span>
+          </button>
+          <div aria-hidden style={{ height: 1, background: 'var(--border)', margin: '3px 4px' }} />
+          {decadeCounts.map(({ decade: d, count }) => {
+            const active = decade === d
+            return (
+              <button
+                key={d}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => { setDecade(active ? null : d); setOpen(false) }}
+                title={isFr ? `${d} à ${d + 9}` : `${d} to ${d + 9}`}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 12, padding: '7px 12px', borderRadius: 6,
+                  border: 'none', background: active ? 'var(--bg-subtle)' : 'transparent',
+                  color: active ? 'var(--fg-2)' : 'var(--fg-3)',
+                  fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+                  fontWeight: active ? 600 : 500,
+                  textAlign: 'left',
+                }}
+              >
+                <span>{d}s</span>
+                <span style={{ fontSize: 11, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RankToolbar({
+  decadeCounts,
+}: {
+  decadeCounts: Array<{ decade: number; count: number }>
+}) {
+  const { lang } = useParams() as { lang: string }
+  const isFr = lang === 'fr'
   const ctx = useContext(RankSortContext)
   const sortMode = ctx?.sortMode ?? 'combined'
   const setSortMode = ctx?.setSortMode ?? (() => {})
+  const decade = ctx?.decade ?? null
+  const setDecade = ctx?.setDecade ?? (() => {})
 
   const pillStyle = (active: boolean): React.CSSProperties => ({
     padding: '5px 12px',
@@ -512,26 +659,34 @@ function RankToolbar() {
   return (
     <div
       style={{
-        display: 'flex', flexDirection: 'column', gap: 10,
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6,
         padding: '12px 0 14px',
         borderBottom: '1px solid var(--border)',
         marginBottom: 4,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-        <span style={groupLabelStyle}>Trier</span>
-        {SORT_OPTIONS.map(opt => (
+      <span style={groupLabelStyle}>{isFr ? 'Trier' : 'Sort'}</span>
+      {SORT_OPTIONS.map(opt => {
+        const label = isFr ? opt.label : (opt.labelEn ?? opt.label)
+        const tip = isFr ? opt.tip : (opt.tipEn ?? opt.tip)
+        return (
           <button
             key={opt.mode}
             type="button"
-            title={opt.tip}
+            title={tip}
             onClick={() => setSortMode(opt.mode)}
             style={pillStyle(sortMode === opt.mode)}
           >
-            {opt.label}
+            {label}
           </button>
-        ))}
-      </div>
+        )
+      })}
+      {decadeCounts.length > 0 && (
+        <>
+          <span aria-hidden style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', margin: '0 4px' }} />
+          <DecadeDropdown decadeCounts={decadeCounts} decade={decade} setDecade={setDecade} isFr={isFr} />
+        </>
+      )}
     </div>
   )
 }
@@ -1071,6 +1226,8 @@ export function RankCommunityBody({
 
   const ctx = useContext(RankSortContext)
   const sortMode = ctx?.sortMode ?? 'combined'
+  const decade = ctx?.decade ?? null
+  const setDecade = ctx?.setDecade ?? (() => {})
   const [quickAddId, setQuickAddId] = useState<string | null>(null)
   const [displayCount, setDisplayCount] = useState(100)
   const [allEntries, setAllEntries] = useState(initialEntries)
@@ -1085,9 +1242,32 @@ export function RankCommunityBody({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => { setDisplayCount(100) }, [sortMode])
+  useEffect(() => { setDisplayCount(100) }, [sortMode, decade])
 
-  const sorted = [...allEntries].sort((a, b) => {
+  const decadeCounts = React.useMemo(() => {
+    const map = new Map<number, number>()
+    for (const e of allEntries) {
+      if (e.year === null || e.year === undefined) continue
+      const d = Math.floor(e.year / 10) * 10
+      map.set(d, (map.get(d) ?? 0) + 1)
+    }
+    return Array.from(map.entries())
+      .map(([d, count]) => ({ decade: d, count }))
+      .sort((a, b) => b.decade - a.decade)
+  }, [allEntries])
+
+  // If the currently selected decade disappears (e.g. topic swap), clear it
+  // so we don't strand the user on an empty view.
+  useEffect(() => {
+    if (decade === null) return
+    if (!decadeCounts.some(d => d.decade === decade)) setDecade(null)
+  }, [decade, decadeCounts, setDecade])
+
+  const filtered = decade === null
+    ? allEntries
+    : allEntries.filter(e => e.year !== null && e.year !== undefined && Math.floor(e.year / 10) * 10 === decade)
+
+  const sorted = [...filtered].sort((a, b) => {
     if (sortMode === 'tier') {
       if (a.avgTierScore === null && b.avgTierScore === null) return 0
       if (a.avgTierScore === null) return 1
@@ -1111,11 +1291,30 @@ export function RankCommunityBody({
 
   const visibleEntries = sorted.slice(0, displayCount)
 
+  const isFr = lang === 'fr'
+  const emptyForDecade = decade !== null && sorted.length === 0 && allEntries.length > 0
+
   return (
     <>
-      <RankToolbar />
+      <RankToolbar decadeCounts={decadeCounts} />
       {sorted.length === 0 ? (
-        <p style={{ color: 'var(--fg-5)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
+        emptyForDecade ? (
+          <div style={{ padding: '40px 0', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            <p style={{ color: 'var(--fg-5)', fontSize: 14, margin: 0 }}>
+              {isFr
+                ? `Aucune œuvre des années ${decade} dans cette liste.`
+                : `Nothing from the ${decade}s in this list.`}
+            </p>
+            <button
+              onClick={() => setDecade(null)}
+              style={{ padding: '6px 14px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--fg-3)', fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer' }}
+            >
+              {isFr ? 'Voir toutes les décennies' : 'Show all decades'}
+            </button>
+          </div>
+        ) : (
+          <p style={{ color: 'var(--fg-5)', fontSize: 14, padding: '40px 0', textAlign: 'center' }}>{t.noEntries}</p>
+        )
       ) : (
         <>
           <Suspense
@@ -1149,7 +1348,7 @@ export function RankCommunityBody({
           </Suspense>
           {isLoadingFull && sorted.length <= displayCount && (
             <div style={{ width: '100%', marginTop: 16, padding: '12px', textAlign: 'center', color: 'var(--fg-6)', fontSize: 12 }}>
-              Chargement des éléments suivants…
+              {isFr ? 'Chargement des éléments suivants…' : 'Loading more entries…'}
             </div>
           )}
           {!isLoadingFull && sorted.length > displayCount && (
@@ -1157,7 +1356,9 @@ export function RankCommunityBody({
               onClick={() => setDisplayCount(c => c + 100)}
               style={{ width: '100%', marginTop: 16, padding: '12px', borderRadius: 9, border: '1px solid var(--border)', background: 'none', color: 'var(--fg-5)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}
             >
-              Voir plus ({sorted.length - displayCount} restants)
+              {isFr
+                ? `Voir plus (${sorted.length - displayCount} restants)`
+                : `Show more (${sorted.length - displayCount} remaining)`}
             </button>
           )}
         </>

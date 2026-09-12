@@ -5,6 +5,8 @@ import { notFound, redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { unstable_cache } from 'next/cache'
 import { RankEditClientPage } from '@/app/rank/[slug]/RankEditClientPage'
+import { getCommunityData } from '@/lib/communityRankData'
+import { combinedScore } from '@/lib/communityRankScore'
 
 // Logged-in users get redirected to /[userName]/edit so the URL is shareable.
 // Guests render the editor in-place — their list lives in localStorage until
@@ -47,13 +49,25 @@ async function GuestRankEditInner({
   if (!topic || !topic.rankable) notFound()
 
   const dict = getDictionary(lang)
-  const entries = topic.entries.map(e => ({
-    id: e.id,
-    title: e.title,
-    titleEn: e.titleEn,
-    year: e.year,
-    cover: e.cover,
-  }))
+  const community = await getCommunityData(slug, lang)
+  const scoreById = new Map<string, { tierCount: number; score: number }>()
+  if (community) {
+    for (const e of community.entries) {
+      if (e.tierCount > 0) scoreById.set(e.id, { tierCount: e.tierCount, score: combinedScore(e) })
+    }
+  }
+  const entries = topic.entries.map(e => {
+    const s = scoreById.get(e.id)
+    return {
+      id: e.id,
+      title: e.title,
+      titleEn: e.titleEn,
+      year: e.year,
+      cover: e.cover,
+      tierCount: s?.tierCount ?? 0,
+      score: s?.score ?? 0,
+    }
+  })
 
   return (
     <RankEditClientPage

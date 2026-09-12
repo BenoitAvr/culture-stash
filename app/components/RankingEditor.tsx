@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import type { Dict } from '@/dictionaries/client'
 
 export type RankableItem = {
@@ -9,7 +9,12 @@ export type RankableItem = {
   prefix?: string
   suffix?: string
   cover?: string | null
+  year?: number | null
+  tierCount?: number
+  score?: number
 }
+
+type TopFilter = { kind: 'popular' | 'rated'; count: number } | null
 
 export type RankEditItem = {
   id: string
@@ -47,6 +52,267 @@ function levenshtein(a: string, b: string): number {
     }
   }
   return dp[n]
+}
+
+function EditorTopDropdown({
+  top,
+  setTop,
+}: {
+  top: TopFilter
+  setTop: (t: TopFilter) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const active = top !== null
+  const label = active
+    ? (top.kind === 'popular'
+        ? `Top ${top.count} populaires`
+        : `Top ${top.count} mieux notés`)
+    : 'Top'
+
+  const options: Array<{ label: string; value: NonNullable<TopFilter> }> = [
+    { label: 'Top 10 populaires', value: { kind: 'popular', count: 10 } },
+    { label: 'Top 100 populaires', value: { kind: 'popular', count: 100 } },
+    { label: 'Top 10 mieux notés', value: { kind: 'rated', count: 10 } },
+    { label: 'Top 100 mieux notés', value: { kind: 'rated', count: 100 } },
+  ]
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        title={active ? label : 'Filtrer les films restants sur un top de la communauté'}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '0 14px', height: '100%', minHeight: 40,
+          borderRadius: 9,
+          border: `1.5px solid ${active ? 'var(--accent-fg)' : 'var(--border)'}`,
+          background: active ? 'var(--accent-faint)' : 'var(--bg-input)',
+          color: active ? 'var(--accent-fg)' : 'var(--fg-3)',
+          fontSize: 13,
+          fontWeight: active ? 700 : 600,
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <span>{label}</span>
+        <span aria-hidden style={{ fontSize: 14, opacity: 0.75, lineHeight: 1 }}>▾</span>
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Filtrer sur un top"
+          style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 6px)',
+            right: 0,
+            zIndex: 40,
+            background: 'var(--bg-card)',
+            borderRadius: 10,
+            border: '1px solid var(--border)',
+            boxShadow: '0 -6px 24px rgba(0,0,0,.14)',
+            minWidth: 220,
+            padding: 5,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+          }}
+        >
+          <button
+            type="button"
+            role="option"
+            aria-selected={top === null}
+            onClick={() => { setTop(null); setOpen(false) }}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, padding: '7px 12px', borderRadius: 6,
+              border: 'none', background: top === null ? 'var(--bg-subtle)' : 'transparent',
+              color: top === null ? 'var(--fg-2)' : 'var(--fg-3)',
+              fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+              fontWeight: top === null ? 600 : 500,
+              textAlign: 'left',
+            }}
+          >
+            Toutes les œuvres
+          </button>
+          <div aria-hidden style={{ height: 1, background: 'var(--border)', margin: '3px 4px' }} />
+          {options.map((opt, i) => {
+            const isActive = top !== null && top.kind === opt.value.kind && top.count === opt.value.count
+            const isSectionBreak = i === 2
+            return (
+              <React.Fragment key={`${opt.value.kind}-${opt.value.count}`}>
+                {isSectionBreak && <div aria-hidden style={{ height: 1, background: 'var(--border)', margin: '3px 4px' }} />}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isActive}
+                  onClick={() => { setTop(isActive ? null : opt.value); setOpen(false) }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: 12, padding: '7px 12px', borderRadius: 6,
+                    border: 'none', background: isActive ? 'var(--bg-subtle)' : 'transparent',
+                    color: isActive ? 'var(--fg-2)' : 'var(--fg-3)',
+                    fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+                    fontWeight: isActive ? 600 : 500,
+                    textAlign: 'left',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              </React.Fragment>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EditorDecadeDropdown({
+  decadeCounts,
+  decade,
+  setDecade,
+}: {
+  decadeCounts: Array<{ decade: number; count: number }>
+  decade: number | null
+  setDecade: (d: number | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const total = decadeCounts.reduce((s, d) => s + d.count, 0)
+  const active = decade !== null
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        title={active ? `Filtré : années ${decade}` : 'Filtrer les films restants par décennie'}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '0 14px', height: '100%', minHeight: 40,
+          borderRadius: 9,
+          border: `1.5px solid ${active ? 'var(--accent-fg)' : 'var(--border)'}`,
+          background: active ? 'var(--accent-faint)' : 'var(--bg-input)',
+          color: active ? 'var(--accent-fg)' : 'var(--fg-3)',
+          fontSize: 13,
+          fontWeight: active ? 700 : 600,
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <span>Décennie{active ? ` : ${decade}s` : ''}</span>
+        <span aria-hidden style={{ fontSize: 14, opacity: 0.75, lineHeight: 1 }}>▾</span>
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Filtrer par décennie"
+          style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 6px)',
+            right: 0,
+            zIndex: 40,
+            background: 'var(--bg-card)',
+            borderRadius: 10,
+            border: '1px solid var(--border)',
+            boxShadow: '0 -6px 24px rgba(0,0,0,.14)',
+            minWidth: 220,
+            padding: 5,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            maxHeight: 320,
+            overflowY: 'auto',
+          }}
+        >
+          <button
+            type="button"
+            role="option"
+            aria-selected={decade === null}
+            onClick={() => { setDecade(null); setOpen(false) }}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, padding: '7px 12px', borderRadius: 6,
+              border: 'none', background: decade === null ? 'var(--bg-subtle)' : 'transparent',
+              color: decade === null ? 'var(--fg-2)' : 'var(--fg-3)',
+              fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+              fontWeight: decade === null ? 600 : 500,
+              textAlign: 'left',
+            }}
+          >
+            <span>Toutes les décennies</span>
+            <span style={{ fontSize: 11, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums' }}>{total}</span>
+          </button>
+          <div aria-hidden style={{ height: 1, background: 'var(--border)', margin: '3px 4px' }} />
+          {decadeCounts.map(({ decade: d, count }) => {
+            const isActive = decade === d
+            return (
+              <button
+                key={d}
+                type="button"
+                role="option"
+                aria-selected={isActive}
+                onClick={() => { setDecade(isActive ? null : d); setOpen(false) }}
+                title={`${d} à ${d + 9}`}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 12, padding: '7px 12px', borderRadius: 6,
+                  border: 'none', background: isActive ? 'var(--bg-subtle)' : 'transparent',
+                  color: isActive ? 'var(--fg-2)' : 'var(--fg-3)',
+                  fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+                  fontWeight: isActive ? 600 : 500,
+                  textAlign: 'left',
+                }}
+              >
+                <span>{d}s</span>
+                <span style={{ fontSize: 11, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function RankingEditor({
@@ -128,9 +394,53 @@ export function RankingEditor({
   const [importText, setImportText] = useState('')
   const [importResult, setImportResult] = useState<{ matched: RankEditItem[]; unmatched: string[] } | null>(null)
   const [search, setSearch] = useState('')
+  const [decadeFilter, setDecadeFilter] = useState<number | null>(null)
+  // Fresh tier lists get pre-filtered to the community's Top 100 mieux notés
+  // so a first-timer sees the most valuable films to rank first, not a random
+  // slice of the catalogue. Existing lists keep the full catalogue visible
+  // so users can hunt for anything.
+  const [topFilter, setTopFilter] = useState<TopFilter>(
+    !hasExisting && items.some(i => (i.tierCount ?? 0) > 0)
+      ? { kind: 'rated', count: 100 }
+      : null,
+  )
   const [quickAddId, setQuickAddId] = useState<string | null>(null)
   const [quickAddTier, setQuickAddTier] = useState<string | null>(null)
   const [unclassifiedLimit, setUnclassifiedLimit] = useState(18)
+
+  const decadeCounts = (() => {
+    const unclassifiedItems = items.filter(item => !tierItems.some(i => i.id === item.id))
+    const map = new Map<number, number>()
+    for (const item of unclassifiedItems) {
+      if (item.year === null || item.year === undefined) continue
+      const d = Math.floor(item.year / 10) * 10
+      map.set(d, (map.get(d) ?? 0) + 1)
+    }
+    return Array.from(map.entries())
+      .map(([d, count]) => ({ decade: d, count }))
+      .sort((a, b) => b.decade - a.decade)
+  })()
+  const hasYearData = decadeCounts.length > 0
+  const hasRatings = items.some(item => (item.tierCount ?? 0) > 0)
+
+  const topIds = (() => {
+    if (topFilter === null) return null
+    const rated = items
+      .filter(item => (item.tierCount ?? 0) > 0)
+      .map(item => ({
+        id: item.id,
+        key: topFilter.kind === 'popular' ? (item.tierCount ?? 0) : (item.score ?? 0),
+      }))
+      .sort((a, b) => b.key - a.key)
+      .slice(0, topFilter.count)
+    return new Set(rated.map(r => r.id))
+  })()
+
+  useEffect(() => {
+    if (decadeFilter === null) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!decadeCounts.some(d => d.decade === decadeFilter)) setDecadeFilter(null)
+  }, [decadeFilter, decadeCounts])
   const wasPendingRef = useRef(false)
   useEffect(() => {
     if (wasPendingRef.current && !addPending && !addError) setSearch('')
@@ -579,10 +889,22 @@ export function RankingEditor({
               onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
             />
           )
+          const DecadeFilter = hasYearData ? (
+            <EditorDecadeDropdown
+              decadeCounts={decadeCounts}
+              decade={decadeFilter}
+              setDecade={setDecadeFilter}
+            />
+          ) : null
+          const TopFilterEl = hasRatings ? (
+            <EditorTopDropdown top={topFilter} setTop={setTopFilter} />
+          ) : null
           if (addFormAction) {
             return (
               <form action={addFormAction} className="rank-add-form" style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 10 }}>
                 {SearchInput}
+                {DecadeFilter}
+                {TopFilterEl}
                 <input
                   name="year"
                   type="number"
@@ -602,15 +924,37 @@ export function RankingEditor({
           return (
             <div className="rank-add-form" style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 10 }}>
               {SearchInput}
+              {DecadeFilter}
+              {TopFilterEl}
             </div>
           )
         })()}
         {(() => {
-          const unclassified = items.filter(item => !tierItems.some(i => i.id === item.id) && (!search.trim() || normalizeTitle(item.label).includes(normalizeTitle(search))))
-          const visibleUnclassified = search.trim() ? unclassified : unclassified.slice(0, unclassifiedLimit)
+          const matchesSearch = (item: RankableItem) => !search.trim() || normalizeTitle(item.label).includes(normalizeTitle(search))
+          const matchesDecade = (item: RankableItem) => decadeFilter === null || (item.year !== null && item.year !== undefined && Math.floor(item.year / 10) * 10 === decadeFilter)
+          const matchesTop = (item: RankableItem) => topIds === null || topIds.has(item.id)
+          const unclassifiedRaw = items.filter(item => !tierItems.some(i => i.id === item.id) && matchesSearch(item) && matchesDecade(item) && matchesTop(item))
+          // When a top filter is active, order by its metric so switching
+          // between "populaires" and "mieux notés" visibly reorders even
+          // when the two subsets are the same (few rated works on the site).
+          const unclassified = topFilter === null
+            ? unclassifiedRaw
+            : [...unclassifiedRaw].sort((a, b) => {
+                const ka = topFilter.kind === 'popular' ? (a.tierCount ?? 0) : (a.score ?? 0)
+                const kb = topFilter.kind === 'popular' ? (b.tierCount ?? 0) : (b.score ?? 0)
+                return kb - ka
+              })
+          // Text search usually yields few hits, so we show them all. Decade
+          // and top filters can hit 100s — cap them like the unfiltered list.
+          const capResults = !search.trim()
+          const visibleUnclassified = capResults ? unclassified.slice(0, unclassifiedLimit) : unclassified
           const totalUnclassified = items.filter(item => !tierItems.some(i => i.id === item.id)).length
-          const labelText = search.trim()
-            ? `${unclassified.length} résultat${unclassified.length !== 1 ? 's' : ''}`
+          const filterActive = !!search.trim() || decadeFilter !== null || topFilter !== null
+          const filterHints: string[] = []
+          if (decadeFilter !== null) filterHints.push(`années ${decadeFilter}`)
+          if (topFilter !== null) filterHints.push(topFilter.kind === 'popular' ? `top ${topFilter.count} populaires` : `top ${topFilter.count} mieux notés`)
+          const labelText = filterActive
+            ? `${unclassified.length} résultat${unclassified.length !== 1 ? 's' : ''}${filterHints.length > 0 ? ` · ${filterHints.join(' · ')}` : ''}`
             : (totalUnclassified === 0
                 ? t.allClassified
                 : `${totalUnclassified} ${totalUnclassified > 1 ? 'films restent à classer' : 'film reste à classer'}`)
@@ -625,13 +969,19 @@ export function RankingEditor({
                 style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 5, minHeight: visibleUnclassified.length === 0 ? 0 : 70 }}
               >
               {visibleUnclassified.length === 0 ? (
-                search.trim() ? (
+                filterActive ? (
                   <span style={{ color: 'var(--fg-5)', fontSize: 12, fontStyle: 'italic' }}>
-                    « {search} » n&apos;est pas dans la liste
-                    {addFormAction ? (
-                      <> — utilise <strong style={{ color: 'var(--fg-4)' }}>Ajoute-le</strong> au-dessus.</>
+                    {search.trim() ? (
+                      <>
+                        « {search} » n&apos;est pas dans les résultats
+                        {addFormAction ? (
+                          <> — utilise <strong style={{ color: 'var(--fg-4)' }}>Ajoute-le</strong> au-dessus.</>
+                        ) : (
+                          <> — connecte-toi pour l&apos;ajouter au catalogue.</>
+                        )}
+                      </>
                     ) : (
-                      <> — connecte-toi pour l&apos;ajouter au catalogue.</>
+                      <>Aucun film restant pour ce filtre.</>
                     )}
                   </span>
                 ) : null
@@ -732,7 +1082,7 @@ export function RankingEditor({
                   </div>
                 ))
               )}
-              {!search.trim() && unclassified.length > unclassifiedLimit && (
+              {capResults && unclassified.length > unclassifiedLimit && (
                 <button
                   onClick={() => setUnclassifiedLimit(c => c + 18)}
                   style={{ alignSelf: 'center', marginLeft: 4, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--fg-6)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
