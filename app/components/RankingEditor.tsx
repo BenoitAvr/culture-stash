@@ -408,6 +408,11 @@ export function RankingEditor({
   const [quickAddTier, setQuickAddTier] = useState<string | null>(null)
   const [unclassifiedLimit, setUnclassifiedLimit] = useState(18)
 
+  // Reset the cap whenever the filter set changes, so a leftover "+18" chain
+  // from a previous view doesn't balloon the render into a new (potentially
+  // huge) match set.
+  useEffect(() => { setUnclassifiedLimit(18) }, [search, decadeFilter, topFilter])
+
   const decadeCounts = (() => {
     const unclassifiedItems = items.filter(item => !tierItems.some(i => i.id === item.id))
     const map = new Map<number, number>()
@@ -944,10 +949,11 @@ export function RankingEditor({
                 const kb = topFilter.kind === 'popular' ? (b.tierCount ?? 0) : (b.score ?? 0)
                 return kb - ka
               })
-          // Text search usually yields few hits, so we show them all. Decade
-          // and top filters can hit 100s — cap them like the unfiltered list.
-          const capResults = !search.trim()
-          const visibleUnclassified = capResults ? unclassified.slice(0, unclassifiedLimit) : unclassified
+          // Always cap: with 2000+ entries, even a short search prefix can
+          // match hundreds, and rendering that many cover images per keystroke
+          // locks up the browser. The "Load more" button below lets the user
+          // walk past the cap when they want to.
+          const visibleUnclassified = unclassified.slice(0, unclassifiedLimit)
           const totalUnclassified = items.filter(item => !tierItems.some(i => i.id === item.id)).length
           const filterActive = !!search.trim() || decadeFilter !== null || topFilter !== null
           const filterHints: string[] = []
@@ -1082,7 +1088,7 @@ export function RankingEditor({
                   </div>
                 ))
               )}
-              {capResults && unclassified.length > unclassifiedLimit && (
+              {unclassified.length > unclassifiedLimit && (
                 <button
                   onClick={() => setUnclassifiedLimit(c => c + 18)}
                   style={{ alignSelf: 'center', marginLeft: 4, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--fg-6)', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
