@@ -45,10 +45,10 @@ type EntryInput = {
   cover: string | null
 }
 
-async function fetchPage(page: number, pageSize: number): Promise<RawgGame[]> {
+async function fetchPage(page: number, pageSize: number, ordering: string): Promise<RawgGame[]> {
   const url = new URL('https://api.rawg.io/api/games')
   url.searchParams.set('key', RAWG_KEY!)
-  url.searchParams.set('ordering', '-rating')
+  url.searchParams.set('ordering', ordering)
   url.searchParams.set('exclude_additions', 'true')
   url.searchParams.set('page_size', String(pageSize))
   url.searchParams.set('page', String(page))
@@ -59,6 +59,18 @@ async function fetchPage(page: number, pageSize: number): Promise<RawgGame[]> {
   }
   const data = await res.json() as { results?: RawgGame[] }
   return data.results ?? []
+}
+
+async function searchGame(query: string): Promise<RawgGame | null> {
+  const url = new URL('https://api.rawg.io/api/games')
+  url.searchParams.set('key', RAWG_KEY!)
+  url.searchParams.set('search', query)
+  url.searchParams.set('search_precise', 'true')
+  url.searchParams.set('page_size', '1')
+  const res = await fetch(url.toString())
+  if (!res.ok) return null
+  const data = await res.json() as { results?: RawgGame[] }
+  return data.results?.[0] ?? null
 }
 
 async function insertBatch(entries: EntryInput[]) {
@@ -130,34 +142,72 @@ async function ensureTopic(userId: string) {
   return created
 }
 
+const PAGES = 38
+const PAGE_SIZE = 40
+const ORDERINGS = ['-rating', '-added'] as const
+const WHITELIST = ['Dofus', 'Tunic', 'Pokémon Diamond, Pearl']
+
+function toEntryInput(g: RawgGame, topicId: string, userId: string): EntryInput {
+  return {
+    topicId,
+    addedById: userId,
+    title: g.name,
+    titleEn: null,
+    tmdbId: null,
+    year: g.released ? parseInt(g.released.slice(0, 4)) || null : null,
+    cover: g.background_image,
+  }
+}
+
 async function main() {
   const user = await prisma.user.findFirst()
   if (!user) throw new Error("Aucun utilisateur en base — connecte-toi d'abord sur le site")
 
   const topic = await ensureTopic(user.id)
 
-  const PAGES = 25
-  const PAGE_SIZE = 40
-  console.log(`\n🎮 Jeux vidéo (${PAGES} pages × ${PAGE_SIZE} = ~${PAGES * PAGE_SIZE} items)…`)
+  const seen = new Set<string>()
+  const collected: EntryInput[] = []
 
-  let total = 0
-  for (let page = 1; page <= PAGES; page++) {
-    const games = await fetchPage(page, PAGE_SIZE)
-    const entries: EntryInput[] = games.map(g => ({
-      topicId: topic.id,
-      addedById: user.id,
-      title: g.name,
-      titleEn: null,
-      tmdbId: null,
-      year: g.released ? parseInt(g.released.slice(0, 4)) || null : null,
-      cover: g.background_image,
-    }))
-    total += await insertBatch(entries)
-    process.stdout.write(`\r  page ${page}/${PAGES} — ${total} insérés`)
+  for (const ordering of ORDERINGS) {
+    console.log(`\n🎮 Passe "${ordering}" (${PAGES} pages × ${PAGE_SIZE})…`)
+    for (let page = 1; page <= PAGES; page++) {
+      const games = await fetchPage(page, PAGE_SIZE, ordering)
+      for (const g of games) {
+        if (seen.has(g.name)) continue
+        seen.add(g.name)
+        collected.push(toEntryInput(g, topic.id, user.id))
+      }
+      process.stdout.write(`\r  page ${page}/${PAGES} — ${collected.length} uniques collectés`)
+      await sleep(300)
+    }
+    console.log()
+  }
+
+  console.log(`\n🎯 Whitelist (${WHITELIST.length} jeux à garantir)…`)
+  for (const query of WHITELIST) {
+    const g = await searchGame(query)
+    if (!g) {
+      console.log(`  "${query}" introuvable sur RAWG`)
+      continue
+    }
+    if (seen.has(g.name)) {
+      console.log(`  "${query}" déjà dans la collecte (${g.name})`)
+      continue
+    }
+    seen.add(g.name)
+    collected.push(toEntryInput(g, topic.id, user.id))
+    console.log(`  + ${g.name} (${g.released?.slice(0, 4) ?? '?'})`)
     await sleep(300)
   }
 
-  console.log('\n✅ Seed jeux vidéo terminé !')
+  console.log(`\n💾 Insertion de ${collected.length} entries (par lots de 100)…`)
+  let total = 0
+  for (let i = 0; i < collected.length; i += 100) {
+    total += await insertBatch(collected.slice(i, i + 100))
+    process.stdout.write(`\r  ${total} insérés`)
+  }
+
+  console.log(`\n✅ Seed jeux vidéo terminé — ${total} entries insérées sur ${collected.length} candidats`)
   await prisma.$disconnect()
 }
 
