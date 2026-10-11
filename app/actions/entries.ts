@@ -27,6 +27,30 @@ async function fetchTmdbCover(title: string, year: number | null): Promise<strin
   }
 }
 
+async function fetchRawgCover(title: string, year: number | null): Promise<string | null> {
+  const key = process.env.RAWG_API_KEY
+  if (!key) return null
+
+  const params = new URLSearchParams({ key, search: title, page_size: '5' })
+  if (year) params.set('dates', `${year}-01-01,${year}-12-31`)
+
+  try {
+    const res = await fetch(`https://api.rawg.io/api/games?${params}`, {
+      next: { revalidate: 86400 },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.results?.[0]?.background_image ?? null
+  } catch {
+    return null
+  }
+}
+
+function pickCoverFetcher(topicSlug: string) {
+  if (topicSlug === 'jeux-video') return fetchRawgCover
+  return fetchTmdbCover
+}
+
 
 export async function addEntry(
   topicSlug: string,
@@ -45,7 +69,7 @@ export async function addEntry(
   const yearRaw = formData.get('year') as string
   const year = yearRaw ? parseInt(yearRaw) || null : null
   const coverRaw = (formData.get('cover') as string)?.trim() || null
-  const cover = coverRaw ?? await fetchTmdbCover(title, year)
+  const cover = coverRaw ?? await pickCoverFetcher(topicSlug)(title, year)
 
   await prisma.entry.create({
     data: { topicId: topic.id, addedById: session.userId, title, year, cover },
