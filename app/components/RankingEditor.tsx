@@ -446,11 +446,9 @@ export function RankingEditor({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!decadeCounts.some(d => d.decade === decadeFilter)) setDecadeFilter(null)
   }, [decadeFilter, decadeCounts])
-  const wasPendingRef = useRef(false)
-  useEffect(() => {
-    if (wasPendingRef.current && !addPending && !addError) setSearch('')
-    wasPendingRef.current = addPending ?? false
-  }, [addPending, addError])
+  // Keep the search text after a successful add: with it still typed, the
+  // freshly-inserted entry (whose title matches what the user typed) stays
+  // visible in the filtered strip, so they see what they just added.
 
   // Mark dirty on edits
   useEffect(() => {
