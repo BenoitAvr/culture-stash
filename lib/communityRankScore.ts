@@ -25,10 +25,9 @@ export function combinedScore(e: RankEntry) {
   if (e.avgTierScore === null || e.tierCount === 0) return 0
 
   // Raw components — no per-component shrinkage, we handle it once at the
-  // end against the final score. Tier multiplier bumped 4 → 4.5 so the
-  // mention carries a touch more weight versus the rank bonus (max tier
-  // contribution now 31.5, vs max rank bonus 22 → ~59/41 ratio).
-  const rawTier = e.avgTierScore * 4.5
+  // end against the final score. Mention multiplier eased 4.5 → 4.2 to
+  // let the (now slightly stronger) rank bonus share the podium.
+  const rawTier = e.avgTierScore * 4.2
 
   let rawRankBonus = 0
   if (e.avgRank && e.rankCount > 0) {
