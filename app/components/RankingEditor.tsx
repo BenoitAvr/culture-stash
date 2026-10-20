@@ -1227,11 +1227,17 @@ export function RankingEditor({
           const matchesDecade = (item: RankableItem) => decadeFilter === null || (item.year !== null && item.year !== undefined && Math.floor(item.year / 10) * 10 === decadeFilter)
           const matchesTop = (item: RankableItem) => topIds === null || topIds.has(item.id)
           const unclassifiedRaw = items.filter(item => !tierItems.some(i => i.id === item.id) && matchesSearch(item) && matchesDecade(item) && matchesTop(item))
-          // When a top filter is active, order by its metric so switching
-          // between "populaires" and "mieux notés" visibly reorders even
-          // when the two subsets are the same (few rated works on the site).
+          // Default ordering: best-ranked community picks first, so a new
+          // user sees the most-valuable films to classify. Unrated films
+          // (score === 0 and no votes) fall to the bottom in catalog order.
+          // When a top filter is active we respect its metric explicitly.
           const unclassified = topFilter === null
-            ? unclassifiedRaw
+            ? [...unclassifiedRaw].sort((a, b) => {
+                const sa = a.score ?? 0
+                const sb = b.score ?? 0
+                if (sb !== sa) return sb - sa
+                return (b.tierCount ?? 0) - (a.tierCount ?? 0)
+              })
             : [...unclassifiedRaw].sort((a, b) => {
                 const ka = topFilter.kind === 'popular' ? (a.tierCount ?? 0) : (a.score ?? 0)
                 const kb = topFilter.kind === 'popular' ? (b.tierCount ?? 0) : (b.score ?? 0)

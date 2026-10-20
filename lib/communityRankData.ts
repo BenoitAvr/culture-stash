@@ -18,6 +18,10 @@ export type RankEntry = {
   tierCount: number
   favoriteCount: number
   tierDistribution: Record<string, number>
+  // Sorted list of individual fractional global ranks every user gave this
+  // entry — used by the "N classements" popover to show the anonymised
+  // distribution of positions.
+  rankPositions: number[]
 }
 
 export type RankTopicHeader = {
@@ -126,6 +130,7 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
       const tierData: Record<string, { totalScore: number; count: number }> = {}
       const favoriteData: Record<string, number> = {}
       const tierDistData: Record<string, Record<string, number>> = {}
+      const rankPositionsData: Record<string, number[]> = {}
 
       for (const list of topic.userEntryLists) {
         if (list.type !== 'TIER') continue
@@ -200,6 +205,8 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
           if (!rankData[e.entryId]) rankData[e.entryId] = { sumLog: 0, count: 0 }
           rankData[e.entryId].sumLog += Math.log(e.globalFracRank)
           rankData[e.entryId].count += 1
+          if (!rankPositionsData[e.entryId]) rankPositionsData[e.entryId] = []
+          rankPositionsData[e.entryId].push(e.globalFracRank)
         }
         // Favorite = the item(s) sharing rank #1 in the top-most tier that has
         // items. Previously only one favorite per list was counted; we keep
@@ -232,6 +239,7 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
             tierCount: td?.count ?? 0,
             favoriteCount: favoriteData[e.id] ?? 0,
             tierDistribution: tierDistData[e.id] ?? {},
+            rankPositions: (rankPositionsData[e.id] ?? []).slice().sort((a, b) => a - b),
           }
         }),
       }

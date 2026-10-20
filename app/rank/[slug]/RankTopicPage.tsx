@@ -418,6 +418,19 @@ function applyMyListChange(
     if (prevFav === e.id) favCount = Math.max(0, favCount - 1)
     if (newFav === e.id) favCount += 1
 
+    // Keep rankPositions in sync with the user's optimistic change so the
+    // anonymised distribution popover reflects what they just did.
+    let newPositions = e.rankPositions
+    if (prevC || nextC) {
+      newPositions = [...e.rankPositions]
+      if (prevC) {
+        const idx = newPositions.findIndex(p => Math.abs(p - prevC.globalFracRank) < 1e-9)
+        if (idx !== -1) newPositions.splice(idx, 1)
+      }
+      if (nextC) newPositions.push(nextC.globalFracRank)
+      newPositions.sort((a, b) => a - b)
+    }
+
     return {
       ...e,
       tierDistribution: newDist,
@@ -426,6 +439,7 @@ function applyMyListChange(
       avgRank: newAvgRank,
       rankCount: newRankCount,
       favoriteCount: favCount,
+      rankPositions: newPositions,
     }
   })
 }
@@ -888,6 +902,21 @@ function EntryRow({ entry, rank, myTier, myRank, myRankFractional, isOpen, onAdd
   isOpen: boolean
   onAdd: () => void
 }) {
+  const [positionsOpen, setPositionsOpen] = useState(false)
+  const positionsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!positionsOpen) return
+    const onPointer = (ev: MouseEvent) => {
+      if (positionsRef.current && !positionsRef.current.contains(ev.target as Node)) setPositionsOpen(false)
+    }
+    const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') setPositionsOpen(false) }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [positionsOpen])
   const { lang } = useParams() as { lang: string }
   const displayTitle = pickTitle(entry, lang)
   const isTop3 = rank <= 3
@@ -1009,15 +1038,52 @@ function EntryRow({ entry, rank, myTier, myRank, myRankFractional, isOpen, onAdd
         </div>
 
         {/* Rang moyen */}
-        <div className="col-avg" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+        <div className="col-avg" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, position: 'relative' }}>
           {entry.avgRank !== null ? (
             <>
               <span style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>
                 #{entry.avgRank.toFixed(1)}
               </span>
-              <span style={{ fontSize: 11, color: 'var(--fg-6)' }}>
+              <button
+                onClick={ev => { ev.stopPropagation(); setPositionsOpen(o => !o) }}
+                title="Voir le détail anonyme des classements"
+                style={{ fontSize: 11, color: positionsOpen ? 'var(--fg-3)' : 'var(--fg-6)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 2 }}
+              >
                 {entry.rankCount} classement{entry.rankCount > 1 ? 's' : ''}
-              </span>
+              </button>
+              {positionsOpen && (
+                <div
+                  ref={positionsRef}
+                  onClick={ev => ev.stopPropagation()}
+                  style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
+                    zIndex: 40, minWidth: 220, maxWidth: 320,
+                    background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10,
+                    boxShadow: '0 10px 32px rgba(0,0,0,.18)',
+                    padding: 12,
+                  }}
+                >
+                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--fg-6)', fontWeight: 600, marginBottom: 6 }}>
+                    Rangs individuels (anonymes)
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                    {entry.rankPositions.map((p, i) => (
+                      <span key={i} style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        minWidth: 30, padding: '2px 7px', borderRadius: 999,
+                        background: 'var(--bg-subtle)', border: '1px solid var(--border)',
+                        fontFamily: "'Fraunces', serif", fontSize: 12, fontWeight: 700, color: 'var(--fg-2)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        #{Number.isInteger(p) ? p : p.toFixed(1)}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10.5, color: 'var(--fg-6)', lineHeight: 1.4 }}>
+                    Moyenne géométrique : <strong style={{ color: 'var(--fg-3)' }}>#{entry.avgRank.toFixed(1)}</strong>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <span style={{ fontSize: 13, color: 'var(--fg-7)' }}>—</span>
