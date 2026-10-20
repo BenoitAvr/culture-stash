@@ -1064,13 +1064,11 @@ export function RankingEditor({
                                                share one card so the link is
                                                visually unambiguous. */}
                             {(() => {
-                              // Inline mode (poster + title to the right) now
-                              // kicks in for up to 3 films at a rank — 3 cards
-                              // of 180px each still fit a 540px row before
-                              // wrapping, and the titles stay readable.
-                              const showInline = g.items.length <= 3
-                              // Slightly bigger thumbnail (27-wide) — the row
-                              // still stays under 42px tall.
+                              // Inline mode (poster + title to the right) only
+                              // for solo and 2-tied — from 3 films the compact
+                              // tier-list look (title under each poster) stays
+                              // readable and avoids squeezing three columns.
+                              const showInline = g.items.length <= 2
                               const effCardW = showInline ? 27 : cardW
                               const effCloseSz = showInline ? 11 : closeSz
                               const effCloseFs = showInline ? 8 : closeFs
@@ -1113,25 +1111,21 @@ export function RankingEditor({
                                       transition: 'opacity .1s, border-color .1s',
                                     }
                                     if (showInline) {
-                                      // Fixed card width per row count so the
-                                      // row always fills roughly the same
-                                      // horizontal slot (~600px). Solo = full
-                                      // width; 2 tied = half each; 3 tied =
-                                      // third each.
-                                      const inlineCardW = g.items.length === 1
-                                        ? 600
-                                        : g.items.length === 2
-                                          ? 296
-                                          : 196
+                                      // Flex-grow fills the whole row width:
+                                      // 1 solo card → takes everything;
+                                      // 2 tied → half each. Max-width caps
+                                      // very wide screens so titles don't get
+                                      // marooned 1000px apart.
+                                      const solo = g.items.length === 1
                                       return (
-                                        <div key={rankItem.id} {...dragProps} style={{ ...unifiedCardStyle, display: 'flex', alignItems: 'stretch', flex: '0 0 auto', width: inlineCardW }}>
+                                        <div key={rankItem.id} {...dragProps} style={{ ...unifiedCardStyle, display: 'flex', alignItems: 'stretch', flex: '1 1 0', minWidth: 220, maxWidth: solo ? 900 : 480 }}>
                                           {posterInner}
-                                          <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1, padding: '0 8px', gap: 5 }}>
-                                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1, padding: '0 10px', gap: 6 }}>
+                                            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
                                               {item.label}
                                             </span>
                                             {item.year != null && (
-                                              <span style={{ fontSize: 10, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                                              <span style={{ fontSize: 11, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
                                                 {item.year}
                                               </span>
                                             )}

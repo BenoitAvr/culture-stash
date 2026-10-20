@@ -261,10 +261,10 @@ async function UserListInner({
                           )}
                         </div>
                         {(() => {
-                          const showInline = g.items.length <= 3
+                          const showInline = g.items.length <= 2
                           const cardW = showInline ? 27 : 46
                           const placeholderFs = showInline ? 11 : 14
-                          const inlineCardW = g.items.length === 1 ? 600 : g.items.length === 2 ? 296 : 196
+                          const solo = g.items.length === 1
                           return (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: showInline ? 8 : 2, flex: 1, alignItems: 'stretch' }}>
                               {g.items.map(item => {
@@ -289,14 +289,14 @@ async function UserListInner({
                                 }
                                 if (showInline) {
                                   return (
-                                    <div key={item.entryId} title={label} style={{ ...cardStyle, display: 'flex', alignItems: 'stretch', flex: '0 0 auto', width: inlineCardW }}>
+                                    <div key={item.entryId} title={label} style={{ ...cardStyle, display: 'flex', alignItems: 'stretch', flex: '1 1 0', minWidth: 220, maxWidth: solo ? 900 : 480 }}>
                                       {posterInner}
-                                      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1, padding: '0 8px', gap: 5 }}>
-                                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1, padding: '0 10px', gap: 6 }}>
+                                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
                                           {label}
                                         </span>
                                         {item.entry.year != null && (
-                                          <span style={{ fontSize: 10, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                                          <span style={{ fontSize: 11, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
                                             {item.entry.year}
                                           </span>
                                         )}

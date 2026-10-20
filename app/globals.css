@@ -223,14 +223,8 @@ nav, [data-nav] {
   /* Always expanded — there is no hover on touch devices */
   .tier-dropzone { max-height: none !important; }
 
-  /* Inline cards (title on the right) must shrink to the viewport instead
-     of overflowing their desktop widths. */
-  .tier-dropzone div[style*="width: 600px"],
-  .tier-dropzone div[style*="width: 296px"],
-  .tier-dropzone div[style*="width: 196px"] {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
+  /* Inline cards use flex-grow + maxWidth on desktop, which already works
+     well on narrow viewports — no override needed here. */
 
   /* Form in the sticky bar wraps gracefully */
   .rank-add-form { flex-wrap: wrap !important; }
