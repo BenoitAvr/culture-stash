@@ -1,10 +1,11 @@
 import type { RankEntry } from '@/lib/communityRankData'
 
-// Stronger priors than before (2 → 8/5): a few 1-vote films were climbing
-// past consensus favourites. Doubling+ the shrinkage pulls low-sample scores
-// firmly back toward the catalogue average until enough votes accumulate.
-const RANK_SHRINKAGE_K = 5
-const TIER_SHRINKAGE_K = 8
+// Shrinkage pulls low-sample scores toward the catalogue average so a
+// 1-vote film doesn't crown the ranking. Gentle doubling from the pre-fix
+// baseline (2 → 4 for tiers, 2 → 3 for ranks) — enough to steady the top
+// of the chart without flattening everything.
+const RANK_SHRINKAGE_K = 3
+const TIER_SHRINKAGE_K = 4
 const TIER_PRIOR_MEAN = 4 // « Assez bien », tier neutre (milieu de l'échelle EX=7…MA=1)
 
 // Linear map avgTier (1..7) → virtual rank position used for Vrac-only films.
@@ -23,16 +24,15 @@ export function combinedScore(e: RankEntry) {
 
   let rankBonus = 0
   if (e.avgRank && e.rankCount > 0) {
-    // Real rank from at least one classement. The raw bonus was 18 at rank
-    // #1 — too hot: a lonely #1 could leap-frog a consensus Top 10. Scaled
-    // down to 14 so the overall podium reflects both consensus and rank.
-    const rawRankBonus = Math.max(0, 14 - 7 * Math.log10(e.avgRank))
+    // Raw rank bonus curve kept at its pre-fix shape (18 at rank 1, slope
+    // 8 per log decade) — the shrinkage above already dampens lonely #1s.
+    const rawRankBonus = Math.max(0, 18 - 8 * Math.log10(e.avgRank))
     rankBonus = rawRankBonus * (e.rankCount / (e.rankCount + RANK_SHRINKAGE_K))
   } else if (e.avgTierScore !== null && e.tierCount > 0) {
     // Vrac only — derive a virtual rank from the average tier so a well-rated
     // unranked film still earns a fair share of the rank component.
     const virtualRank = virtualRankFromTier(e.avgTierScore)
-    const rawRankBonus = Math.max(0, 14 - 7 * Math.log10(virtualRank))
+    const rawRankBonus = Math.max(0, 18 - 8 * Math.log10(virtualRank))
     rankBonus = rawRankBonus * (e.tierCount / (e.tierCount + RANK_SHRINKAGE_K))
   }
 
