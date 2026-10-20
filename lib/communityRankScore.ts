@@ -6,7 +6,7 @@ import type { RankEntry } from '@/lib/communityRankData'
 // the whole score toward a neutral prior until there are enough votes to
 // trust it. K is the "number of fictional votes" worth of prior weight;
 // higher K means low-vote films regress harder.
-const SCORE_SHRINKAGE_K = 2
+const SCORE_SHRINKAGE_K = 1
 const PRIOR_SCORE = 16 // ≈ "Assez bien" (4) tier contribution without rank bonus
 const RANK_BONUS_MAX = 22
 const RANK_BONUS_SLOPE = 10
