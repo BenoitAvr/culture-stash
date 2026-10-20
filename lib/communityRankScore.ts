@@ -38,10 +38,11 @@ export function combinedScore(e: RankEntry) {
 
   const rawScore = rawTier + rawRankBonus
 
-  // Final shrinkage: Bayesian pull of the raw score toward PRIOR_SCORE
-  // weighted by K fictional votes. 1 real vote → ~14% actual + 86% prior.
-  // 10 real votes → 63% actual + 37% prior. Beyond ~30 votes the prior
-  // influence becomes negligible.
+  // Final shrinkage: Bayesian pull of the raw score toward PRIOR_SCORE.
+  // Films with a single vote get a much heavier prior weight so a lonely
+  // rating can't crown the chart — once a film has 2+ voters the usual
+  // light shrinkage (K=0.7) takes over.
   const n = e.tierCount
-  return (rawScore * n + PRIOR_SCORE * SCORE_SHRINKAGE_K) / (n + SCORE_SHRINKAGE_K)
+  const k = n === 1 ? SCORE_SHRINKAGE_K + 2.5 : SCORE_SHRINKAGE_K
+  return (rawScore * n + PRIOR_SCORE * k) / (n + k)
 }
