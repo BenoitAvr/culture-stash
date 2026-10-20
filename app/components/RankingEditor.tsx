@@ -12,6 +12,10 @@ export type RankableItem = {
   year?: number | null
   tierCount?: number
   score?: number
+  // 'SAGA' when the entry represents a whole franchise (voter can rank
+  // the saga as a unit instead of individual films). Default assumption
+  // is 'FILM' when the flag is missing.
+  kind?: 'FILM' | 'SAGA'
 }
 
 type TopFilter = { kind: 'popular' | 'rated'; count: number } | null
@@ -414,6 +418,10 @@ export function RankingEditor({
   const [importText, setImportText] = useState('')
   const [importResult, setImportResult] = useState<{ matched: RankEditItem[]; unmatched: string[] } | null>(null)
   const [search, setSearch] = useState('')
+  // Toggle on the add-entry form: when the user is creating a brand new
+  // entry that is a whole saga/franchise rather than a single film, we
+  // hide the year input and post kind=SAGA to the server action.
+  const [addAsSaga, setAddAsSaga] = useState(false)
   const [decadeFilter, setDecadeFilter] = useState<number | null>(null)
   // Fresh tier lists get pre-filtered to the community's Top 100 mieux notés
   // so a first-timer sees the most valuable films to rank first, not a random
@@ -1110,6 +1118,12 @@ export function RankingEditor({
                                       userSelect: 'none',
                                       transition: 'opacity .1s, border-color .1s',
                                     }
+                                    const isSaga = item.kind === 'SAGA'
+                                    const sagaChip = isSaga ? (
+                                      <span title="Saga / franchise entière" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', padding: '1px 5px', borderRadius: 3, background: 'var(--accent-faint)', color: 'var(--accent-fg)', border: '1px solid var(--accent-muted)', flexShrink: 0 }}>
+                                        Saga
+                                      </span>
+                                    ) : null
                                     if (showInline) {
                                       // Flex-grow fills the whole row width:
                                       // 1 solo card → takes everything;
@@ -1124,7 +1138,8 @@ export function RankingEditor({
                                             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
                                               {item.label}
                                             </span>
-                                            {item.year != null && (
+                                            {sagaChip}
+                                            {!isSaga && item.year != null && (
                                               <span style={{ fontSize: 11, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
                                                 {item.year}
                                               </span>
@@ -1137,6 +1152,7 @@ export function RankingEditor({
                                       <div key={rankItem.id} {...dragProps} style={{ ...unifiedCardStyle, display: 'flex', flexDirection: 'column', width: cardW }}>
                                         {posterInner}
                                         <div style={{ padding: '2px 3px 3px', fontSize: 8.5, color: 'var(--fg-4)', lineHeight: 1.15, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                          {isSaga && <span style={{ color: 'var(--accent-fg)', fontWeight: 700, marginRight: 3 }} title="Saga">▣</span>}
                                           {item.label}
                                         </div>
                                       </div>
@@ -1198,18 +1214,46 @@ export function RankingEditor({
                 {SearchInput}
                 {DecadeFilter}
                 {TopFilterEl}
-                <input
-                  name="year"
-                  type="number"
-                  min={1888}
-                  max={2099}
-                  placeholder="Année"
-                  className="rank-add-year"
-                  style={{ width: 90, padding: '10px 12px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }}
-                />
-                <button type="submit" disabled={addPending || !search.trim()} title="Si le titre n'est pas dans la liste, ajoute-le au site" className="rank-add-submit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1, padding: '6px 18px', borderRadius: 9, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontFamily: 'inherit', cursor: addPending || !search.trim() ? 'default' : 'pointer', opacity: addPending || !search.trim() ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                {/* Film / Saga toggle. When the user flags their new entry
+                    as a Saga we hide the year input (a franchise has no
+                    single release date) and post kind=SAGA to addEntry. */}
+                <input type="hidden" name="kind" value={addAsSaga ? 'SAGA' : 'FILM'} />
+                <button
+                  type="button"
+                  onClick={() => setAddAsSaga(v => !v)}
+                  title={addAsSaga ? 'Franchise entière — l\'année est masquée' : 'Film individuel'}
+                  aria-pressed={addAsSaga}
+                  className="rank-add-kind"
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    lineHeight: 1.1, padding: '6px 12px', borderRadius: 9,
+                    border: `1.5px solid ${addAsSaga ? 'var(--accent-fg)' : 'var(--border)'}`,
+                    background: addAsSaga ? 'var(--accent-faint)' : 'var(--bg-input)',
+                    color: addAsSaga ? 'var(--accent-fg)' : 'var(--fg-5)',
+                    fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                  }}
+                >
+                  <span style={{ fontSize: 9.5, fontWeight: 400, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                    Type
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, marginTop: 1 }}>
+                    {addAsSaga ? '🎬 Saga' : '🎞 Film'}
+                  </span>
+                </button>
+                {!addAsSaga && (
+                  <input
+                    name="year"
+                    type="number"
+                    min={1888}
+                    max={2099}
+                    placeholder="Année"
+                    className="rank-add-year"
+                    style={{ width: 90, padding: '10px 12px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }}
+                  />
+                )}
+                <button type="submit" disabled={addPending || !search.trim()} title={addAsSaga ? 'Ajouter cette saga au site' : "Si le titre n'est pas dans la liste, ajoute-le au site"} className="rank-add-submit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1, padding: '6px 18px', borderRadius: 9, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontFamily: 'inherit', cursor: addPending || !search.trim() ? 'default' : 'pointer', opacity: addPending || !search.trim() ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
                   <span style={{ fontSize: 9.5, fontWeight: 400, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '.05em' }}>Pas dans la liste&nbsp;?</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, marginTop: 1 }}>{addPending ? '…' : '+ Ajoute-le'}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, marginTop: 1 }}>{addPending ? '…' : addAsSaga ? '+ Ajoute la saga' : '+ Ajoute-le'}</span>
                 </button>
               </form>
             )

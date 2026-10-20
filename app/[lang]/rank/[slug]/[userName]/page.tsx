@@ -67,7 +67,7 @@ async function UserListInner({
     include: {
       user: { select: { name: true } },
       items: {
-        include: { entry: { select: { id: true, title: true, titleEn: true, year: true, cover: true } } },
+        include: { entry: { select: { id: true, title: true, titleEn: true, year: true, cover: true, kind: true } } },
         orderBy: { position: 'asc' },
       },
     },
@@ -287,6 +287,12 @@ async function UserListInner({
                                   overflow: 'hidden',
                                   userSelect: 'none',
                                 }
+                                const isSaga = (item.entry as { kind?: string }).kind === 'SAGA'
+                                const sagaChip = isSaga ? (
+                                  <span title="Saga / franchise entière" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', padding: '1px 5px', borderRadius: 3, background: 'var(--accent-faint)', color: 'var(--accent-fg)', border: '1px solid var(--accent-muted)', flexShrink: 0 }}>
+                                    Saga
+                                  </span>
+                                ) : null
                                 if (showInline) {
                                   return (
                                     <div key={item.entryId} title={label} style={{ ...cardStyle, display: 'flex', alignItems: 'stretch', flex: '1 1 0', minWidth: 220, maxWidth: solo ? 900 : 480 }}>
@@ -295,7 +301,8 @@ async function UserListInner({
                                         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
                                           {label}
                                         </span>
-                                        {item.entry.year != null && (
+                                        {sagaChip}
+                                        {!isSaga && item.entry.year != null && (
                                           <span style={{ fontSize: 11, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
                                             {item.entry.year}
                                           </span>
@@ -308,6 +315,7 @@ async function UserListInner({
                                   <div key={item.entryId} title={label} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', width: cardW }}>
                                     {posterInner}
                                     <div style={{ padding: '2px 3px 3px', fontSize: 8.5, color: 'var(--fg-4)', lineHeight: 1.15, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as React.CSSProperties}>
+                                      {isSaga && <span style={{ color: 'var(--accent-fg)', fontWeight: 700, marginRight: 3 }} title="Saga">▣</span>}
                                       {label}
                                     </div>
                                   </div>

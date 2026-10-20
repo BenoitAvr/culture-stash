@@ -15,7 +15,7 @@ function getEditableTopic(slug: string) {
           id: true,
           rankable: true,
           entries: {
-            select: { id: true, title: true, titleEn: true, year: true, cover: true },
+            select: { id: true, title: true, titleEn: true, year: true, cover: true, kind: true },
             orderBy: { createdAt: 'asc' },
           },
         },
@@ -90,6 +90,7 @@ async function RankEditInner({
     titleEn: e.titleEn,
     year: e.year,
     cover: e.cover,
+    kind: (e.kind === 'SAGA' ? 'SAGA' : 'FILM') as 'FILM' | 'SAGA',
   }))
 
   return (

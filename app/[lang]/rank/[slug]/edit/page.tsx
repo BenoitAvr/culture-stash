@@ -21,13 +21,13 @@ function getEditableTopic(slug: string) {
           id: true,
           rankable: true,
           entries: {
-            select: { id: true, title: true, titleEn: true, year: true, cover: true },
+            select: { id: true, title: true, titleEn: true, year: true, cover: true, kind: true },
             orderBy: { createdAt: 'asc' },
           },
         },
       })
     },
-    [`topic-editable-v2-${slug}`],
+    [`topic-editable-v3-${slug}`],
     { tags: [`rank-${slug}`] }
   )()
 }
@@ -64,6 +64,7 @@ async function GuestRankEditInner({
       titleEn: e.titleEn,
       year: e.year,
       cover: e.cover,
+      kind: (e.kind === 'SAGA' ? 'SAGA' : 'FILM') as 'FILM' | 'SAGA',
       tierCount: s?.tierCount ?? 0,
       score: s?.score ?? 0,
     }

@@ -147,6 +147,11 @@ model Entry {
   tmdbId      String?
   year        Int?
   cover       String?
+  // 'FILM' (default) or 'SAGA' — SAGA entries represent a whole franchise
+  // (e.g. Harry Potter en entier) so users can vote on the saga as a unit
+  // instead of (or in addition to) individual films. Year is optional for
+  // sagas since there isn't a single release date.
+  kind        String      @default("FILM")
   createdAt   DateTime    @default(now())
   topic              Topic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
   addedBy            User?           @relation(fields: [addedById], references: [id])

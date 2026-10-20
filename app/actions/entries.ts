@@ -66,13 +66,20 @@ export async function addEntry(
   const title = (formData.get('title') as string)?.trim()
   if (!title) return { error: 'Titre requis' }
 
-  const yearRaw = formData.get('year') as string
+  const kindRaw = (formData.get('kind') as string | null)?.trim()
+  const kind = kindRaw === 'SAGA' ? 'SAGA' : 'FILM'
+
+  // Sagas don't have a single release year, and we skip the TMDB cover
+  // auto-fetch since a franchise title won't match a specific film.
+  const yearRaw = kind === 'SAGA' ? '' : (formData.get('year') as string)
   const year = yearRaw ? parseInt(yearRaw) || null : null
   const coverRaw = (formData.get('cover') as string)?.trim() || null
-  const cover = coverRaw ?? await pickCoverFetcher(topicSlug)(title, year)
+  const cover = kind === 'SAGA'
+    ? coverRaw
+    : (coverRaw ?? await pickCoverFetcher(topicSlug)(title, year))
 
   await prisma.entry.create({
-    data: { topicId: topic.id, addedById: session.userId, title, year, cover },
+    data: { topicId: topic.id, addedById: session.userId, title, year, cover, kind },
   })
 
   revalidatePath(`/fr/rank/${topicSlug}`)

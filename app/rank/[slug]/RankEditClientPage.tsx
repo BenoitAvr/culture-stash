@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { UserEntryListSection, type UserEntryListData } from './UserEntryListSection'
 import type { Dict } from '@/dictionaries/client'
 
-type EntryItem = { id: string; title: string; titleEn: string | null; year: number | null; cover: string | null; tierCount?: number; score?: number }
+type EntryItem = { id: string; title: string; titleEn: string | null; year: number | null; cover: string | null; tierCount?: number; score?: number; kind?: 'FILM' | 'SAGA' }
 
 export function RankEditClientPage({
   topicSlug,

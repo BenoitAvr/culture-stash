@@ -12,6 +12,8 @@ export type RankEntry = {
   titleEn: string | null
   year: number | null
   cover: string | null
+  // 'FILM' or 'SAGA' — SAGA entries represent a whole franchise.
+  kind: 'FILM' | 'SAGA'
   avgRank: number | null
   rankCount: number
   avgTierScore: number | null
@@ -233,6 +235,7 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
             titleEn: e.titleEn,
             year: e.year,
             cover: e.cover || null,
+            kind: (e.kind === 'SAGA' ? 'SAGA' : 'FILM') as 'FILM' | 'SAGA',
             avgRank: rd && rd.count > 0 ? Math.exp(rd.sumLog / rd.count) : null,
             rankCount: rd?.count ?? 0,
             avgTierScore: td && td.count > 0 ? td.totalScore / td.count : null,

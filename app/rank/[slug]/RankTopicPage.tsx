@@ -965,8 +965,15 @@ function EntryRow({ entry, rank, myTier, myRank, myRankFractional, isOpen, onAdd
 
       {/* Title */}
       <div className="col-title" style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.25 }}>{displayTitle}</div>
-        {entry.year && <div style={{ fontSize: 12, color: 'var(--fg-5)', marginTop: 1 }}>{entry.year}</div>}
+        <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.25, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{displayTitle}</span>
+          {entry.kind === 'SAGA' && (
+            <span title="Saga / franchise entière" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', padding: '1px 6px', borderRadius: 3, background: 'var(--accent-faint)', color: 'var(--accent-fg)', border: '1px solid var(--accent-muted)', flexShrink: 0 }}>
+              Saga
+            </span>
+          )}
+        </div>
+        {entry.kind !== 'SAGA' && entry.year && <div style={{ fontSize: 12, color: 'var(--fg-5)', marginTop: 1 }}>{entry.year}</div>}
       </div>
 
       <div className="col-metrics">
