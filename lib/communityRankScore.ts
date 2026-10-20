@@ -25,9 +25,9 @@ export function combinedScore(e: RankEntry) {
   if (e.avgTierScore === null || e.tierCount === 0) return 0
 
   // Raw components — no per-component shrinkage, we handle it once at the
-  // end against the final score. Mention multiplier eased 4.5 → 4.2 to
-  // let the (now slightly stronger) rank bonus share the podium.
-  const rawTier = e.avgTierScore * 4.2
+  // end against the final score. Mention multiplier set to 2.5 — a well-
+  // ranked film can genuinely out-score a merely well-rated one.
+  const rawTier = e.avgTierScore * 2.5
 
   let rawRankBonus = 0
   if (e.avgRank && e.rankCount > 0) {
@@ -40,9 +40,10 @@ export function combinedScore(e: RankEntry) {
   const rawScore = rawTier + rawRankBonus
 
   // Final shrinkage: Bayesian pull of the raw score toward PRIOR_SCORE.
-  // 1-vote films get a slightly heavier prior (K bumped from 0.7 to 1.0)
-  // so a solitary rating is dampened without flattening low-sample picks.
+  // 1-vote films get a heavier prior (K = 1.8 vs the usual 0.7) so a
+  // solitary rating keeps roughly a third of its raw score and can't
+  // crown the chart.
   const n = e.tierCount
-  const k = n === 1 ? 1.0 : SCORE_SHRINKAGE_K
+  const k = n === 1 ? 1.8 : SCORE_SHRINKAGE_K
   return (rawScore * n + PRIOR_SCORE * k) / (n + k)
 }
