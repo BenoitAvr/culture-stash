@@ -1,14 +1,16 @@
 import type { RankEntry } from '@/lib/communityRankData'
 
-// Tier shrinkage bumped from 2 → 3: a one-vote film regresses a touch
-// more toward the catalogue mean, so solitary ratings carry less weight.
+// Tier shrinkage K=3 keeps 1-vote films pulled toward the mean so they
+// don't crown the chart on a single opinion.
 const RANK_SHRINKAGE_K = 2
 const TIER_SHRINKAGE_K = 3
 const TIER_PRIOR_MEAN = 4 // « Assez bien », tier neutre (milieu de l'échelle EX=7…MA=1)
-// Rank bonus nudged back toward the historical 18/8 (now 17/8) so a strong
-// rank value matters a little more in the podium.
-const RANK_BONUS_MAX = 17
-const RANK_BONUS_SLOPE = 8
+// Rank bonus pushed up (17 → 22, slope 8 → 10) so a markedly better
+// avgRank value actually tilts the podium — this is what the user flagged
+// when Château dans le ciel (rank 6.2) was sitting behind Spider-Man
+// (rank 9.6) just because Spider had one more vote.
+const RANK_BONUS_MAX = 22
+const RANK_BONUS_SLOPE = 10
 
 // Linear map avgTier (1..7) → virtual rank position used for Vrac-only films.
 // Anchored so EX (7) maps to virtualRank 10 (top tier, not #1 globally) — a
