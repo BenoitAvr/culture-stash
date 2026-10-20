@@ -1,13 +1,13 @@
 import type { RankEntry } from '@/lib/communityRankData'
 
-// Both shrinkages kept gentle (K=1): a vote-count pull toward the mean
-// still exists, but it's lighter so a few quality voters aren't punished
-// as hard as they were with K=2/3. The sqrt countWeight stays flat.
-const RANK_SHRINKAGE_K = 1
-const TIER_SHRINKAGE_K = 2
-const TIER_PRIOR_MEAN = 4 // « Assez bien », tier neutre (milieu de l'échelle EX=7…MA=1)
-// Rank bonus restored to 22/10 — the previous nudge down to 20/9 was
-// the wrong lever (it reduced rank weight, not popularity weight).
+// The score has two raw components (tier mention × 4, plus a rank-based
+// bonus) and we apply a *single* Bayesian shrinkage to the final sum.
+// This matches the brief: don't dampen tier or rank in isolation — pull
+// the whole score toward a neutral prior until there are enough votes to
+// trust it. K is the "number of fictional votes" worth of prior weight;
+// higher K means low-vote films regress harder.
+const SCORE_SHRINKAGE_K = 6
+const PRIOR_SCORE = 16 // ≈ "Assez bien" (4) tier contribution without rank bonus
 const RANK_BONUS_MAX = 22
 const RANK_BONUS_SLOPE = 10
 
@@ -19,33 +19,27 @@ function virtualRankFromTier(avgTier: number): number {
   return Math.max(1, 10 + (7 - avgTier) * 13.3)
 }
 
-// Weight that scales the raw rank bonus by vote count. The old linear
-// shape `count/(count+K)` reached ~91% at 20 votes vs 61% at 5 — vote
-// count carried too much weight. The sqrt variant flattens the curve:
-// 5 votes keeps 61%, 20 votes stays at 76%. A film with few confident
-// voters is no longer heavily penalised, which is what the brief asked.
-function countWeight(count: number, k: number): number {
-  const s = Math.sqrt(count)
-  return s / (s + Math.sqrt(k))
-}
-
 export function combinedScore(e: RankEntry) {
-  const shrunkTier =
-    e.avgTierScore !== null
-      ? (e.avgTierScore * e.tierCount + TIER_PRIOR_MEAN * TIER_SHRINKAGE_K) / (e.tierCount + TIER_SHRINKAGE_K)
-      : 0
+  if (e.avgTierScore === null || e.tierCount === 0) return 0
 
-  let rankBonus = 0
+  // Raw components — no per-component shrinkage, we handle it once at the
+  // end against the final score.
+  const rawTier = e.avgTierScore * 4
+
+  let rawRankBonus = 0
   if (e.avgRank && e.rankCount > 0) {
-    const rawRankBonus = Math.max(0, RANK_BONUS_MAX - RANK_BONUS_SLOPE * Math.log10(e.avgRank))
-    rankBonus = rawRankBonus * countWeight(e.rankCount, RANK_SHRINKAGE_K)
-  } else if (e.avgTierScore !== null && e.tierCount > 0) {
-    // Vrac only — derive a virtual rank from the average tier so a well-rated
-    // unranked film still earns a fair share of the rank component.
+    rawRankBonus = Math.max(0, RANK_BONUS_MAX - RANK_BONUS_SLOPE * Math.log10(e.avgRank))
+  } else {
     const virtualRank = virtualRankFromTier(e.avgTierScore)
-    const rawRankBonus = Math.max(0, RANK_BONUS_MAX - RANK_BONUS_SLOPE * Math.log10(virtualRank))
-    rankBonus = rawRankBonus * countWeight(e.tierCount, RANK_SHRINKAGE_K)
+    rawRankBonus = Math.max(0, RANK_BONUS_MAX - RANK_BONUS_SLOPE * Math.log10(virtualRank))
   }
 
-  return shrunkTier * 4 + rankBonus
+  const rawScore = rawTier + rawRankBonus
+
+  // Final shrinkage: Bayesian pull of the raw score toward PRIOR_SCORE
+  // weighted by K fictional votes. 1 real vote → ~14% actual + 86% prior.
+  // 10 real votes → 63% actual + 37% prior. Beyond ~30 votes the prior
+  // influence becomes negligible.
+  const n = e.tierCount
+  return (rawScore * n + PRIOR_SCORE * SCORE_SHRINKAGE_K) / (n + SCORE_SHRINKAGE_K)
 }
