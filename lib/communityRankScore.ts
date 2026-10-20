@@ -6,13 +6,13 @@ const RANK_SHRINKAGE_K = 2
 const TIER_SHRINKAGE_K = 2
 const TIER_PRIOR_MEAN = 4 // « Assez bien », tier neutre (milieu de l'échelle EX=7…MA=1)
 // Max contribution of the rank bonus to the final score. Lowering this
-// (from the historical 18 to 11) is the real knob for "less weight on
-// popularity": it caps how much a well-voted ranked film can pull ahead
-// of a quietly-rated gem. shrunkTier * 4 keeps a 28-point ceiling, so
-// the ratio of quality:popularity goes from ~60/40 to ~72/28.
-const RANK_BONUS_MAX = 11
-// Slope so that log10(100) ≈ 2 brings the bonus close to zero at rank 100.
-const RANK_BONUS_SLOPE = 5
+// (from the historical 18 down to 8) is the real knob for "less weight
+// on popularity": it caps how much a well-voted ranked film can pull
+// ahead of a quietly-rated gem. shrunkTier * 4 keeps a 28-point ceiling,
+// so the ratio quality:popularity now sits at roughly 78/22.
+const RANK_BONUS_MAX = 8
+// Slope matches the max so a rank around log10 ≈ MAX/SLOPE lands at 0.
+const RANK_BONUS_SLOPE = 4
 
 // Linear map avgTier (1..7) → virtual rank position used for Vrac-only films.
 // Anchored so EX (7) maps to virtualRank 10 (top tier, not #1 globally) — a
