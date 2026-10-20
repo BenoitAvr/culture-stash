@@ -5,12 +5,11 @@ import type { RankEntry } from '@/lib/communityRankData'
 const RANK_SHRINKAGE_K = 2
 const TIER_SHRINKAGE_K = 3
 const TIER_PRIOR_MEAN = 4 // « Assez bien », tier neutre (milieu de l'échelle EX=7…MA=1)
-// Rank bonus pushed up (17 → 22, slope 8 → 10) so a markedly better
-// avgRank value actually tilts the podium — this is what the user flagged
-// when Château dans le ciel (rank 6.2) was sitting behind Spider-Man
-// (rank 9.6) just because Spider had one more vote.
-const RANK_BONUS_MAX = 22
-const RANK_BONUS_SLOPE = 10
+// Rank bonus eased slightly (22 → 20, slope 10 → 9): still strong enough
+// to let a better avgRank tilt tied cases, but trims the popularity edge
+// a well-voted ranked film accumulates.
+const RANK_BONUS_MAX = 20
+const RANK_BONUS_SLOPE = 9
 
 // Linear map avgTier (1..7) → virtual rank position used for Vrac-only films.
 // Anchored so EX (7) maps to virtualRank 10 (top tier, not #1 globally) — a
