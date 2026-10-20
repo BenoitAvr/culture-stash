@@ -85,40 +85,29 @@ export function UserEntryListSection({
       }
       return
     }
-    // Positions stored in state are within-tier (1, 2, 3 per tier).
-    // Convert to global rank (across all ranked tiers combined) before saving.
-    let globalPos = 1
-    const globalizedItems: RankEditItem[] = []
-    for (const t of TIERS) {
-      const inTier = tier.filter(i => i.tier === t)
-      if (rankedTiers.includes(t)) {
-        const sorted = [...inTier].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-        for (const item of sorted) globalizedItems.push({ ...item, position: globalPos++ })
-      } else {
-        // Non-ranked items don't get a position, but they still occupy slots
-        // in the global order — same as tierOffset in the display formula.
-        globalPos += inTier.length
-        for (const item of inTier) globalizedItems.push({ ...item, position: undefined })
-      }
-    }
+    // New rank-group model: `position` in state is the user's integer rank
+    // within its tier (1, 2, 3…) with ties allowed. We persist those local
+    // ranks directly — no globalization — so communityRankData / viewer can
+    // compute fractional global rank from them.
+    //
+    // Every tier that has items counts as "ranked" (there is no vrac mode
+    // anymore). `rankedTiers` is kept for backward compat with older readers:
+    // we mark every tier containing at least one item as ranked.
+    const activeTiers = TIERS.filter(t => tier.some(i => i.tier === t))
+    const payload = tier.map(i => ({
+      entryId: i.id,
+      tier: i.tier,
+      position: i.position,
+      note: i.note,
+    }))
 
     if (isGuest) {
-      const guestList = saveGuestEntryLists(
-        topicSlug,
-        entries,
-        globalizedItems.map(i => ({ entryId: i.id, tier: i.tier, position: i.position, note: i.note })),
-        rankedTiers,
-      )
+      const guestList = saveGuestEntryLists(topicSlug, entries, payload, activeTiers)
       onListsChange(guestList ? [guestList] : lists.filter(l => l.userId !== ownerId))
       return
     }
 
-    const updated = await saveUserEntryLists(
-      topicSlug,
-      [],
-      globalizedItems.map(i => ({ entryId: i.id, tier: i.tier, position: i.position, note: i.note })),
-      rankedTiers
-    )
+    const updated = await saveUserEntryLists(topicSlug, [], payload, activeTiers)
     onListsChange([...lists.filter(l => l.userId !== currentUserId), ...updated])
   }
 
@@ -127,26 +116,49 @@ export function UserEntryListSection({
   // Avoid flashing an empty editor for guests before localStorage hydrates.
   if (isGuest && !hydrated) return <div style={{ minHeight: '60vh' }} />
 
-  // For a brand new list, default to ranking the top tier (EX) so users
-  // discover the rank-within-tier feature on their best films.
-  const initRankedTiers = myTierList
+  // Legacy flag only used to detect pre-migration "vrac" tiers so we can
+  // collapse them to a single tied rank-1 group. New lists always treat every
+  // tier that holds items as ranked.
+  const legacyRankedTiers = myTierList
     ? (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
-    : ['EX']
-  // Normalize global DB positions back to within-tier (1, 2, 3…) so the editor
-  // state is consistent and dropOnTier's tierCount+1 always appends correctly.
+    : null
+  // Migrate on read:
+  //   • legacy "ranked" tier with distinct positions → keep order, give each
+  //     item a unique local rank (1, 2, 3…).
+  //   • legacy "vrac" tier (position null or not in rankedTiers) → every item
+  //     is tied at local rank 1.
+  //   • new-model tier (positions already local, with possible ties) → use
+  //     the stored position as-is after sorting.
   const initTierItems: RankEditItem[] = myTierList
     ? TIERS.flatMap(t => {
         const inTier = myTierList.items
           .filter(i => i.tier === t)
           .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
-        return inTier.map((i, idx) => ({
-          id: i.entryId,
-          tier: t,
-          position: initRankedTiers.includes(t) ? idx + 1 : undefined,
-          note: i.note ?? undefined,
-        }))
+        const isLegacyVrac = legacyRankedTiers !== null && !legacyRankedTiers.includes(t)
+        if (isLegacyVrac) {
+          return inTier.map(i => ({ id: i.entryId, tier: t, position: 1, note: i.note ?? undefined }))
+        }
+        // Compress stored positions to a local 1-based scale, preserving ties.
+        // Items that share the same stored position (new model) keep sharing;
+        // legacy distinct positions become 1, 2, 3…
+        let localRank = 0
+        let prevStored: number | null = null
+        return inTier.map(i => {
+          const stored = i.position ?? null
+          if (stored === null) {
+            localRank = Math.max(localRank, 1)
+          } else if (stored !== prevStored) {
+            localRank += 1
+            prevStored = stored
+          }
+          return { id: i.entryId, tier: t, position: localRank, note: i.note ?? undefined }
+        })
       })
     : []
+  // All active tiers are "ranked" in the new model. We still pass this to the
+  // editor so its internal shape matches the save path and the state's
+  // snapshot comparison stays stable.
+  const initRankedTiers = TIERS.filter(t => initTierItems.some(i => i.tier === t))
 
   return (
     <div style={{ paddingBottom: 28 }}>

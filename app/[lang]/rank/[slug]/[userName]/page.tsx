@@ -32,6 +32,15 @@ const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
 const TIER_LABEL: Record<string, string> = {
   EX: 'Excellent', TB: 'Très bon', BO: 'Bon', AB: 'Assez bien', PA: 'Passable', IN: 'Insuffisant', MA: 'Mauvais',
 }
+const TIER_SUBJECTIVE: Record<string, string> = {
+  EX: 'Chef-d’œuvre, m’a fasciné',
+  TB: 'J’ai adoré, à revoir',
+  BO: 'J’ai bien aimé',
+  AB: 'Pas mal, sans plus',
+  PA: 'Moyen, oubliable',
+  IN: 'Déçu, raté',
+  MA: 'Détesté, à éviter',
+}
 const TIER_COLOR: Record<string, string> = {
   EX: '#5b8dee', TB: '#388e3c', BO: '#66bb6a', AB: '#a3c940', PA: '#f9c933', IN: '#f5a623', MA: '#e05555',
 }
@@ -100,7 +109,7 @@ async function UserListInner({
         </div>
       </div>
 
-      {/* Tier list — same look as the editor (read-only) */}
+      {/* Tier list — vertical rank groups (same semantic as the editor) */}
       {activeTiers.length === 0 ? (
         <p style={{ color: 'var(--fg-5)', fontSize: 14 }}>
           {lang === 'fr' ? 'Cette liste est vide.' : 'This list is empty.'}
@@ -110,66 +119,203 @@ async function UserListInner({
           {TIERS.filter(t => activeTiers.includes(t)).map(tier => {
             const tItems = list.items.filter(i => i.tier === tier)
               .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
-            const isRanked = rts.includes(tier)
-            const viewOffset = TIERS.slice(0, TIERS.indexOf(tier)).reduce(
-              (sum, t) => sum + list.items.filter(i => i.tier === t).length, 0
-            )
+            const isLegacyVrac = !rts.includes(tier)
+            // Count prior tiers' distinct rank groups and items so this tier's
+            // displayed ranks continue the global sequence (EX #1, #2, then
+            // TB's first group becomes global #3, etc.).
+            let priorGroupCount = 0
+            let priorItemCount = 0
+            for (const t of TIERS) {
+              if (t === tier) break
+              const inT = list.items.filter(i => i.tier === t)
+              if (inT.length === 0) continue
+              const isLegacyVracPrior = !rts.includes(t)
+              if (isLegacyVracPrior) {
+                priorGroupCount += 1
+              } else {
+                priorGroupCount += new Set(inT.map(i => i.position ?? 1)).size
+              }
+              priorItemCount += inT.length
+            }
+            type Group = { rank: number; items: typeof tItems; fractional: number }
+            const groups: Group[] = []
+            let runningPos = priorItemCount + 1
+            if (isLegacyVrac) {
+              const positions: number[] = []
+              for (let i = 0; i < tItems.length; i++) positions.push(runningPos++)
+              const avg = positions.reduce((s, p) => s + p, 0) / Math.max(1, positions.length)
+              if (tItems.length > 0) groups.push({ rank: priorGroupCount + 1, items: tItems, fractional: avg })
+            } else {
+              // Collect by stored tie value
+              let prevStored: number | null = null
+              const tieBuckets: Array<typeof tItems> = []
+              for (const it of tItems) {
+                const stored = it.position ?? null
+                if (stored !== null && stored === prevStored && tieBuckets.length > 0) {
+                  tieBuckets[tieBuckets.length - 1].push(it)
+                } else {
+                  tieBuckets.push([it])
+                }
+                prevStored = stored
+              }
+              tieBuckets.forEach((bucket, gIdx) => {
+                const occupied: number[] = []
+                for (let i = 0; i < bucket.length; i++) occupied.push(runningPos++)
+                groups.push({
+                  rank: priorGroupCount + gIdx + 1,
+                  items: bucket,
+                  fractional: occupied.reduce((s, p) => s + p, 0) / occupied.length,
+                })
+              })
+            }
+            const tierColor = TIER_COLOR[tier]
             return (
               <div key={tier} className="tier-row">
-                <div className="tier-label" style={{
-                  minHeight: 50, borderRadius: 6,
-                  background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 9.5,
-                  color: TIER_COLOR[tier], textAlign: 'center', padding: '0 4px',
+                <div className="tier-label" title={`${TIER_LABEL[tier]} — ${TIER_SUBJECTIVE[tier]}`} style={{
+                  minHeight: 44, borderRadius: 6,
+                  background: `${tierColor}1a`, border: `1px solid ${tierColor}55`,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 3,
+                  color: tierColor, textAlign: 'center', padding: '6px 8px',
                 }}>
-                  {TIER_LABEL[tier]}
+                  <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 800, fontSize: 17, lineHeight: 1.05 }}>
+                    {TIER_LABEL[tier]}
+                  </span>
+                  <span style={{ fontSize: 10.5, fontWeight: 500, fontStyle: 'italic', lineHeight: 1.25, opacity: 0.82 }}>
+                    {TIER_SUBJECTIVE[tier]}
+                  </span>
+                  {tItems.length > 0 && (
+                    <span style={{
+                      marginTop: 2, fontSize: 9.5, fontWeight: 700,
+                      letterSpacing: '.04em', textTransform: 'uppercase',
+                      opacity: 0.65, fontVariantNumeric: 'tabular-nums',
+                    }}>
+                      {tItems.length} film{tItems.length > 1 ? 's' : ''}
+                    </span>
+                  )}
                 </div>
                 <div className="tier-dropzone" style={{
-                  minHeight: 50, background: 'var(--bg-card)',
-                  border: '1px solid var(--border)', borderRadius: 6,
-                  padding: '12px 6px 6px',
-                  display: 'flex', flexWrap: 'wrap', gap: 4,
-                  alignItems: 'flex-start', alignContent: 'flex-start',
+                  minHeight: 44, background: 'transparent',
+                  border: '1px solid transparent', borderRadius: 6,
+                  padding: '0 6px',
+                  display: 'flex', flexDirection: 'column',
                 }}>
-                  {tItems.map((item, idx) => {
-                    const position = isRanked ? viewOffset + idx + 1 : undefined
-                    const label = pickTitle(item.entry, lang)
+                  {groups.map((g, gIdx) => {
+                    const isTied = g.items.length > 1
+                    const badgeBg = '#1f2937'
+                    const medalRing = g.rank === 1 ? '#f59e0b'
+                      : g.rank === 2 ? '#94a3b8'
+                      : g.rank === 3 ? '#b45309'
+                      : null
                     return (
-                      <div key={item.entryId} title={label} style={{
-                        position: 'relative', width: 50, flexShrink: 0,
-                        background: 'var(--bg-card)', border: '1px solid var(--border)',
-                        borderRadius: 6, padding: 2, userSelect: 'none',
+                      <div key={g.rank} style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '0 4px',
+                        marginTop: gIdx === 0 ? 0 : -1,
+                        borderRadius: 6,
+                        background: isTied ? `${tierColor}0a` : 'transparent',
+                        borderLeft: isTied ? `3px solid ${tierColor}66` : '3px solid transparent',
                       }}>
-                        <div style={{
-                          position: 'relative', width: '100%', aspectRatio: '2 / 3',
-                          background: 'var(--bg-subtle)', borderRadius: 4, overflow: 'hidden',
-                        }}>
-                          {item.entry.cover
-                            ? <img src={item.entry.cover} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 16, color: 'var(--fg-7)' }}>{label.charAt(0).toUpperCase()}</div>
-                          }
+                        <div
+                          aria-label={`Rang ${g.rank}${isTied ? `, ex-æquo (${g.items.length}), rang officiel ${g.fractional.toFixed(1)}` : ''}`}
+                          title={isTied ? `${g.items.length} films ex-æquo à ce rang · rang officiel ⌀${g.fractional.toFixed(1)}` : undefined}
+                          style={{
+                            display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center',
+                            minWidth: medalRing ? 34 : 30,
+                            height: medalRing ? 34 : 30,
+                            padding: '0 6px',
+                            borderRadius: 999,
+                            background: badgeBg,
+                            color: '#fff',
+                            boxShadow: medalRing
+                              ? `0 0 0 2px ${medalRing}, 0 2px 6px ${medalRing}55`
+                              : '0 1px 3px rgba(0,0,0,.18)',
+                            flexShrink: 0,
+                            marginLeft: medalRing ? 4 : 2,
+                            border: isTied && !medalRing ? `1.5px solid ${tierColor}55` : 'none',
+                          }}
+                        >
+                          <span style={{
+                            fontFamily: "'Fraunces', serif",
+                            fontWeight: 900,
+                            fontSize: 13,
+                            lineHeight: 1,
+                            letterSpacing: -0.5,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}>
+                            {g.rank}
+                          </span>
+                          {isTied && (
+                            <span style={{
+                              fontSize: 7.5,
+                              opacity: 0.75,
+                              lineHeight: 1,
+                              marginTop: 1,
+                              fontVariantNumeric: 'tabular-nums',
+                              fontWeight: 500,
+                              letterSpacing: 0.2,
+                            }}>
+                              ⌀{g.fractional.toFixed(1)}
+                            </span>
+                          )}
                         </div>
-                        {position !== undefined && (
-                          <div style={{
-                            position: 'absolute', top: -5, left: -5,
-                            minWidth: 22, height: 22, padding: '0 5px',
-                            borderRadius: 11,
-                            background: position <= 3 ? 'var(--accent-fg)' : '#1a1a1a',
-                            color: position <= 3 ? 'var(--btn-text)' : '#fff',
-                            border: '2px solid var(--bg-card)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 11, fontWeight: 800, fontFamily: "'Fraunces', serif",
-                            boxShadow: '0 3px 8px rgba(0,0,0,.4)', zIndex: 3,
-                          }}>{position}</div>
-                        )}
-                        <div style={{
-                          marginTop: 2, fontSize: 8.5, color: 'var(--fg-4)', lineHeight: 1.15,
-                          display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden', wordBreak: 'break-word',
-                        } as React.CSSProperties}>
-                          {label}
-                        </div>
+                        {(() => {
+                          const showInline = g.items.length <= 3
+                          const cardW = showInline ? 27 : 46
+                          const placeholderFs = showInline ? 11 : 14
+                          const inlineCardW = g.items.length === 1 ? 600 : g.items.length === 2 ? 296 : 196
+                          return (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: showInline ? 8 : 2, flex: 1, alignItems: 'stretch' }}>
+                              {g.items.map(item => {
+                                const label = pickTitle(item.entry, lang)
+                                const posterInner = (
+                                  <div style={{
+                                    position: 'relative', width: cardW, flexShrink: 0,
+                                    aspectRatio: '2 / 3', background: 'var(--bg-subtle)', overflow: 'hidden',
+                                  }}>
+                                    {item.entry.cover
+                                      ? <img src={item.entry.cover} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: placeholderFs, color: 'var(--fg-7)' }}>{label.charAt(0).toUpperCase()}</div>
+                                    }
+                                  </div>
+                                )
+                                const cardStyle: React.CSSProperties = {
+                                  background: 'var(--bg-card)',
+                                  border: '1px solid var(--border)',
+                                  borderRadius: 6,
+                                  overflow: 'hidden',
+                                  userSelect: 'none',
+                                }
+                                if (showInline) {
+                                  return (
+                                    <div key={item.entryId} title={label} style={{ ...cardStyle, display: 'flex', alignItems: 'stretch', flex: '0 0 auto', width: inlineCardW }}>
+                                      {posterInner}
+                                      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1, padding: '0 8px', gap: 5 }}>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                                          {label}
+                                        </span>
+                                        {item.entry.year != null && (
+                                          <span style={{ fontSize: 10, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                                            {item.entry.year}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                }
+                                return (
+                                  <div key={item.entryId} title={label} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', width: cardW }}>
+                                    {posterInner}
+                                    <div style={{ padding: '2px 3px 3px', fontSize: 8.5, color: 'var(--fg-4)', lineHeight: 1.15, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as React.CSSProperties}>
+                                      {label}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )
+                        })()}
                       </div>
                     )
                   })}

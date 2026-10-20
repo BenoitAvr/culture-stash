@@ -179,12 +179,13 @@ nav, [data-nav] {
 /* tier editor rows */
 .tier-row {
   display: grid;
-  grid-template-columns: 54px 1fr auto;
+  grid-template-columns: 128px 1fr auto;
   grid-template-areas: "label dropzone toggle";
   align-items: stretch;
-  gap: 8px;
-  margin-bottom: 5px;
+  gap: 6px;
+  margin-bottom: 0;
 }
+.tier-row + .tier-row { margin-top: 0; }
 .tier-row > .tier-label    { grid-area: label; }
 .tier-row > .tier-dropzone { grid-area: dropzone; }
 .tier-row > .tier-toggle   { grid-area: toggle; }
@@ -193,18 +194,43 @@ nav, [data-nav] {
   /* Editor page padding tighter */
   .rank-edit-shell { padding: 16px 12px 100px !important; }
 
+  /* On phones the side-by-side layout eats too much width — stack the label
+     above the dropzone and flatten it into a header strip. */
   .tier-row {
-    grid-template-columns: 54px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) !important;
     grid-template-areas:
-      "label dropzone"
-      "label toggle";
-    column-gap: 6px;
-    row-gap: 4px;
+      "label"
+      "dropzone"
+      "toggle" !important;
+    column-gap: 0 !important;
+    row-gap: 2px !important;
   }
+  .tier-row + .tier-row { margin-top: 6px !important; }
   .tier-row > .tier-toggle { justify-self: end; align-self: end; }
+
+  /* Flatten the tier label into a horizontal header strip. */
+  .tier-label {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: baseline !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    min-height: 0 !important;
+    padding: 5px 10px !important;
+    text-align: left !important;
+  }
 
   /* Always expanded — there is no hover on touch devices */
   .tier-dropzone { max-height: none !important; }
+
+  /* Inline cards (title on the right) must shrink to the viewport instead
+     of overflowing their desktop widths. */
+  .tier-dropzone div[style*="width: 600px"],
+  .tier-dropzone div[style*="width: 296px"],
+  .tier-dropzone div[style*="width: 196px"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 
   /* Form in the sticky bar wraps gracefully */
   .rank-add-form { flex-wrap: wrap !important; }

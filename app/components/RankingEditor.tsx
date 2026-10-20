@@ -27,6 +27,17 @@ const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
 const TIER_LABEL: Record<string, string> = {
   EX: 'Excellent', TB: 'Très bon', BO: 'Bon', AB: 'Assez bien', PA: 'Passable', IN: 'Insuffisant', MA: 'Mauvais',
 }
+// Short subjective hint shown under each mention — makes it clear a tier is a
+// personal appreciation, not a rating out of 7.
+const TIER_SUBJECTIVE: Record<string, string> = {
+  EX: 'Chef-d’œuvre, m’a fasciné',
+  TB: 'J’ai adoré, à revoir',
+  BO: 'J’ai bien aimé',
+  AB: 'Pas mal, sans plus',
+  PA: 'Moyen, oubliable',
+  IN: 'Déçu, raté',
+  MA: 'Détesté, à éviter',
+}
 const TIER_COLOR: Record<string, string> = {
   EX: '#5b8dee', TB: '#388e3c', BO: '#66bb6a', AB: '#a3c940', PA: '#f9c933', IN: '#f5a623', MA: '#e05555',
 }
@@ -341,22 +352,22 @@ export function RankingEditor({
   addEntryLabel?: string
 }) {
   const [tierItems, setTierItems] = useState<RankEditItem[]>(initialTierItems)
-  const [tierRankedTiers, setTierRankedTiers] = useState(new Set<string>(initialRankedTiers))
 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'error'>('idle')
   const tierItemsRef = useRef(tierItems)
-  const tierRankedTiersRef = useRef(tierRankedTiers)
   const onSaveRef = useRef(onSave)
   tierItemsRef.current = tierItems
-  tierRankedTiersRef.current = tierRankedTiers
   onSaveRef.current = onSave
 
   const computeSnapshot = () => JSON.stringify({
     items: [...tierItemsRef.current]
       .sort((a, b) => a.id.localeCompare(b.id))
       .map(i => ({ id: i.id, tier: i.tier ?? null, position: i.position ?? null, note: i.note ?? null })),
-    ranked: [...tierRankedTiersRef.current].sort(),
   })
+
+  // Legacy param kept for signature compatibility; the parent recomputes
+  // active tiers from the items it receives.
+  void initialRankedTiers
 
   const lastSavedRef = useRef<string>('')
   const initSnapshotRef = useRef(false)
@@ -370,7 +381,10 @@ export function RankingEditor({
     if (snapshot === lastSavedRef.current) return
     setSaveStatus('saving')
     try {
-      await onSaveRef.current(tierItemsRef.current, [...tierRankedTiersRef.current])
+      // Every tier that holds items is implicitly ranked in the new model.
+      // We still pass the active tier list for backward-compat.
+      const activeTiers = TIERS.filter(t => tierItemsRef.current.some(i => i.tier === t))
+      await onSaveRef.current(tierItemsRef.current, activeTiers)
       if (computeSnapshot() === snapshot) {
         lastSavedRef.current = snapshot
         setSaveStatus('saved')
@@ -385,8 +399,14 @@ export function RankingEditor({
 
   const [tierDragId, setTierDragId] = useState<string | null>(null)
   const [dragOverTier, setDragOverTier] = useState<string | null>(null)
-  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null)
-  const [hoveredTier, setHoveredTier] = useState<string | null>(null)
+  // Where in a tier the user is about to drop. `kind: 'join'` means merge
+  // into an existing rank group (tie); `kind: 'insert'` means create a new
+  // rank at that slot. `atRank` is the integer rank in the target tier.
+  const [dragOverSlot, setDragOverSlot] = useState<
+    | { tier: string; kind: 'join'; rank: number }
+    | { tier: string; kind: 'insert'; beforeRank: number | null }
+    | null
+  >(null)
   const [moveCardId, setMoveCardId] = useState<string | null>(null)
   const [moveTier, setMoveTier] = useState<string | null>(null)
 
@@ -455,7 +475,7 @@ export function RankingEditor({
     if (computeSnapshot() === lastSavedRef.current) return
     setSaveStatus(prev => prev === 'saving' ? prev : 'dirty')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tierItems, tierRankedTiers])
+  }, [tierItems])
 
   // Debounced autosave (30s after last change)
   useEffect(() => {
@@ -463,7 +483,7 @@ export function RankingEditor({
     const t = setTimeout(() => { flushSave() }, 30000)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saveStatus, tierItems, tierRankedTiers])
+  }, [saveStatus, tierItems])
 
   // Save on tab hide / unload / unmount
   useEffect(() => {
@@ -529,6 +549,8 @@ export function RankingEditor({
       const title = numMatch ? numMatch[2].trim() : line
       const item = findItem(title)
       if (item && !matched.find(i => i.id === item.id)) {
+        // Imported lists come in one line per item → one distinct rank per
+        // item. Users can later drag onto a line to tie them.
         matched.push({ id: item.id, tier: currentTier, position: tierPos })
       } else if (!item) {
         unmatched.push(title)
@@ -537,53 +559,76 @@ export function RankingEditor({
     setImportResult({ matched, unmatched })
   }
 
-  function handleConfirmImport() {
-    if (!importResult) return
-    setTierItems(importResult.matched)
-    setIsImporting(false)
-    setImportText('')
-    setImportResult(null)
+  // Rebuild local ranks in `tier` so they are contiguous (1, 2, 3…) while
+  // preserving the existing ties (items sharing the same rank keep sharing).
+  function compactTier(items: RankEditItem[], tier: string): RankEditItem[] {
+    const inTier = items.filter(i => i.tier === tier)
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    const map = new Map<number, number>()
+    let next = 1
+    for (const i of inTier) {
+      const old = i.position ?? 1
+      if (!map.has(old)) map.set(old, next++)
+    }
+    return items.map(i => {
+      if (i.tier !== tier) return i
+      const old = i.position ?? 1
+      return { ...i, position: map.get(old) ?? old }
+    })
   }
 
-  function dropOnTier(id: string, tier: string, insertBeforeId?: string | null) {
+  type DropOp =
+    | { kind: 'join'; rank: number }
+    | { kind: 'insert'; beforeRank: number | null }
+
+  function dropOnTier(id: string, tier: string, op: DropOp) {
     setTierItems(prev => {
       const existing = prev.find(i => i.id === id)
       const oldTier = existing?.tier
-      const isRanked = tierRankedTiers.has(tier)
+      // Working set without the moved item
+      const others = prev.filter(i => i.id !== id)
+      const otherRanks = Array.from(
+        new Set(
+          others
+            .filter(i => i.tier === tier)
+            .map(i => i.position ?? 1),
+        ),
+      ).sort((a, b) => a - b)
+      const maxRank = otherRanks.length === 0 ? 0 : otherRanks[otherRanks.length - 1]
 
-      if (isRanked && insertBeforeId !== undefined) {
-        const sameTierWithoutMoved = prev.filter(i => i.tier === tier && i.id !== id)
-          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-        const insertIdx = insertBeforeId === null
-          ? sameTierWithoutMoved.length
-          : sameTierWithoutMoved.findIndex(i => i.id === insertBeforeId)
-        const idxOrEnd = insertIdx === -1 ? sameTierWithoutMoved.length : insertIdx
-        const newTierItems = [
-          ...sameTierWithoutMoved.slice(0, idxOrEnd),
-          { id, tier, position: 0 },
-          ...sameTierWithoutMoved.slice(idxOrEnd),
-        ].map((it, i) => ({ ...it, tier, position: i + 1 }))
-        let result = [
-          ...prev.filter(i => i.tier !== tier && i.id !== id),
-          ...newTierItems,
-        ]
-        if (oldTier && oldTier !== tier && tierRankedTiers.has(oldTier)) {
-          let pos = 1
-          result = result.map(i => i.tier === oldTier ? { ...i, position: pos++ } : i)
+      let newPosition: number
+      let shifted: RankEditItem[]
+
+      if (op.kind === 'join') {
+        newPosition = op.rank
+        shifted = others
+      } else {
+        // insert
+        if (op.beforeRank === null) {
+          newPosition = maxRank + 1
+          shifted = others
+        } else {
+          newPosition = op.beforeRank
+          shifted = others.map(i => {
+            if (i.tier !== tier) return i
+            const r = i.position ?? 1
+            return r >= op.beforeRank! ? { ...i, position: r + 1 } : i
+          })
         }
-        return result
       }
 
-      if (oldTier === tier) return prev
-      const tierCount = prev.filter(i => i.tier === tier && i.id !== id).length
-      const position = isRanked ? tierCount + 1 : undefined
-      let updated: RankEditItem[] = existing
-        ? prev.map(i => i.id === id ? { ...i, tier, position } : i)
-        : [...prev, { id, tier, position }]
-      if (oldTier && tierRankedTiers.has(oldTier)) {
-        let pos = 1
-        updated = updated.map(i => i.tier === oldTier ? { ...i, position: pos++ } : i)
+      let updated: RankEditItem[]
+      if (existing) {
+        const hit = { ...existing, tier, position: newPosition }
+        updated = shifted.some(i => i.id === id)
+          ? shifted.map(i => (i.id === id ? hit : i))
+          : [...shifted, hit]
+      } else {
+        updated = [...shifted, { id, tier, position: newPosition }]
       }
+
+      if (oldTier && oldTier !== tier) updated = compactTier(updated, oldTier)
+      updated = compactTier(updated, tier)
       return updated
     })
   }
@@ -591,38 +636,27 @@ export function RankingEditor({
   function dropOnUnclassified(id: string) {
     setTierItems(prev => {
       const item = prev.find(i => i.id === id)
-      const oldTier = item?.tier
-      if (!item || !oldTier) return prev
+      if (!item?.tier) return prev
       const removed = prev.filter(i => i.id !== id)
-      if (tierRankedTiers.has(oldTier)) {
-        let pos = 1
-        return removed.map(i => i.tier === oldTier ? { ...i, position: pos++ } : i)
-      }
-      return removed
+      return compactTier(removed, item.tier)
     })
   }
 
-  function reorderWithinTier(tier: string, fromId: string, toId: string) {
+  function removeFromList(id: string) {
     setTierItems(prev => {
-      const inTier = prev.filter(i => i.tier === tier).sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-      const other = prev.filter(i => i.tier !== tier)
-      const fromIdx = inTier.findIndex(i => i.id === fromId)
-      const toIdx = inTier.findIndex(i => i.id === toId)
-      if (fromIdx === -1 || toIdx === -1) return prev
-      const [moved] = inTier.splice(fromIdx, 1)
-      inTier.splice(toIdx, 0, moved)
-      return [...other, ...inTier.map((item, i) => ({ ...item, position: i + 1 }))]
+      const item = prev.find(i => i.id === id)
+      if (!item) return prev
+      const removed = prev.filter(i => i.id !== id)
+      return item.tier ? compactTier(removed, item.tier) : removed
     })
   }
 
-  function toggleTierRanking(tier: string) {
-    const willBeRanked = !tierRankedTiers.has(tier)
-    setTierRankedTiers(prev => { const s = new Set(prev); if (willBeRanked) s.add(tier); else s.delete(tier); return s })
-    if (willBeRanked) {
-      setTierItems(prev => { let pos = 1; return prev.map(i => i.tier === tier ? { ...i, position: pos++ } : i) })
-    } else {
-      setTierItems(prev => prev.map(i => i.tier === tier ? { ...i, position: undefined } : i))
-    }
+  function handleConfirmImport() {
+    if (!importResult) return
+    setTierItems(importResult.matched)
+    setIsImporting(false)
+    setImportText('')
+    setImportResult(null)
   }
 
   async function handleClose() {
@@ -745,123 +779,385 @@ export function RankingEditor({
 
       {/* Tiers */}
       <div>
-        {TIERS.map(tier => {
+        {TIERS.map((tier, tIdx) => {
           const inTier = tierItems.filter(i => i.tier === tier).sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
-          const isRankedTier = tierRankedTiers.has(tier)
+          // Group items by their shared local rank. Items in the same group
+          // are tied (same user-picked rank number) and show on one line.
+          const groups: Array<{ rank: number; items: RankEditItem[] }> = []
+          for (const it of inTier) {
+            const r = it.position ?? 1
+            const last = groups[groups.length - 1]
+            if (last && last.rank === r) last.items.push(it)
+            else groups.push({ rank: r, items: [it] })
+          }
+          // Global offsets so this tier's ranks continue the sequence rather
+          // than restart at 1. Recompute here (cheap: 7 tiers max) rather than
+          // threading through state.
+          let priorGroupCount = 0
+          let priorItemCount = 0
+          for (let i = 0; i < tIdx; i++) {
+            const t = TIERS[i]
+            const inT = tierItems.filter(x => x.tier === t)
+            const distinctRanks = new Set(inT.map(x => x.position ?? 1))
+            priorGroupCount += distinctRanks.size
+            priorItemCount += inT.length
+          }
+          // Per-group global rank and fractional (average of occupied global
+          // positions).
+          const globalRanks = new Map<number, number>()
+          const fractionals = new Map<number, number>()
+          let runningPos = priorItemCount + 1
+          groups.forEach((g, gIdx) => {
+            globalRanks.set(g.rank, priorGroupCount + gIdx + 1)
+            const posList: number[] = []
+            for (let i = 0; i < g.items.length; i++) posList.push(runningPos++)
+            fractionals.set(g.rank, posList.reduce((s, p) => s + p, 0) / posList.length)
+          })
+
           const isDropTarget = dragOverTier === tier
-          const tierOffset = TIERS.slice(0, TIERS.indexOf(tier)).reduce((sum, t) => sum + tierItems.filter(i => i.tier === t).length, 0)
-          const cardW = 50
-          const placeholderFs = 16
-          const closeSz = 14
-          const closeFs = 10
-          const emblemSz = 22
-          const emblemFs = 11
-          const emblemOff = -5
-          const emblemBw = 2
-          const cardPad = 2
-          const cardGap = 4
-          const isExpanded = hoveredTier === tier || isDropTarget
-          const collapsedMaxH = 110
+          const slot = dragOverSlot && dragOverSlot.tier === tier ? dragOverSlot : null
+          const tierColor = TIER_COLOR[tier]
+          const cardW = 46
+          const placeholderFs = 14
+          const closeSz = 13
+          const closeFs = 9
+          const cardPad = 0
+          const cardGap = 2
+
+          // Insert strip between/around rank groups. Dropping here creates
+          // a brand new rank at that slot. Grows while a drag is in progress
+          // (easy target), swells further and labels itself on direct hover.
+          const dragInProgress = tierDragId !== null
+          function renderInsertZone(beforeRank: number | null, key: string) {
+            const active = slot?.kind === 'insert' && slot.beforeRank === beforeRank
+            const idle = !dragInProgress
+            return (
+              <div
+                key={key}
+                onDragOver={ev => {
+                  ev.preventDefault()
+                  ev.stopPropagation()
+                  setDragOverTier(tier)
+                  setDragOverSlot({ tier, kind: 'insert', beforeRank })
+                }}
+                onDrop={ev => {
+                  ev.preventDefault()
+                  ev.stopPropagation()
+                  if (tierDragId) dropOnTier(tierDragId, tier, { kind: 'insert', beforeRank })
+                  setDragOverTier(null); setDragOverSlot(null); setTierDragId(null)
+                }}
+                style={{
+                  height: active ? 24 : idle ? 3 : 10,
+                  margin: '1px 0',
+                  borderRadius: 3,
+                  background: active ? `${tierColor}22` : (dragInProgress ? `${tierColor}0a` : 'transparent'),
+                  border: active
+                    ? `1.5px dashed ${tierColor}`
+                    : (dragInProgress ? `1px dashed ${tierColor}44` : '1px dashed transparent'),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: tierColor,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '.05em',
+                  transition: 'height .12s, background .12s, border-color .12s',
+                }}
+              >
+                {active && '＋ nouveau rang'}
+              </div>
+            )
+          }
+
           return (
             <div
               key={tier}
               className="tier-row"
-              onMouseEnter={() => setHoveredTier(tier)}
-              onMouseLeave={() => setHoveredTier(prev => prev === tier ? null : prev)}
             >
-              <div className="tier-label" style={{ minHeight: 50, borderRadius: 6, background: `${TIER_COLOR[tier]}22`, border: `1px solid ${TIER_COLOR[tier]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 9.5, color: TIER_COLOR[tier], textAlign: 'center', padding: '0 4px' }}>
-                {TIER_LABEL[tier]}
+              <div
+                className="tier-label"
+                title={`${TIER_LABEL[tier]} — ${TIER_SUBJECTIVE[tier]}`}
+                style={{
+                  // Stretch to match the dropzone height so the colored band
+                  // reads as the frame of its tier instead of a small chip at
+                  // the top.
+                  minHeight: 44,
+                  borderRadius: 6,
+                  background: `${tierColor}1a`,
+                  border: `1px solid ${tierColor}55`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2,
+                  color: tierColor,
+                  textAlign: 'center',
+                  padding: '5px 6px',
+                }}
+              >
+                <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 800, fontSize: 15, lineHeight: 1.05 }}>
+                  {TIER_LABEL[tier]}
+                </span>
+                <span style={{ fontSize: 9.5, fontWeight: 500, fontStyle: 'italic', lineHeight: 1.2, opacity: 0.8 }}>
+                  {TIER_SUBJECTIVE[tier]}
+                </span>
+                {inTier.length > 0 && (
+                  <span style={{
+                    marginTop: 1,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: '.04em',
+                    textTransform: 'uppercase',
+                    opacity: 0.6,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {inTier.length} film{inTier.length > 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
               <div
                 onDragOver={ev => { ev.preventDefault(); setDragOverTier(tier) }}
-                onDragLeave={ev => { if (!ev.currentTarget.contains(ev.relatedTarget as Node)) setDragOverTier(null) }}
-                onDrop={ev => {
-                  ev.preventDefault()
-                  if (tierDragId) {
-                    const fromTier = tierItems.find(i => i.id === tierDragId)?.tier
-                    if (fromTier !== tier) dropOnTier(tierDragId, tier)
+                onDragLeave={ev => {
+                  if (!ev.currentTarget.contains(ev.relatedTarget as Node)) {
+                    setDragOverTier(null)
+                    setDragOverSlot(null)
                   }
-                  setDragOverTier(null); setTierDragId(null)
+                }}
+                onDrop={ev => {
+                  // Catch-all drop on empty space in the tier — happens when
+                  // the user releases outside any specific group row / insert
+                  // zone. Append a new rank at the end.
+                  ev.preventDefault()
+                  if (tierDragId && !slot) {
+                    dropOnTier(tierDragId, tier, { kind: 'insert', beforeRank: null })
+                  }
+                  setDragOverTier(null); setDragOverSlot(null); setTierDragId(null)
                 }}
                 className="tier-dropzone"
-                style={{ minHeight: 50, maxHeight: isExpanded ? 4000 : collapsedMaxH, overflow: 'hidden', background: isDropTarget ? 'var(--accent-faint)' : 'var(--bg-card)', border: `1px dashed ${isDropTarget ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 6, padding: '9px 6px 5px', display: 'flex', flexWrap: 'wrap', gap: cardGap, alignItems: 'flex-start', alignContent: 'flex-start', transition: 'background .12s, border-color .12s, max-height .25s ease' }}
+                style={{
+                  minHeight: 44,
+                  // No vertical cap — show every film of the tier at once.
+                  // Rows are compact enough that even a 15-film EX fits in a
+                  // couple of hundred pixels, and users clearly expect to see
+                  // the whole tier without having to hover.
+                  background: isDropTarget && !slot ? `${tierColor}0d` : 'transparent',
+                  // No border at rest — the tier label on the left already
+                  // frames the row and avoids a dashed stroke that reads as
+                  // extra whitespace between consecutive tiers. The border
+                  // appears only while a card is being dragged over.
+                  border: isDropTarget ? `1px dashed ${tierColor}66` : '1px solid transparent',
+                  borderRadius: 6,
+                  padding: '0 6px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'background .12s, border-color .12s',
+                }}
               >
-                {inTier.length === 0 && <span style={{ color: 'var(--fg-6)', fontSize: 12, fontStyle: 'italic', alignSelf: 'center' }}>← glisser ici</span>}
-                {inTier.map((rankItem, idx) => {
-                  const item = getItem(rankItem.id)
-                  if (!item) return null
-                  const isDragging = tierDragId === rankItem.id
-                  const isOver = isRankedTier && dragOverItemId === rankItem.id
-                  const position = isRankedTier ? tierOffset + idx + 1 : undefined
-                  return (
-                    <div key={rankItem.id}
-                      draggable
-                      onClick={() => { setMoveCardId(rankItem.id); setMoveTier(null) }}
-                      onDragStart={ev => { ev.stopPropagation(); setTierDragId(rankItem.id) }}
-                      onDragOver={isRankedTier ? ev => { ev.preventDefault(); ev.stopPropagation(); if (!isDragging) setDragOverItemId(rankItem.id) } : undefined}
-                      onDragLeave={isRankedTier ? () => setDragOverItemId(prev => prev === rankItem.id ? null : prev) : undefined}
-                      onDrop={isRankedTier ? ev => {
-                        ev.preventDefault(); ev.stopPropagation()
-                        if (tierDragId && tierDragId !== rankItem.id) {
-                          const fromTier = tierItems.find(i => i.id === tierDragId)?.tier
-                          if (fromTier === tier) reorderWithinTier(tier, tierDragId, rankItem.id)
-                          else dropOnTier(tierDragId, tier)
-                        }
-                        setDragOverTier(null); setDragOverItemId(null); setTierDragId(null)
-                      } : undefined}
-                      onDragEnd={() => { setTierDragId(null); setDragOverTier(null); setDragOverItemId(null) }}
-                      title={item.label}
-                      style={{ position: 'relative', width: cardW, flexShrink: 0, background: 'var(--bg-card)', border: `1px solid ${isOver ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 6, padding: cardPad, cursor: 'grab', opacity: isDragging ? 0.4 : 1, userSelect: 'none', transition: 'border-color .1s, opacity .1s' }}
-                    >
-                      <div style={{ position: 'relative', width: '100%', aspectRatio: '2 / 3', background: 'var(--bg-subtle)', borderRadius: 4, overflow: 'hidden' }}>
-                        {item.cover ? (
-                          <img src={item.cover} alt="" loading="lazy" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                        ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: placeholderFs, color: 'var(--fg-7)' }}>
-                            {item.prefix ?? item.label.charAt(0).toUpperCase()}
+                {groups.length === 0 ? (
+                  <span style={{ color: 'var(--fg-6)', fontSize: 11.5, fontStyle: 'italic', alignSelf: 'center', margin: 'auto' }}>
+                    ← glisse un film ici
+                  </span>
+                ) : (
+                  <>
+                    {renderInsertZone(groups[0].rank, 'before-first')}
+                    {groups.map((g, gIdx) => {
+                      const nextRank = groups[gIdx + 1]?.rank ?? null
+                      const isJoinTarget = slot?.kind === 'join' && slot.rank === g.rank
+                      const displayRank = globalRanks.get(g.rank) ?? g.rank
+                      const frac = fractionals.get(g.rank) ?? displayRank
+                      const isTied = g.items.length > 1
+                      // Top-3 global ranks get a medal ring (gold / silver /
+                      // bronze) so the podium stands out, but the badge stays
+                      // the same neutral dark pill otherwise.
+                      const medalRing = displayRank === 1 ? '#f59e0b'
+                        : displayRank === 2 ? '#94a3b8'
+                        : displayRank === 3 ? '#b45309'
+                        : null
+                      const badgeBg = '#1f2937'
+                      return (
+                        <React.Fragment key={g.rank}>
+                          <div
+                            onDragOver={ev => {
+                              ev.preventDefault()
+                              ev.stopPropagation()
+                              setDragOverTier(tier)
+                              setDragOverSlot({ tier, kind: 'join', rank: g.rank })
+                            }}
+                            onDrop={ev => {
+                              ev.preventDefault()
+                              ev.stopPropagation()
+                              if (tierDragId) dropOnTier(tierDragId, tier, { kind: 'join', rank: g.rank })
+                              setDragOverTier(null); setDragOverSlot(null); setTierDragId(null)
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              padding: '0 4px',
+                              marginTop: gIdx === 0 ? 0 : -1,
+                              borderRadius: 6,
+                              background: isJoinTarget
+                                ? `${tierColor}1f`
+                                : (isTied ? `${tierColor}0a` : 'transparent'),
+                              outline: isJoinTarget ? `1.5px solid ${tierColor}` : 'none',
+                              borderLeft: isTied ? `3px solid ${tierColor}66` : '3px solid transparent',
+                              transition: 'background .12s, outline-color .12s',
+                            }}
+                          >
+                            {/* Rank badge — uniform size for every rank, so
+                                "1" and "123" occupy the same visual slot and
+                                tiers scan vertically without jitter. Top 3
+                                get a medal-coloured ring. */}
+                            <div
+                              aria-label={`Rang ${displayRank}${isTied ? `, ex-æquo (${g.items.length}), rang officiel ${frac.toFixed(1)}` : ''}`}
+                              title={isTied ? `${g.items.length} films ex-æquo à ce rang · rang officiel ⌀${frac.toFixed(1)}` : undefined}
+                              style={{
+                                display: 'flex', flexDirection: 'column',
+                                alignItems: 'center', justifyContent: 'center',
+                                minWidth: medalRing ? 34 : 30,
+                                height: medalRing ? 34 : 30,
+                                padding: '0 6px',
+                                borderRadius: 999,
+                                background: badgeBg,
+                                color: '#fff',
+                                boxShadow: medalRing
+                                  ? `0 0 0 2px ${medalRing}, 0 2px 6px ${medalRing}55`
+                                  : '0 1px 3px rgba(0,0,0,.18)',
+                                flexShrink: 0,
+                                marginLeft: medalRing ? 4 : 2,
+                                border: isTied && !medalRing ? `1.5px solid ${tierColor}55` : 'none',
+                              }}
+                            >
+                              <span style={{
+                                fontFamily: "'Fraunces', serif",
+                                fontWeight: 900,
+                                fontSize: 13,
+                                lineHeight: 1,
+                                letterSpacing: -0.5,
+                                fontVariantNumeric: 'tabular-nums',
+                              }}>
+                                {displayRank}
+                              </span>
+                              {isTied && (
+                                <span style={{
+                                  fontSize: 7.5,
+                                  opacity: 0.75,
+                                  lineHeight: 1,
+                                  marginTop: 1,
+                                  fontVariantNumeric: 'tabular-nums',
+                                  fontWeight: 500,
+                                  letterSpacing: 0.2,
+                                }}>
+                                  ⌀{frac.toFixed(1)}
+                                </span>
+                              )}
+                            </div>
+                            {/* Rendering rule for the group's films:
+                                • ≤ 2 films  → each film is a unified card
+                                               with the poster on the left and
+                                               the title inline on the right.
+                                               Pairs wrap on narrow screens.
+                                • 3+ films   → compact tier-list look: posters
+                                               side-by-side with a tiny title
+                                               under each. The poster + title
+                                               share one card so the link is
+                                               visually unambiguous. */}
+                            {(() => {
+                              // Inline mode (poster + title to the right) now
+                              // kicks in for up to 3 films at a rank — 3 cards
+                              // of 180px each still fit a 540px row before
+                              // wrapping, and the titles stay readable.
+                              const showInline = g.items.length <= 3
+                              // Slightly bigger thumbnail (27-wide) — the row
+                              // still stays under 42px tall.
+                              const effCardW = showInline ? 27 : cardW
+                              const effCloseSz = showInline ? 11 : closeSz
+                              const effCloseFs = showInline ? 8 : closeFs
+                              return (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: showInline ? 8 : cardGap, flex: 1, alignItems: 'stretch' }}>
+                                  {g.items.map(rankItem => {
+                                    const item = getItem(rankItem.id)
+                                    if (!item) return null
+                                    const isDragging = tierDragId === rankItem.id
+                                    const posterInner = (
+                                      <div style={{ position: 'relative', width: effCardW, flexShrink: 0, aspectRatio: '2 / 3', background: 'var(--bg-subtle)', overflow: 'hidden' }}>
+                                        {item.cover ? (
+                                          <img src={item.cover} alt="" loading="lazy" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                        ) : (
+                                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: showInline ? 11 : placeholderFs, color: 'var(--fg-7)' }}>
+                                            {item.prefix ?? item.label.charAt(0).toUpperCase()}
+                                          </div>
+                                        )}
+                                        <button
+                                          onClick={ev => { ev.stopPropagation(); removeFromList(rankItem.id) }}
+                                          style={{ position: 'absolute', top: 2, right: 2, width: effCloseSz, height: effCloseSz, borderRadius: effCloseSz / 2, background: 'rgba(0,0,0,.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: effCloseFs, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                                        >×</button>
+                                      </div>
+                                    )
+                                    const dragProps = {
+                                      draggable: true,
+                                      onClick: () => { setMoveCardId(rankItem.id); setMoveTier(null) },
+                                      onDragStart: (ev: React.DragEvent) => { ev.stopPropagation(); setTierDragId(rankItem.id) },
+                                      onDragEnd: () => { setTierDragId(null); setDragOverTier(null); setDragOverSlot(null) },
+                                      title: item.label,
+                                    }
+                                    const unifiedCardStyle: React.CSSProperties = {
+                                      background: 'var(--bg-card)',
+                                      border: '1px solid var(--border)',
+                                      borderRadius: 6,
+                                      overflow: 'hidden',
+                                      cursor: 'grab',
+                                      opacity: isDragging ? 0.4 : 1,
+                                      userSelect: 'none',
+                                      transition: 'opacity .1s, border-color .1s',
+                                    }
+                                    if (showInline) {
+                                      // Fixed card width per row count so the
+                                      // row always fills roughly the same
+                                      // horizontal slot (~600px). Solo = full
+                                      // width; 2 tied = half each; 3 tied =
+                                      // third each.
+                                      const inlineCardW = g.items.length === 1
+                                        ? 600
+                                        : g.items.length === 2
+                                          ? 296
+                                          : 196
+                                      return (
+                                        <div key={rankItem.id} {...dragProps} style={{ ...unifiedCardStyle, display: 'flex', alignItems: 'stretch', flex: '0 0 auto', width: inlineCardW }}>
+                                          {posterInner}
+                                          <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1, padding: '0 8px', gap: 5 }}>
+                                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                                              {item.label}
+                                            </span>
+                                            {item.year != null && (
+                                              <span style={{ fontSize: 10, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                                                {item.year}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )
+                                    }
+                                    return (
+                                      <div key={rankItem.id} {...dragProps} style={{ ...unifiedCardStyle, display: 'flex', flexDirection: 'column', width: cardW }}>
+                                        {posterInner}
+                                        <div style={{ padding: '2px 3px 3px', fontSize: 8.5, color: 'var(--fg-4)', lineHeight: 1.15, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                          {item.label}
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )
+                            })()}
                           </div>
-                        )}
-                        <button
-                          onClick={ev => {
-                            ev.stopPropagation()
-                            if (isRankedTier) {
-                              setTierItems(prev => { const r = prev.filter(i => i.id !== rankItem.id); let pos = 1; return r.map(i => i.tier === tier ? { ...i, position: pos++ } : i) })
-                            } else {
-                              setTierItems(prev => prev.filter(i => i.id !== rankItem.id))
-                            }
-                          }}
-                          style={{ position: 'absolute', top: 3, right: 3, width: closeSz, height: closeSz, borderRadius: closeSz / 2, background: 'rgba(0,0,0,.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: closeFs, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-                        >×</button>
-                      </div>
-                      {position !== undefined && (
-                        <div style={{ position: 'absolute', top: emblemOff, left: emblemOff, minWidth: emblemSz, height: emblemSz, padding: `0 ${Math.round(emblemSz * 0.24)}px`, borderRadius: emblemSz / 2, background: position <= 3 ? 'var(--accent-fg)' : '#1a1a1a', color: position <= 3 ? 'var(--btn-text)' : '#fff', border: `${emblemBw}px solid var(--bg-card)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: emblemFs, fontWeight: 800, fontFamily: "'Fraunces', serif", boxShadow: '0 3px 8px rgba(0,0,0,.4)', zIndex: 3 }}>
-                          {position}
-                        </div>
-                      )}
-                      <div style={{ marginTop: 2, fontSize: 8.5, color: 'var(--fg-4)', lineHeight: 1.15, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>
-                        {item.label}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              <div role="group" aria-label={`Mode d'affichage de ${TIER_LABEL[tier]}`} className="tier-toggle" style={{ alignSelf: 'flex-start', marginTop: 4, display: 'flex', borderRadius: 7, border: `1px solid ${isRankedTier ? 'var(--accent-muted)' : 'var(--border)'}`, overflow: 'hidden', flexShrink: 0, background: 'var(--bg-subtle)', boxShadow: 'inset 0 0 0 1px transparent' }}>
-                <button
-                  onClick={() => isRankedTier && toggleTierRanking(tier)}
-                  title="Films groupés sans ordre dans cette mention"
-                  style={{ padding: '5px 9px', border: 'none', background: !isRankedTier ? 'var(--bg-card)' : 'transparent', color: !isRankedTier ? 'var(--fg-3)' : 'var(--fg-6)', fontSize: 10.5, fontWeight: !isRankedTier ? 700 : 500, cursor: !isRankedTier ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 4 }}
-                >
-                  <span aria-hidden style={{ fontSize: 11, opacity: 0.85 }}>▦</span>
-                  Vrac
-                </button>
-                <button
-                  onClick={() => !isRankedTier && toggleTierRanking(tier)}
-                  title="Classer les films par rang (1, 2, 3…) dans cette mention"
-                  style={{ padding: '5px 9px', border: 'none', borderLeft: '1px solid var(--border)', background: isRankedTier ? 'var(--accent-fg)' : 'transparent', color: isRankedTier ? 'var(--btn-text)' : 'var(--fg-6)', fontSize: 10.5, fontWeight: isRankedTier ? 800 : 500, cursor: isRankedTier ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 4 }}
-                >
-                  <span aria-hidden style={{ fontFamily: "'Fraunces', serif", fontWeight: 800 }}>1·2·3</span>
-                  <span style={{ fontWeight: 600 }}>Classé</span>
-                </button>
+                          {renderInsertZone(nextRank, `after-${g.rank}`)}
+                        </React.Fragment>
+                      )
+                    })}
+                  </>
+                )}
               </div>
             </div>
           )
@@ -1016,17 +1312,16 @@ export function RankingEditor({
                     {quickAddId === item.id && quickAddTier === null && (
                       <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, zIndex: 30, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 7, padding: 6, boxShadow: '0 -6px 20px rgba(0,0,0,.18)', display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 220 }}>
                         {TIERS.map(tier => {
-                          const isRanked = tierRankedTiers.has(tier)
                           const hasItems = tierItems.some(i => i.tier === tier && i.id !== item.id)
                           return (
                             <button
                               key={tier}
                               onClick={ev => {
                                 ev.stopPropagation()
-                                if (isRanked && hasItems) {
+                                if (hasItems) {
                                   setQuickAddTier(tier)
                                 } else {
-                                  dropOnTier(item.id, tier)
+                                  dropOnTier(item.id, tier, { kind: 'insert', beforeRank: null })
                                   setQuickAddId(null)
                                   setQuickAddTier(null)
                                 }
@@ -1039,39 +1334,54 @@ export function RankingEditor({
                     )}
                     {quickAddId === item.id && quickAddTier !== null && (() => {
                       const tier = quickAddTier
-                      const positionItems = tierItems
+                      const inTier = tierItems
                         .filter(i => i.tier === tier && i.id !== item.id)
                         .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+                      // Build rank groups for the picker
+                      const groups: Array<{ rank: number; items: RankEditItem[] }> = []
+                      for (const i of inTier) {
+                        const r = i.position ?? 1
+                        const last = groups[groups.length - 1]
+                        if (last && last.rank === r) last.items.push(i)
+                        else groups.push({ rank: r, items: [i] })
+                      }
                       const tierColor = TIER_COLOR[tier]
+                      const commit = (op: DropOp) => {
+                        dropOnTier(item.id, tier, op)
+                        setQuickAddId(null); setQuickAddTier(null)
+                      }
                       return (
-                        <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, zIndex: 30, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 7, padding: 8, boxShadow: '0 -6px 20px rgba(0,0,0,.18)', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 200, maxHeight: 280, overflowY: 'auto' }}>
+                        <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, zIndex: 30, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 7, padding: 8, boxShadow: '0 -6px 20px rgba(0,0,0,.18)', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 220, maxHeight: 280, overflowY: 'auto' }}>
                           <div style={{ fontSize: 10, color: 'var(--fg-6)', marginBottom: 2 }}>
-                            Position dans <span style={{ color: tierColor, fontWeight: 600 }}>{TIER_LABEL[tier]}</span> :
+                            Rang dans <span style={{ color: tierColor, fontWeight: 600 }}>{TIER_LABEL[tier]}</span> :
                           </div>
                           <button
-                            onClick={ev => {
-                              ev.stopPropagation()
-                              dropOnTier(item.id, tier, null)
-                              setQuickAddId(null); setQuickAddTier(null)
-                            }}
+                            onClick={ev => { ev.stopPropagation(); commit({ kind: 'insert', beforeRank: groups[0]?.rank ?? null }) }}
                             style={{ alignSelf: 'flex-start', padding: '3px 9px', borderRadius: 5, border: `1px solid ${tierColor}55`, background: `${tierColor}10`, color: tierColor, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}
                           >
-                            En dernier (#{positionItems.length + 1})
+                            Nouveau rang en tête (#1)
                           </button>
-                          {positionItems.map((p, idx) => {
-                            const it = getItem(p.id)
+                          {groups.map((g, gIdx) => {
+                            const names = g.items.map(x => getItem(x.id)?.label ?? '').filter(Boolean)
+                            const sampleTitle = names.slice(0, 2).join(', ') + (names.length > 2 ? '…' : '')
+                            const nextRank = groups[gIdx + 1]?.rank ?? null
                             return (
-                              <button
-                                key={p.id}
-                                onClick={ev => {
-                                  ev.stopPropagation()
-                                  dropOnTier(item.id, tier, p.id)
-                                  setQuickAddId(null); setQuickAddTier(null)
-                                }}
-                                style={{ alignSelf: 'flex-start', padding: '3px 9px', borderRadius: 5, border: `1px solid ${tierColor}55`, background: `${tierColor}10`, color: tierColor, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
-                              >
-                                Avant « {it?.label ?? p.id} » (#{idx + 1})
-                              </button>
+                              <React.Fragment key={g.rank}>
+                                <button
+                                  onClick={ev => { ev.stopPropagation(); commit({ kind: 'join', rank: g.rank }) }}
+                                  style={{ alignSelf: 'stretch', padding: '3px 9px', borderRadius: 5, border: `1px dashed ${tierColor}55`, background: `${tierColor}05`, color: tierColor, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                                >
+                                  = Même rang #{g.rank} que {sampleTitle}
+                                </button>
+                                <button
+                                  onClick={ev => { ev.stopPropagation(); commit({ kind: 'insert', beforeRank: nextRank }) }}
+                                  style={{ alignSelf: 'stretch', padding: '3px 9px', borderRadius: 5, border: `1px solid ${tierColor}55`, background: `${tierColor}10`, color: tierColor, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                                >
+                                  {nextRank === null
+                                    ? `Nouveau rang en dernier (#${g.rank + 1})`
+                                    : `Nouveau rang entre #${g.rank} et #${nextRank}`}
+                                </button>
+                              </React.Fragment>
                             )
                           })}
                           <button
@@ -1108,12 +1418,19 @@ export function RankingEditor({
         const currentTier = card.tier
         const close = () => { setMoveCardId(null); setMoveTier(null) }
         const targetTier = moveTier ?? currentTier ?? null
-        const isTargetRanked = targetTier ? tierRankedTiers.has(targetTier) : false
-        const positionItems = targetTier
+        const inTarget = targetTier
           ? tierItems
               .filter(i => i.tier === targetTier && i.id !== card.id)
               .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
           : []
+        const targetGroups: Array<{ rank: number; items: RankEditItem[] }> = []
+        for (const i of inTarget) {
+          const r = i.position ?? 1
+          const last = targetGroups[targetGroups.length - 1]
+          if (last && last.rank === r) last.items.push(i)
+          else targetGroups.push({ rank: r, items: [i] })
+        }
+        const targetColor = targetTier ? TIER_COLOR[targetTier] : 'var(--border)'
         return (
           <div
             onClick={close}
@@ -1121,99 +1438,137 @@ export function RankingEditor({
           >
             <div
               onClick={e => e.stopPropagation()}
-              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, width: '100%', maxWidth: 460, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 -10px 40px rgba(0,0,0,.25)' }}
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, width: '100%', maxWidth: 460, maxHeight: '85vh', boxShadow: '0 -10px 40px rgba(0,0,0,.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                {item.cover && <img src={item.cover} alt="" style={{ width: 42, height: 60, objectFit: 'cover', borderRadius: 4 }} />}
+              {/* Sticky header */}
+              <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+                {item.cover && <img src={item.cover} alt="" style={{ width: 36, height: 52, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 11, color: 'var(--fg-6)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Déplacer</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</div>
+                  <div style={{ fontSize: 10, color: 'var(--fg-6)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600 }}>Déplacer</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2, marginTop: 1 }}>{item.label}</div>
                   {currentTier && (
                     <div style={{ fontSize: 11, color: TIER_COLOR[currentTier], marginTop: 2 }}>
-                      Actuellement : {TIER_LABEL[currentTier]}
-                      {card.position !== undefined && tierRankedTiers.has(currentTier) ? ` · #${card.position}` : ''}
+                      {TIER_LABEL[currentTier]}
+                      {card.position !== undefined ? ` · #${card.position}` : ''}
                     </div>
                   )}
                 </div>
-                <button onClick={close} style={{ background: 'none', border: 'none', fontSize: 22, color: 'var(--fg-6)', cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
+                <button onClick={close} aria-label="Fermer" style={{ background: 'none', border: 'none', fontSize: 24, color: 'var(--fg-6)', cursor: 'pointer', lineHeight: 1, padding: 4, flexShrink: 0 }}>×</button>
               </div>
 
-              {/* Tier picker */}
-              <div style={{ fontSize: 11, color: 'var(--fg-6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>Mention</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 14 }}>
-                {TIERS.map(tier => {
-                  const isCurrent = tier === targetTier
-                  const c = TIER_COLOR[tier]
-                  return (
-                    <button
-                      key={tier}
-                      onClick={() => setMoveTier(tier)}
-                      style={{ padding: '7px 12px', borderRadius: 6, border: `1px solid ${isCurrent ? c : c + '55'}`, background: isCurrent ? `${c}25` : `${c}0d`, color: c, fontSize: 12, fontFamily: "'Fraunces', serif", fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      {TIER_LABEL[tier]}
-                    </button>
-                  )
-                })}
-              </div>
+              {/* Scrollable body */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+                {/* Tier picker */}
+                <div style={{ fontSize: 10, color: 'var(--fg-6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600 }}>Mention</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 16 }}>
+                  {TIERS.map(tier => {
+                    const isCurrent = tier === targetTier
+                    const c = TIER_COLOR[tier]
+                    return (
+                      <button
+                        key={tier}
+                        onClick={() => { setMoveTier(tier) }}
+                        style={{ padding: '6px 11px', borderRadius: 6, border: `1px solid ${isCurrent ? c : c + '55'}`, background: isCurrent ? `${c}25` : `${c}0d`, color: c, fontSize: 12, fontFamily: "'Fraunces', serif", fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        {TIER_LABEL[tier]}
+                      </button>
+                    )
+                  })}
+                </div>
 
-              {/* Position picker for ranked tier */}
-              {targetTier && isTargetRanked && (
-                <>
-                  <div style={{ fontSize: 11, color: 'var(--fg-6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                    Position dans {TIER_LABEL[targetTier]}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
-                    <button
-                      onClick={() => { dropOnTier(card.id, targetTier, null); close() }}
-                      style={{ padding: '8px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--fg-3)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }}
-                    >
-                      En dernier (#{positionItems.length + 1})
-                    </button>
-                    {positionItems.map((p, idx) => {
-                      const it = getItem(p.id)
-                      return (
+                {/* Rank-slot picker */}
+                {targetTier && (
+                  <>
+                    <div style={{ fontSize: 10, color: 'var(--fg-6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600 }}>
+                      Rang dans {TIER_LABEL[targetTier]}
+                    </div>
+                    {targetGroups.length === 0 ? (
+                      <button
+                        onClick={() => { dropOnTier(card.id, targetTier!, { kind: 'insert', beforeRank: null }); close() }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 7, border: `1.5px dashed ${targetColor}`, background: `${targetColor}10`, color: targetColor, fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'center' }}
+                      >
+                        ＋ Premier au rang #1
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                        {/* Insert zone at the very top */}
                         <button
-                          key={p.id}
-                          onClick={() => { dropOnTier(card.id, targetTier, p.id); close() }}
-                          style={{ padding: '8px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--fg-3)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }}
+                          onClick={() => { dropOnTier(card.id, targetTier!, { kind: 'insert', beforeRank: targetGroups[0].rank }); close() }}
+                          style={{ padding: '7px 10px', borderRadius: 6, border: `1.5px dashed ${targetColor}66`, background: `${targetColor}0a`, color: targetColor, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', fontFamily: 'inherit', cursor: 'pointer', marginBottom: 4 }}
                         >
-                          Avant « {it?.label ?? p.id} » (#{idx + 1})
+                          ＋ Nouveau rang en tête
                         </button>
-                      )
-                    })}
-                  </div>
-                </>
-              )}
+                        {targetGroups.map((g, gIdx) => {
+                          const nextRank = targetGroups[gIdx + 1]?.rank ?? null
+                          const isTied = g.items.length > 1
+                          return (
+                            <React.Fragment key={g.rank}>
+                              {/* Join target: looks like a group row from the editor */}
+                              <button
+                                onClick={() => { dropOnTier(card.id, targetTier!, { kind: 'join', rank: g.rank }); close() }}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 8,
+                                  padding: '6px 8px', borderRadius: 7,
+                                  border: `1px solid ${targetColor}44`,
+                                  background: isTied ? `${targetColor}0f` : 'var(--bg-subtle)',
+                                  color: 'var(--fg-3)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left',
+                                  marginBottom: 4,
+                                }}
+                              >
+                                <div style={{
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  width: 30, height: 30, borderRadius: 999,
+                                  background: targetColor, color: '#fff',
+                                  fontFamily: "'Fraunces', serif", fontWeight: 800, fontSize: 15,
+                                  flexShrink: 0,
+                                }}>
+                                  {g.rank}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 10, color: targetColor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                                    = Même rang
+                                  </div>
+                                  <div style={{ fontSize: 12, color: 'var(--fg-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
+                                    avec {g.items.map(x => getItem(x.id)?.label ?? '').filter(Boolean).join(', ')}
+                                  </div>
+                                </div>
+                                {/* Mini poster(s) */}
+                                <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                                  {g.items.slice(0, 3).map(it => {
+                                    const im = getItem(it.id)
+                                    return im?.cover ? (
+                                      <img key={it.id} src={im.cover} alt="" style={{ width: 20, height: 30, objectFit: 'cover', borderRadius: 2 }} />
+                                    ) : null
+                                  })}
+                                </div>
+                              </button>
+                              {/* Insert zone after this group */}
+                              <button
+                                onClick={() => { dropOnTier(card.id, targetTier!, { kind: 'insert', beforeRank: nextRank }); close() }}
+                                style={{ padding: '7px 10px', borderRadius: 6, border: `1.5px dashed ${targetColor}66`, background: `${targetColor}0a`, color: targetColor, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', fontFamily: 'inherit', cursor: 'pointer', marginBottom: 4 }}
+                              >
+                                {nextRank === null
+                                  ? `＋ Nouveau rang en dernier`
+                                  : `＋ Nouveau rang entre #${g.rank} et #${nextRank}`}
+                              </button>
+                            </React.Fragment>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
 
-              {/* Confirm for unranked target tier */}
-              {targetTier && !isTargetRanked && targetTier !== currentTier && (
+              {/* Sticky footer */}
+              <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', flexShrink: 0, display: 'flex', gap: 8 }}>
                 <button
-                  onClick={() => { dropOnTier(card.id, targetTier); close() }}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10 }}
+                  onClick={() => { removeFromList(card.id); close() }}
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0555544', background: '#e0555518', color: '#e05555', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                 >
-                  Déplacer vers {TIER_LABEL[targetTier]}
+                  🗑 Retirer de la liste
                 </button>
-              )}
-
-              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <button
-                  onClick={() => {
-                    setTierItems(prev => {
-                      const oldTier = card.tier
-                      const r = prev.filter(i => i.id !== card.id)
-                      if (oldTier && tierRankedTiers.has(oldTier)) {
-                        let pos = 1
-                        return r.map(i => i.tier === oldTier ? { ...i, position: pos++ } : i)
-                      }
-                      return r
-                    })
-                    close()
-                  }}
-                  style={{ flex: 1, padding: '9px 14px', borderRadius: 8, border: '1px solid #e0555533', background: '#e0555518', color: '#e05555', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Retirer de la liste
-                </button>
-                <button onClick={close} style={{ flex: 1, padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--fg-5)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={close} style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--fg-4)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Annuler
                 </button>
               </div>

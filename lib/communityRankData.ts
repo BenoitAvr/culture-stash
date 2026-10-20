@@ -130,6 +130,61 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
       for (const list of topic.userEntryLists) {
         if (list.type !== 'TIER') continue
         const rts = (list.rankedTiers ?? '').split(',').filter(Boolean)
+
+        // For each tier, normalize the stored positions to a contiguous local
+        // 1-based scale (preserving ties). Legacy rows may have globalized
+        // positions (e.g. 5, 6, 7 for the second ranked tier) or missing
+        // positions (old "vrac" tiers) — normalization harmonizes both.
+        //
+        // For each item we also derive:
+        //   - localRank: integer rank in the tier (ties share the same number)
+        //   - globalFracRank: the "official" fractional rank across the whole
+        //     list, i.e. the average global position occupied by the tie group.
+        type Enriched = {
+          entryId: string
+          tier: string
+          localRank: number
+          globalFracRank: number
+        }
+        const enriched: Enriched[] = []
+        let runningGlobal = 0  // count of items in preceding tiers
+        for (const tier of TIERS) {
+          const inTier = list.items
+            .filter(i => i.tier === tier)
+            .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+          if (inTier.length === 0) continue
+          const isLegacyVrac = !rts.includes(tier)
+          // Build local rank groups: items at the same stored position stay
+          // tied; items at distinct stored positions get distinct local ranks.
+          const groups: Array<{ items: typeof inTier }> = []
+          if (isLegacyVrac) {
+            // Legacy vrac tier → every item is tied at local rank 1.
+            groups.push({ items: inTier })
+          } else {
+            let prevStored: number | null = null
+            for (const i of inTier) {
+              const stored = i.position ?? null
+              if (stored !== null && stored === prevStored && groups.length > 0) {
+                groups[groups.length - 1].items.push(i)
+              } else {
+                groups.push({ items: [i] })
+              }
+              prevStored = stored
+            }
+          }
+          let posInTier = 1
+          groups.forEach((g, gIdx) => {
+            const localRank = gIdx + 1
+            const occupied: number[] = []
+            for (let i = 0; i < g.items.length; i++) occupied.push(runningGlobal + posInTier++)
+            const globalFracRank = occupied.reduce((s, p) => s + p, 0) / occupied.length
+            for (const it of g.items) {
+              enriched.push({ entryId: it.entryId, tier, localRank, globalFracRank })
+            }
+          })
+          runningGlobal += inTier.length
+        }
+
         for (const item of list.items) {
           if (!item.tier || TIER_SCORE[item.tier] === undefined) continue
           if (!tierData[item.entryId]) tierData[item.entryId] = { totalScore: 0, count: 0 }
@@ -137,15 +192,21 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
           tierData[item.entryId].count += 1
           if (!tierDistData[item.entryId]) tierDistData[item.entryId] = {}
           tierDistData[item.entryId][item.tier] = (tierDistData[item.entryId][item.tier] ?? 0) + 1
-          if (item.position !== null && item.position >= 1 && rts.includes(item.tier)) {
-            if (!rankData[item.entryId]) rankData[item.entryId] = { sumLog: 0, count: 0 }
-            rankData[item.entryId].sumLog += Math.log(item.position)
-            rankData[item.entryId].count += 1
-          }
         }
+        for (const e of enriched) {
+          // Every tier that has items contributes to avgRank in the new
+          // model; sumLog uses the fractional global rank so ties don't
+          // all collapse onto the same integer.
+          if (!rankData[e.entryId]) rankData[e.entryId] = { sumLog: 0, count: 0 }
+          rankData[e.entryId].sumLog += Math.log(e.globalFracRank)
+          rankData[e.entryId].count += 1
+        }
+        // Favorite = the item(s) sharing rank #1 in the top-most tier that has
+        // items. Previously only one favorite per list was counted; we keep
+        // that convention and attribute the vote to the first entry of the
+        // top rank group when there are ties.
         for (const tier of TIERS) {
-          if (!rts.includes(tier)) continue
-          const top = list.items.find(i => i.tier === tier && i.position === 1)
+          const top = enriched.find(e => e.tier === tier && e.localRank === 1)
           if (top) { favoriteData[top.entryId] = (favoriteData[top.entryId] ?? 0) + 1; break }
         }
       }

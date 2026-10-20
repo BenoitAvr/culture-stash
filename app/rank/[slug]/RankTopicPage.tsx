@@ -79,40 +79,104 @@ export type PersonalRankData = {
   isLoggedIn: boolean
 }
 
+// Describes where in a tier a quick-add drop lands: either join an existing
+// rank group (tie) or create a new rank at that slot.
+export type QuickAddSlot =
+  | { kind: 'join'; rank: number }
+  | { kind: 'insert'; beforeRank: number | null }
+
 function QuickAddPanel({
   entry,
   myTierList,
   onAdd,
-  onToggleRanking,
   onRemove,
   onClose,
 }: {
   entry: Entry
   myTierList: UserEntryListData | null
-  onAdd: (tier: string, insertBeforeId?: string) => Promise<void>
-  onToggleRanking: (tier: string) => Promise<void>
+  onAdd: (tier: string, slot: QuickAddSlot) => Promise<void>
   onRemove: () => Promise<void>
   onClose: () => void
 }) {
   const { lang, slug } = useParams() as { lang: string; slug: string }
-  const rankedTiers = (myTierList?.rankedTiers ?? '').split(',').filter(Boolean)
   const currentTierOfEntry = myTierList?.items.find(i => i.entryId === entry.id)?.tier ?? null
 
   const [selectedTier, setSelectedTier] = useState<string | null>(currentTierOfEntry)
-  const [insertBefore, setInsertBefore] = useState<string | 'end'>('end')
+  const [selectedSlot, setSelectedSlot] = useState<QuickAddSlot | null>(null)
   const [isPending, setIsPending] = useState(false)
 
-  const isRanked = selectedTier ? rankedTiers.includes(selectedTier) : false
-  const currentTierItems: ListItemData[] = selectedTier
-    ? (myTierList?.items ?? [])
-        .filter(i => i.tier === selectedTier && i.entryId !== entry.id)
-        .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
-    : []
+  // Build rank groups for the selected tier (excluding the entry being
+  // added/moved) so the picker can offer "same rank as X" or "new rank
+  // between #N and #N+1".
+  const rankedTiers = (myTierList?.rankedTiers ?? '').split(',').filter(Boolean)
+  const groups: Array<{ rank: number; items: ListItemData[] }> = (() => {
+    if (!selectedTier) return []
+    const items = (myTierList?.items ?? [])
+      .filter(i => i.tier === selectedTier && i.entryId !== entry.id)
+      .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+    const isLegacyVrac = !rankedTiers.includes(selectedTier)
+    const gs: Array<{ rank: number; items: ListItemData[] }> = []
+    if (isLegacyVrac) {
+      if (items.length > 0) gs.push({ rank: 1, items })
+    } else {
+      let prevStored: number | null = null
+      for (const it of items) {
+        const stored = it.position ?? null
+        if (stored !== null && stored === prevStored && gs.length > 0) {
+          gs[gs.length - 1].items.push(it)
+        } else {
+          gs.push({ rank: gs.length + 1, items: [it] })
+        }
+        prevStored = stored
+      }
+    }
+    return gs
+  })()
+
+  // Default slot when the user selects a tier: append a new rank at the end.
+  function pickDefaultSlot(tier: string): QuickAddSlot {
+    const prevItems = (myTierList?.items ?? [])
+      .filter(i => i.tier === tier && i.entryId !== entry.id)
+      .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+    if (prevItems.length === 0) return { kind: 'insert', beforeRank: null }
+    return { kind: 'insert', beforeRank: null }
+  }
 
   async function handleConfirm() {
     if (!selectedTier) return
+    const slot = selectedSlot ?? pickDefaultSlot(selectedTier)
     setIsPending(true)
-    await onAdd(selectedTier, isRanked && insertBefore !== 'end' ? insertBefore : undefined)
+    await onAdd(selectedTier, slot)
+  }
+
+  function slotLabel(slot: QuickAddSlot): string {
+    if (slot.kind === 'join') {
+      const g = groups.find(x => x.rank === slot.rank)
+      const titles = g?.items.slice(0, 2).map(x => pickTitle(x.entry, lang)).join(', ')
+      return `= Même rang #${slot.rank} que ${titles}${(g?.items.length ?? 0) > 2 ? '…' : ''}`
+    }
+    if (slot.beforeRank === null) {
+      const nextR = (groups[groups.length - 1]?.rank ?? 0) + 1
+      return groups.length === 0 ? 'Premier rang (#1)' : `Nouveau rang en dernier (#${nextR})`
+    }
+    if (slot.beforeRank === 1) return 'Nouveau rang en tête (#1)'
+    return `Nouveau rang avant #${slot.beforeRank}`
+  }
+
+  const slotOptions: QuickAddSlot[] = (() => {
+    if (!selectedTier) return []
+    if (groups.length === 0) return [{ kind: 'insert', beforeRank: null }]
+    const options: QuickAddSlot[] = [{ kind: 'insert', beforeRank: groups[0].rank }]
+    for (let i = 0; i < groups.length; i++) {
+      options.push({ kind: 'join', rank: groups[i].rank })
+      const nextRank = groups[i + 1]?.rank ?? null
+      options.push({ kind: 'insert', beforeRank: nextRank })
+    }
+    return options
+  })()
+
+  function slotKey(slot: QuickAddSlot): string {
+    return slot.kind === 'join' ? `j-${slot.rank}` : `i-${slot.beforeRank ?? 'end'}`
   }
 
   return (
@@ -134,7 +198,7 @@ function QuickAddPanel({
           return (
             <button
               key={tier}
-              onClick={() => { setSelectedTier(tier); setInsertBefore('end') }}
+              onClick={() => { setSelectedTier(tier); setSelectedSlot(null) }}
               style={{
                 padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
                 fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 11,
@@ -151,49 +215,23 @@ function QuickAddPanel({
         })}
       </div>
 
-      {/* Mode toggle for the selected tier (only on existing lists) */}
-      {selectedTier && myTierList && (
-        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 11, color: 'var(--fg-6)' }}>
-            Mode pour {TIER_LABEL[selectedTier]} :
-          </span>
-          <div role="group" aria-label="Mode du tier" style={{ display: 'flex', borderRadius: 7, border: `1px solid ${isRanked ? 'var(--accent-muted)' : 'var(--border)'}`, overflow: 'hidden', flexShrink: 0, background: 'var(--bg-subtle)' }}>
-            <button
-              onClick={() => isRanked && onToggleRanking(selectedTier)}
-              title="Films groupés sans ordre dans cette mention"
-              style={{ padding: '4px 9px', border: 'none', background: !isRanked ? 'var(--bg-card)' : 'transparent', color: !isRanked ? 'var(--fg-3)' : 'var(--fg-6)', fontSize: 10.5, fontWeight: !isRanked ? 700 : 500, cursor: !isRanked ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}
-            >
-              <span aria-hidden style={{ fontSize: 11, opacity: 0.85 }}>▦</span>
-              Vrac
-            </button>
-            <button
-              onClick={() => !isRanked && onToggleRanking(selectedTier)}
-              title="Classer les films par rang (1, 2, 3…) dans cette mention"
-              style={{ padding: '4px 9px', border: 'none', borderLeft: '1px solid var(--border)', background: isRanked ? 'var(--accent-fg)' : 'transparent', color: isRanked ? 'var(--btn-text)' : 'var(--fg-6)', fontSize: 10.5, fontWeight: isRanked ? 800 : 500, cursor: isRanked ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}
-            >
-              <span aria-hidden style={{ fontFamily: "'Fraunces', serif", fontWeight: 800 }}>1·2·3</span>
-              <span style={{ fontWeight: 600 }}>Classé</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Position picker for ranked tiers */}
-      {isRanked && selectedTier && (
+      {/* Rank-slot picker */}
+      {selectedTier && (
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div style={{ fontSize: 11, color: 'var(--fg-6)', marginBottom: 4 }}>
-            Position dans {TIER_LABEL[selectedTier]} :
+            Rang dans {TIER_LABEL[selectedTier]} :
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: insertBefore === 'end' ? 'var(--fg-2)' : 'var(--fg-6)', padding: '3px 0' }}>
-            <input type="radio" name="pos" checked={insertBefore === 'end'} onChange={() => setInsertBefore('end')} style={{ accentColor: TIER_COLOR[selectedTier] }} />
-            En dernier ({currentTierItems.length + 1}e)
-          </label>
-          {currentTierItems.map((item, idx) => (
-            <label key={item.entryId} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: insertBefore === item.entryId ? 'var(--fg-2)' : 'var(--fg-6)', padding: '3px 0' }}>
-              <input type="radio" name="pos" checked={insertBefore === item.entryId} onChange={() => setInsertBefore(item.entryId)} style={{ accentColor: TIER_COLOR[selectedTier] }} />
-              Avant « {pickTitle(item.entry, lang)} » (#{idx + 1})
-            </label>
-          ))}
+          {slotOptions.map(slot => {
+            const key = slotKey(slot)
+            const effectiveSelected = selectedSlot ? slotKey(selectedSlot) : slotKey(pickDefaultSlot(selectedTier))
+            const checked = key === effectiveSelected
+            return (
+              <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: checked ? 'var(--fg-2)' : 'var(--fg-6)', padding: '3px 0' }}>
+                <input type="radio" name="pos" checked={checked} onChange={() => setSelectedSlot(slot)} style={{ accentColor: TIER_COLOR[selectedTier] }} />
+                {slotLabel(slot)}
+              </label>
+            )
+          })}
         </div>
       )}
 
@@ -242,13 +280,73 @@ function majorityTier(distribution: Record<string, number>): string | null {
 const TIER_VALUE: Record<string, number> = { EX: 7, TB: 6, BO: 5, AB: 4, PA: 3, IN: 2, MA: 1 }
 const TIER_BY_VALUE: Record<number, string> = { 7: 'EX', 6: 'TB', 5: 'BO', 4: 'AB', 3: 'PA', 2: 'IN', 1: 'MA' }
 
-// User's "favorite" entry: the #1 of the highest ranked tier they have voted on.
-// Mirrors the favoriteCount aggregation in lib/communityRankData.ts.
-function findUserFavorite(items: ListItemData[], rankedTiers: string[]): string | null {
+type UserRankContrib = {
+  entryId: string
+  tier: string
+  localRank: number
+  // Global rank (dense) across all tiers — tiers are stacked top-to-bottom,
+  // so group counts carry over: EX #1, #2, then TB's first group becomes #3.
+  globalRank: number
+  // Average of the positions the tie group occupies within its tier (1-based).
+  localFracRank: number
+  // Same, but across the whole list (adds the tier offset).
+  globalFracRank: number
+}
+
+// Normalize a user's list into rank-group contributions, mirroring the
+// aggregation in lib/communityRankData.ts. Keeps optimistic client updates
+// in sync with the server's computed avgRank / favoriteCount.
+function enrichUserList(items: ListItemData[], rankedTiers: string[]): UserRankContrib[] {
+  const out: UserRankContrib[] = []
+  let runningGlobalItems = 0
+  let runningGlobalGroups = 0
   for (const tier of TIERS) {
-    if (!rankedTiers.includes(tier)) continue
-    const top = items.find(i => i.tier === tier && i.position === 1)
-    if (top) return top.entryId
+    const inTier = items
+      .filter(i => i.tier === tier)
+      .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+    if (inTier.length === 0) continue
+    const isLegacyVrac = !rankedTiers.includes(tier)
+    const groups: ListItemData[][] = []
+    if (isLegacyVrac) {
+      groups.push(inTier)
+    } else {
+      let prevStored: number | null = null
+      for (const i of inTier) {
+        const stored = i.position ?? null
+        if (stored !== null && stored === prevStored && groups.length > 0) {
+          groups[groups.length - 1].push(i)
+        } else {
+          groups.push([i])
+        }
+        prevStored = stored
+      }
+    }
+    let posInTier = 1
+    groups.forEach((g, gIdx) => {
+      const localRank = gIdx + 1
+      const globalRank = runningGlobalGroups + gIdx + 1
+      const localOccupied: number[] = []
+      const globalOccupied: number[] = []
+      for (let i = 0; i < g.length; i++) {
+        localOccupied.push(posInTier)
+        globalOccupied.push(runningGlobalItems + posInTier)
+        posInTier += 1
+      }
+      const localFracRank = localOccupied.reduce((s, p) => s + p, 0) / localOccupied.length
+      const globalFracRank = globalOccupied.reduce((s, p) => s + p, 0) / globalOccupied.length
+      for (const it of g) out.push({ entryId: it.entryId, tier, localRank, globalRank, localFracRank, globalFracRank })
+    })
+    runningGlobalItems += inTier.length
+    runningGlobalGroups += groups.length
+  }
+  return out
+}
+
+// First entry of the top rank group in the top-most non-empty tier.
+function findUserFavorite(contribs: UserRankContrib[]): string | null {
+  for (const tier of TIERS) {
+    const first = contribs.find(c => c.tier === tier && c.localRank === 1)
+    if (first) return first.entryId
   }
   return null
 }
@@ -263,30 +361,37 @@ function applyMyListChange(
   prevRanked: string[],
   newRanked: string[],
 ): Entry[] {
-  const prevMap = new Map<string, ListItemData>()
-  for (const i of prevItems) prevMap.set(i.entryId, i)
-  const newMap = new Map<string, ListItemData>()
-  for (const i of newItems) newMap.set(i.entryId, i)
+  const prevContribs = enrichUserList(prevItems, prevRanked)
+  const newContribs = enrichUserList(newItems, newRanked)
+  const prevBy = new Map(prevContribs.map(c => [c.entryId, c]))
+  const newBy = new Map(newContribs.map(c => [c.entryId, c]))
 
-  const prevFav = findUserFavorite(prevItems, prevRanked)
-  const newFav = findUserFavorite(newItems, newRanked)
+  const prevTiers = new Map<string, string | null>()
+  for (const i of prevItems) prevTiers.set(i.entryId, i.tier ?? null)
+  const newTiers = new Map<string, string | null>()
+  for (const i of newItems) newTiers.set(i.entryId, i.tier ?? null)
+
+  const prevFav = findUserFavorite(prevContribs)
+  const newFav = findUserFavorite(newContribs)
 
   const affected = new Set<string>()
-  for (const id of prevMap.keys()) affected.add(id)
-  for (const id of newMap.keys()) affected.add(id)
+  for (const id of prevBy.keys()) affected.add(id)
+  for (const id of newBy.keys()) affected.add(id)
+  for (const id of prevTiers.keys()) affected.add(id)
+  for (const id of newTiers.keys()) affected.add(id)
   if (prevFav) affected.add(prevFav)
   if (newFav) affected.add(newFav)
 
   return entries.map(e => {
     if (!affected.has(e.id)) return e
 
-    const prev = prevMap.get(e.id) ?? null
-    const next = newMap.get(e.id) ?? null
+    const prevT = prevTiers.get(e.id) ?? null
+    const nextT = newTiers.get(e.id) ?? null
 
     // tierDistribution + tierCount + avgTierScore
     const newDist: Record<string, number> = { ...e.tierDistribution }
-    if (prev?.tier) newDist[prev.tier] = Math.max(0, (newDist[prev.tier] ?? 0) - 1)
-    if (next?.tier) newDist[next.tier] = (newDist[next.tier] ?? 0) + 1
+    if (prevT) newDist[prevT] = Math.max(0, (newDist[prevT] ?? 0) - 1)
+    if (nextT) newDist[nextT] = (newDist[nextT] ?? 0) + 1
 
     let totalScore = 0
     let totalCount = 0
@@ -297,19 +402,15 @@ function applyMyListChange(
       totalCount += c
     }
 
-    // avgRank + rankCount via geometric mean (sumLog = log(avgRank) × rankCount)
+    // avgRank + rankCount via geometric mean (sumLog = log(avgRank) × rankCount).
+    // Both prev and new contributions use fractional global rank from the
+    // tie-aware aggregation above.
     let sumLog = e.avgRank !== null && e.rankCount > 0 ? Math.log(e.avgRank) * e.rankCount : 0
     let newRankCount = e.rankCount
-    const prevWasRanked = !!(prev?.tier && prev.position && prev.position >= 1 && prevRanked.includes(prev.tier))
-    const nextIsRanked = !!(next?.tier && next.position && next.position >= 1 && newRanked.includes(next.tier))
-    if (prevWasRanked && prev!.position) {
-      sumLog -= Math.log(prev!.position!)
-      newRankCount -= 1
-    }
-    if (nextIsRanked && next!.position) {
-      sumLog += Math.log(next!.position!)
-      newRankCount += 1
-    }
+    const prevC = prevBy.get(e.id)
+    const nextC = newBy.get(e.id)
+    if (prevC) { sumLog -= Math.log(prevC.globalFracRank); newRankCount -= 1 }
+    if (nextC) { sumLog += Math.log(nextC.globalFracRank); newRankCount += 1 }
     const newAvgRank = newRankCount > 0 ? Math.exp(sumLog / newRankCount) : null
 
     // favoriteCount delta
@@ -775,11 +876,15 @@ function TableHeader() {
   )
 }
 
-function EntryRow({ entry, rank, myTier, myPosition, isOpen, onAdd }: {
+function EntryRow({ entry, rank, myTier, myRank, myRankFractional, isOpen, onAdd }: {
   entry: Entry
   rank: number
   myTier: string | null
-  myPosition: number | null
+  // User's chosen integer rank within their tier (ties share the same number).
+  myRank: number | null
+  // "Official" fractional rank — shown as a smaller hint when the user is
+  // tied with others at the same integer rank.
+  myRankFractional: number | null
   isOpen: boolean
   onAdd: () => void
 }) {
@@ -983,12 +1088,21 @@ function EntryRow({ entry, rank, myTier, myPosition, isOpen, onAdd }: {
                       )}
                     </span>
                   )}
-                  {myPosition != null && (
+                  {myRank != null && (
                     <span
-                      title="Ma position dans mon classement personnel"
+                      title={
+                        myRankFractional != null && Math.abs(myRankFractional - myRank) > 0.001
+                          ? `Rang ${myRank} (officiellement ${myRankFractional.toFixed(1)}, ex-æquo)`
+                          : 'Ma position dans mon classement personnel'
+                      }
                       style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, fontSize: 11, color: 'var(--fg-6)', whiteSpace: 'nowrap' }}
                     >
-                      <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>{myPosition}<sup style={{ fontSize: 8, fontWeight: 400 }}>e</sup></span>
+                      <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>{myRank}<sup style={{ fontSize: 8, fontWeight: 400 }}>e</sup></span>
+                      {myRankFractional != null && Math.abs(myRankFractional - myRank) > 0.001 && (
+                        <span style={{ fontSize: 9, opacity: 0.75, fontVariantNumeric: 'tabular-nums' }}>
+                          ⌀{myRankFractional.toFixed(1)}
+                        </span>
+                      )}
                       <span>chez moi</span>
                     </span>
                   )}
@@ -1057,42 +1171,93 @@ function UserAwareEntryList({
     return saveUserEntryLists(topicSlug, [], newItems, rankedTiers, { revalidate: false })
   }
 
-  async function handleQuickAdd(entryId: string, tier: string, insertBeforeId?: string) {
-    const currentItems = myTierList?.items ?? []
-    const rankedTiers = (myTierList?.rankedTiers ?? '').split(',').filter(Boolean)
-    const withoutEntry = currentItems.filter(i => i.entryId !== entryId)
-    const isRanked = rankedTiers.includes(tier)
-
-    let newItems: Array<{ entryId: string; tier?: string; position?: number }>
-
-    if (isRanked) {
-      const tierItems = withoutEntry
-        .filter(i => i.tier === tier)
+  // Normalize the current list into local-within-tier positions (preserving
+  // existing ties), migrating legacy "vrac" tiers to a single tie group at
+  // rank 1. Mirrors the hydration done in UserEntryListSection.
+  function normalizeToLocal(
+    items: ListItemData[],
+    rankedTiers: string[],
+  ): Array<{ entryId: string; tier: string; position: number; note?: string }> {
+    const out: Array<{ entryId: string; tier: string; position: number; note?: string }> = []
+    for (const t of TIERS) {
+      const inT = items
+        .filter(i => i.tier === t)
         .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
-      const insertIdx = insertBeforeId ? tierItems.findIndex(i => i.entryId === insertBeforeId) : -1
-      const actualIdx = insertIdx === -1 ? tierItems.length : insertIdx
-      const newTierItems = [
-        ...tierItems.slice(0, actualIdx),
-        { entryId, tier, position: 0 },
-        ...tierItems.slice(actualIdx),
-      ].map((item, i) => ({ entryId: item.entryId, tier: item.tier ?? undefined, position: i + 1 }))
-      newItems = [
-        ...withoutEntry.filter(i => i.tier !== tier).map(i => ({ entryId: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined })),
-        ...newTierItems,
-      ]
+      if (inT.length === 0) continue
+      const isLegacyVrac = !rankedTiers.includes(t)
+      if (isLegacyVrac) {
+        for (const i of inT) out.push({ entryId: i.entryId, tier: t, position: 1, note: i.note ?? undefined })
+      } else {
+        let localRank = 0
+        let prevStored: number | null = null
+        for (const i of inT) {
+          const stored = i.position ?? null
+          if (stored === null) {
+            if (localRank === 0) localRank = 1
+          } else if (stored !== prevStored) {
+            localRank += 1
+            prevStored = stored
+          }
+          out.push({ entryId: i.entryId, tier: t, position: localRank, note: i.note ?? undefined })
+        }
+      }
+    }
+    return out
+  }
+
+  // Compact a tier's ranks to a contiguous 1-based sequence, preserving ties.
+  function compactTier(
+    items: Array<{ entryId: string; tier: string; position: number; note?: string }>,
+    tier: string,
+  ) {
+    const inT = items.filter(i => i.tier === tier).sort((a, b) => a.position - b.position)
+    const map = new Map<number, number>()
+    let next = 1
+    for (const i of inT) {
+      if (!map.has(i.position)) map.set(i.position, next++)
+    }
+    return items.map(i => i.tier === tier ? { ...i, position: map.get(i.position) ?? i.position } : i)
+  }
+
+  async function handleQuickAdd(entryId: string, tier: string, slot: QuickAddSlot) {
+    const prevItems = myTierList?.items ?? []
+    const prevRanked = (myTierList?.rankedTiers ?? '').split(',').filter(Boolean)
+    const existing = prevItems.find(i => i.entryId === entryId)
+    const oldTier = existing?.tier ?? null
+
+    // Normalize current list to local positions, excluding the moved entry.
+    let working = normalizeToLocal(
+      prevItems.filter(i => i.entryId !== entryId),
+      prevRanked,
+    )
+
+    // Apply the slot op in the target tier.
+    let newPosition: number
+    if (slot.kind === 'join') {
+      newPosition = slot.rank
+    } else if (slot.beforeRank === null) {
+      const maxR = working.filter(i => i.tier === tier).reduce((m, i) => Math.max(m, i.position), 0)
+      newPosition = maxR + 1
     } else {
-      newItems = [
-        ...withoutEntry.map(i => ({ entryId: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined })),
-        { entryId, tier },
-      ]
+      newPosition = slot.beforeRank
+      working = working.map(i => (i.tier === tier && i.position >= slot.beforeRank!)
+        ? { ...i, position: i.position + 1 }
+        : i)
     }
 
-    const updated = await persist(newItems, rankedTiers)
+    working = [...working, { entryId, tier, position: newPosition, note: existing?.note ?? undefined }]
+    working = compactTier(working, tier)
+    if (oldTier && oldTier !== tier) working = compactTier(working, oldTier)
+
+    const activeTiers = TIERS.filter(t => working.some(i => i.tier === t))
+    const payload = working.map(i => ({ entryId: i.entryId, tier: i.tier, position: i.position, note: i.note }))
+
+    const updated = await persist(payload, activeTiers)
     const newMy = updated.find(l => l.type === 'TIER' || l.type === 'BOTH') ?? null
     onApplyMyChange(
-      myTierList?.items ?? [],
+      prevItems,
       newMy?.items ?? [],
-      (myTierList?.rankedTiers ?? '').split(',').filter(Boolean),
+      prevRanked,
       (newMy?.rankedTiers ?? '').split(',').filter(Boolean),
     )
     setLists(prev => [...prev.filter(l => l.userId !== ownerId), ...updated])
@@ -1101,83 +1266,59 @@ function UserAwareEntryList({
 
   async function handleRemove(entryId: string) {
     if (!myTierList) return
-    const rankedTiers = (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
+    const prevRanked = (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
     const removed = myTierList.items.find(i => i.entryId === entryId)
     if (!removed) return
     const removedTier = removed.tier
-    const remaining = myTierList.items.filter(i => i.entryId !== entryId)
 
-    let newItems: Array<{ entryId: string; tier?: string; position?: number }>
-    if (removedTier && rankedTiers.includes(removedTier)) {
-      // Recompact positions in the affected ranked tier (1, 2, 3, …)
-      const tierItems = remaining
-        .filter(i => i.tier === removedTier)
-        .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
-        .map((item, i) => ({ entryId: item.entryId, tier: item.tier ?? undefined, position: i + 1 }))
-      const others = remaining
-        .filter(i => i.tier !== removedTier)
-        .map(i => ({ entryId: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined }))
-      newItems = [...others, ...tierItems]
-    } else {
-      newItems = remaining.map(i => ({ entryId: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined }))
-    }
+    let working = normalizeToLocal(
+      myTierList.items.filter(i => i.entryId !== entryId),
+      prevRanked,
+    )
+    if (removedTier) working = compactTier(working, removedTier)
 
-    const updated = await persist(newItems, rankedTiers)
+    const activeTiers = TIERS.filter(t => working.some(i => i.tier === t))
+    const payload = working.map(i => ({ entryId: i.entryId, tier: i.tier, position: i.position, note: i.note }))
+
+    const updated = await persist(payload, activeTiers)
     const newMy = updated.find(l => l.type === 'TIER' || l.type === 'BOTH') ?? null
     onApplyMyChange(
-      myTierList?.items ?? [],
+      myTierList.items,
       newMy?.items ?? [],
-      (myTierList?.rankedTiers ?? '').split(',').filter(Boolean),
+      prevRanked,
       (newMy?.rankedTiers ?? '').split(',').filter(Boolean),
     )
     setLists(prev => [...prev.filter(l => l.userId !== ownerId), ...updated])
     setQuickAddId(null)
   }
 
-  async function handleToggleRanking(tier: string) {
-    if (!myTierList) return
-    const currentRankedTiers = (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
-    const willBeRanked = !currentRankedTiers.includes(tier)
-    const newRankedTiers = willBeRanked
-      ? [...currentRankedTiers, tier].sort((a, b) => TIERS.indexOf(a) - TIERS.indexOf(b))
-      : currentRankedTiers.filter(t => t !== tier)
-
-    let pos = 1
-    const newItems = myTierList.items.map(i => {
-      if (i.tier !== tier) {
-        return { entryId: i.entryId, tier: i.tier ?? undefined, position: i.position ?? undefined, note: i.note ?? undefined }
-      }
-      return {
-        entryId: i.entryId,
-        tier: i.tier ?? undefined,
-        position: willBeRanked ? pos++ : undefined,
-        note: i.note ?? undefined,
-      }
-    })
-
-    const updated = await persist(newItems, newRankedTiers)
-    const newMy = updated.find(l => l.type === 'TIER' || l.type === 'BOTH') ?? null
-    onApplyMyChange(
-      myTierList.items,
-      newMy?.items ?? [],
-      (myTierList.rankedTiers ?? '').split(',').filter(Boolean),
-      (newMy?.rankedTiers ?? '').split(',').filter(Boolean),
-    )
-    setLists(prev => [...prev.filter(l => l.userId !== ownerId), ...updated])
-  }
+  // Pre-compute per-entry rank info using the tie-aware aggregation so the
+  // table rows can show both the integer rank (user's pick) and the
+  // fractional "official" rank for tied groups.
+  const myRankByEntry = (() => {
+    const map = new Map<string, { globalRank: number; globalFracRank: number }>()
+    if (!myTierList) return map
+    const rankedTiers = (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
+    for (const c of enrichUserList(myTierList.items, rankedTiers)) {
+      map.set(c.entryId, { globalRank: c.globalRank, globalFracRank: c.globalFracRank })
+    }
+    return map
+  })()
 
   return (
     <div className="rank-table">
       <TableHeader />
       {entries.map((entry, i) => {
         const myItem = myTierList?.items.find(item => item.entryId === entry.id) ?? null
+        const myR = myRankByEntry.get(entry.id)
         return (
         <React.Fragment key={entry.id}>
           <EntryRow
             entry={entry}
             rank={i + 1}
             myTier={myItem?.tier ?? null}
-            myPosition={myItem?.position ?? null}
+            myRank={myR?.globalRank ?? null}
+            myRankFractional={myR?.globalFracRank ?? null}
             isOpen={quickAddId === entry.id}
             onAdd={() => setQuickAddId(quickAddId === entry.id ? null : entry.id)}
           />
@@ -1185,8 +1326,7 @@ function UserAwareEntryList({
             <QuickAddPanel
               entry={entry}
               myTierList={myTierList}
-              onAdd={(tier, insertBeforeId) => handleQuickAdd(entry.id, tier, insertBeforeId)}
-              onToggleRanking={handleToggleRanking}
+              onAdd={(tier, slot) => handleQuickAdd(entry.id, tier, slot)}
               onRemove={() => handleRemove(entry.id)}
               onClose={() => setQuickAddId(null)}
             />
@@ -1327,7 +1467,8 @@ export function RankCommunityBody({
                     entry={entry}
                     rank={i + 1}
                     myTier={null}
-                    myPosition={null}
+                    myRank={null}
+                    myRankFractional={null}
                     isOpen={false}
                     onAdd={() => {}}
                   />
