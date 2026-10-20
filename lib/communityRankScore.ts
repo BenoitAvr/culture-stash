@@ -1,15 +1,14 @@
 import type { RankEntry } from '@/lib/communityRankData'
 
-// Prod-baseline shrinkage (K=2) kept — this knob isn't where popularity
-// weight should be dialled.
+// Tier shrinkage bumped from 2 → 3: a one-vote film regresses a touch
+// more toward the catalogue mean, so solitary ratings carry less weight.
 const RANK_SHRINKAGE_K = 2
-const TIER_SHRINKAGE_K = 2
+const TIER_SHRINKAGE_K = 3
 const TIER_PRIOR_MEAN = 4 // « Assez bien », tier neutre (milieu de l'échelle EX=7…MA=1)
-// Rank bonus curve kept close to the historical 18/8 (now 15/7) — a quality
-// indicator, not a popularity one, so a well-ranked film like 3 Billboards
-// still earns the full podium boost.
-const RANK_BONUS_MAX = 15
-const RANK_BONUS_SLOPE = 7
+// Rank bonus nudged back toward the historical 18/8 (now 17/8) so a strong
+// rank value matters a little more in the podium.
+const RANK_BONUS_MAX = 17
+const RANK_BONUS_SLOPE = 8
 
 // Linear map avgTier (1..7) → virtual rank position used for Vrac-only films.
 // Anchored so EX (7) maps to virtualRank 10 (top tier, not #1 globally) — a
