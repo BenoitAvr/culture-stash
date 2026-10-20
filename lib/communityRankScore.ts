@@ -1,15 +1,19 @@
 import type { RankEntry } from '@/lib/communityRankData'
 
+// Lower RANK_SHRINKAGE_K (2 → 1) flattens the vote-count curve on the
+// rank bonus: a 2-vote film now gets 59% of the raw bonus instead of
+// 50%, so popular films no longer accumulate as much of a count-edge.
+// This is the right knob for "less weight on popularity" — the rank
+// bonus magnitude itself stays untouched.
+const RANK_SHRINKAGE_K = 1
 // Tier shrinkage K=3 keeps 1-vote films pulled toward the mean so they
 // don't crown the chart on a single opinion.
-const RANK_SHRINKAGE_K = 2
 const TIER_SHRINKAGE_K = 3
 const TIER_PRIOR_MEAN = 4 // « Assez bien », tier neutre (milieu de l'échelle EX=7…MA=1)
-// Rank bonus eased slightly (22 → 20, slope 10 → 9): still strong enough
-// to let a better avgRank tilt tied cases, but trims the popularity edge
-// a well-voted ranked film accumulates.
-const RANK_BONUS_MAX = 20
-const RANK_BONUS_SLOPE = 9
+// Rank bonus restored to 22/10 — the previous nudge down to 20/9 was
+// the wrong lever (it reduced rank weight, not popularity weight).
+const RANK_BONUS_MAX = 22
+const RANK_BONUS_SLOPE = 10
 
 // Linear map avgTier (1..7) → virtual rank position used for Vrac-only films.
 // Anchored so EX (7) maps to virtualRank 10 (top tier, not #1 globally) — a
