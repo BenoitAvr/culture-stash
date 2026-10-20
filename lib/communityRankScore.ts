@@ -8,8 +8,10 @@ import type { RankEntry } from '@/lib/communityRankData'
 // higher K means low-vote films regress harder.
 const SCORE_SHRINKAGE_K = 0.7
 const PRIOR_SCORE = 16 // ≈ "Assez bien" (4) tier contribution without rank bonus
-const RANK_BONUS_MAX = 22
-const RANK_BONUS_SLOPE = 10
+// Rank bonus nudged up slightly (22 → 24, slope 10 → 11): a markedly
+// better avgRank value weighs a touch more on the podium.
+const RANK_BONUS_MAX = 24
+const RANK_BONUS_SLOPE = 11
 
 // Linear map avgTier (1..7) → virtual rank position used for Vrac-only films.
 // Anchored so EX (7) maps to virtualRank 10 (top tier, not #1 globally) — a
@@ -39,6 +41,9 @@ export function combinedScore(e: RankEntry) {
   const rawScore = rawTier + rawRankBonus
 
   // Final shrinkage: Bayesian pull of the raw score toward PRIOR_SCORE.
+  // 1-vote films get a slightly heavier prior (K bumped from 0.7 to 1.0)
+  // so a solitary rating is dampened without flattening low-sample picks.
   const n = e.tierCount
-  return (rawScore * n + PRIOR_SCORE * SCORE_SHRINKAGE_K) / (n + SCORE_SHRINKAGE_K)
+  const k = n === 1 ? 1.0 : SCORE_SHRINKAGE_K
+  return (rawScore * n + PRIOR_SCORE * k) / (n + k)
 }
