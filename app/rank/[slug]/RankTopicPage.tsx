@@ -968,8 +968,8 @@ function EntryRow({ entry, rank, myTier, myRank, myRankFractional, isOpen, onAdd
         <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.25, display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{displayTitle}</span>
           {entry.kind === 'SAGA' && (
-            <span title="Saga / franchise entière" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', padding: '1px 6px', borderRadius: 3, background: 'var(--accent-faint)', color: 'var(--accent-fg)', border: '1px solid var(--accent-muted)', flexShrink: 0 }}>
-              Saga
+            <span title="Collection — série de films regroupés" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', padding: '1px 6px', borderRadius: 3, background: 'var(--accent-faint)', color: 'var(--accent-fg)', border: '1px solid var(--accent-muted)', flexShrink: 0 }}>
+              Collection
             </span>
           )}
         </div>

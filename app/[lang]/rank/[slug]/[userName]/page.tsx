@@ -269,6 +269,7 @@ async function UserListInner({
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: showInline ? 8 : 2, flex: 1, alignItems: 'stretch' }}>
                               {g.items.map(item => {
                                 const label = pickTitle(item.entry, lang)
+                                const isSaga = (item.entry as { kind?: string }).kind === 'SAGA'
                                 const posterInner = (
                                   <div style={{
                                     position: 'relative', width: cardW, flexShrink: 0,
@@ -278,6 +279,23 @@ async function UserListInner({
                                       ? <img src={item.entry.cover} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                                       : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: placeholderFs, color: 'var(--fg-7)' }}>{label.charAt(0).toUpperCase()}</div>
                                     }
+                                    {isSaga && !showInline && (
+                                      <span
+                                        aria-label="Collection"
+                                        style={{
+                                          position: 'absolute', bottom: 0, left: 0, right: 0,
+                                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                          padding: '2px 1px',
+                                          background: 'rgba(79, 70, 229, 0.92)',
+                                          color: '#fff',
+                                          fontSize: 6.5, fontWeight: 800, letterSpacing: 0,
+                                          textShadow: '0 1px 2px rgba(0,0,0,.5)',
+                                          lineHeight: 1,
+                                        }}
+                                      >
+                                        COLLECTION
+                                      </span>
+                                    )}
                                   </div>
                                 )
                                 const cardStyle: React.CSSProperties = {
@@ -287,10 +305,9 @@ async function UserListInner({
                                   overflow: 'hidden',
                                   userSelect: 'none',
                                 }
-                                const isSaga = (item.entry as { kind?: string }).kind === 'SAGA'
                                 const sagaChip = isSaga ? (
-                                  <span title="Saga / franchise entière" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', padding: '1px 5px', borderRadius: 3, background: 'var(--accent-faint)', color: 'var(--accent-fg)', border: '1px solid var(--accent-muted)', flexShrink: 0 }}>
-                                    Saga
+                                  <span title="Collection — série de films regroupés" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', padding: '1px 5px', borderRadius: 3, background: 'var(--accent-faint)', color: 'var(--accent-fg)', border: '1px solid var(--accent-muted)', flexShrink: 0 }}>
+                                    Collection
                                   </span>
                                 ) : null
                                 if (showInline) {
@@ -315,7 +332,6 @@ async function UserListInner({
                                   <div key={item.entryId} title={label} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', width: cardW }}>
                                     {posterInner}
                                     <div style={{ padding: '2px 3px 3px', fontSize: 8.5, color: 'var(--fg-4)', lineHeight: 1.15, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as React.CSSProperties}>
-                                      {isSaga && <span style={{ color: 'var(--accent-fg)', fontWeight: 700, marginRight: 3 }} title="Saga">▣</span>}
                                       {label}
                                     </div>
                                   </div>

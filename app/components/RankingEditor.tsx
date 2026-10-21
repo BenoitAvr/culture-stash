@@ -423,6 +423,10 @@ export function RankingEditor({
   // hide the year input and post kind=SAGA to the server action.
   const [addAsSaga, setAddAsSaga] = useState(false)
   const [decadeFilter, setDecadeFilter] = useState<number | null>(null)
+  // Catalog kind filter — distinct from `addAsSaga` (which only controls
+  // what gets created). Lets the user quickly browse just the SAGA
+  // entries or just the FILM entries.
+  const [kindFilter, setKindFilter] = useState<'all' | 'FILM' | 'SAGA'>('all')
   // Fresh tier lists get pre-filtered to the community's Top 100 mieux notés
   // so a first-timer sees the most valuable films to rank first, not a random
   // slice of the catalogue. Existing lists keep the full catalogue visible
@@ -439,7 +443,7 @@ export function RankingEditor({
   // Reset the cap whenever the filter set changes, so a leftover "+18" chain
   // from a previous view doesn't balloon the render into a new (potentially
   // huge) match set.
-  useEffect(() => { setUnclassifiedLimit(18) }, [search, decadeFilter, topFilter])
+  useEffect(() => { setUnclassifiedLimit(18) }, [search, decadeFilter, topFilter, kindFilter])
 
   const decadeCounts = (() => {
     const unclassifiedItems = items.filter(item => !tierItems.some(i => i.id === item.id))
@@ -455,6 +459,8 @@ export function RankingEditor({
   })()
   const hasYearData = decadeCounts.length > 0
   const hasRatings = items.some(item => (item.tierCount ?? 0) > 0)
+  const sagaCount = items.filter(item => item.kind === 'SAGA' && !tierItems.some(t => t.id === item.id)).length
+  const hasSagas = sagaCount > 0
 
   const topIds = (() => {
     if (topFilter === null) return null
@@ -1095,6 +1101,24 @@ export function RankingEditor({
                                             {item.prefix ?? item.label.charAt(0).toUpperCase()}
                                           </div>
                                         )}
+                                        {item.kind === 'SAGA' && !showInline && (
+                                          <span
+                                            aria-label="Collection"
+                                            style={{
+                                              position: 'absolute', bottom: 0, left: 0, right: 0,
+                                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                              padding: '2px 1px',
+                                              background: 'rgba(79, 70, 229, 0.92)',
+                                              color: '#fff',
+                                              fontSize: 6.5, fontWeight: 800, letterSpacing: 0,
+                                              textShadow: '0 1px 2px rgba(0,0,0,.5)',
+                                              lineHeight: 1,
+                                              pointerEvents: 'none',
+                                            }}
+                                          >
+                                            COLLECTION
+                                          </span>
+                                        )}
                                         <button
                                           onClick={ev => { ev.stopPropagation(); removeFromList(rankItem.id) }}
                                           style={{ position: 'absolute', top: 2, right: 2, width: effCloseSz, height: effCloseSz, borderRadius: effCloseSz / 2, background: 'rgba(0,0,0,.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: effCloseFs, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
@@ -1120,8 +1144,8 @@ export function RankingEditor({
                                     }
                                     const isSaga = item.kind === 'SAGA'
                                     const sagaChip = isSaga ? (
-                                      <span title="Saga / franchise entière" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', padding: '1px 5px', borderRadius: 3, background: 'var(--accent-faint)', color: 'var(--accent-fg)', border: '1px solid var(--accent-muted)', flexShrink: 0 }}>
-                                        Saga
+                                      <span title="Collection — série de films regroupés" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', padding: '1px 5px', borderRadius: 3, background: 'var(--accent-faint)', color: 'var(--accent-fg)', border: '1px solid var(--accent-muted)', flexShrink: 0 }}>
+                                        Collection
                                       </span>
                                     ) : null
                                     if (showInline) {
@@ -1152,7 +1176,6 @@ export function RankingEditor({
                                       <div key={rankItem.id} {...dragProps} style={{ ...unifiedCardStyle, display: 'flex', flexDirection: 'column', width: cardW }}>
                                         {posterInner}
                                         <div style={{ padding: '2px 3px 3px', fontSize: 8.5, color: 'var(--fg-4)', lineHeight: 1.15, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                          {isSaga && <span style={{ color: 'var(--accent-fg)', fontWeight: 700, marginRight: 3 }} title="Saga">▣</span>}
                                           {item.label}
                                         </div>
                                       </div>
@@ -1221,7 +1244,7 @@ export function RankingEditor({
                 <button
                   type="button"
                   onClick={() => setAddAsSaga(v => !v)}
-                  title={addAsSaga ? 'Franchise entière — l\'année est masquée' : 'Film individuel'}
+                  title={addAsSaga ? 'Collection / série de films — l\'année est masquée' : 'Film individuel'}
                   aria-pressed={addAsSaga}
                   className="rank-add-kind"
                   style={{
@@ -1237,7 +1260,7 @@ export function RankingEditor({
                     Type
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 700, marginTop: 1 }}>
-                    {addAsSaga ? '🎬 Saga' : '🎞 Film'}
+                    {addAsSaga ? '🎬 Collection' : '🎞 Film'}
                   </span>
                 </button>
                 {!addAsSaga && (
@@ -1251,9 +1274,9 @@ export function RankingEditor({
                     style={{ width: 90, padding: '10px 12px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--bg-input)', color: 'var(--fg)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }}
                   />
                 )}
-                <button type="submit" disabled={addPending || !search.trim()} title={addAsSaga ? 'Ajouter cette saga au site' : "Si le titre n'est pas dans la liste, ajoute-le au site"} className="rank-add-submit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1, padding: '6px 18px', borderRadius: 9, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontFamily: 'inherit', cursor: addPending || !search.trim() ? 'default' : 'pointer', opacity: addPending || !search.trim() ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                <button type="submit" disabled={addPending || !search.trim()} title={addAsSaga ? 'Ajouter cette collection au site' : "Si le titre n'est pas dans la liste, ajoute-le au site"} className="rank-add-submit" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.1, padding: '6px 18px', borderRadius: 9, border: 'none', background: 'var(--btn)', color: 'var(--btn-text)', fontFamily: 'inherit', cursor: addPending || !search.trim() ? 'default' : 'pointer', opacity: addPending || !search.trim() ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
                   <span style={{ fontSize: 9.5, fontWeight: 400, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '.05em' }}>Pas dans la liste&nbsp;?</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, marginTop: 1 }}>{addPending ? '…' : addAsSaga ? '+ Ajoute la saga' : '+ Ajoute-le'}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, marginTop: 1 }}>{addPending ? '…' : addAsSaga ? '+ Ajoute la collection' : '+ Ajoute-le'}</span>
                 </button>
               </form>
             )
@@ -1270,7 +1293,10 @@ export function RankingEditor({
           const matchesSearch = (item: RankableItem) => !search.trim() || normalizeTitle(item.label).includes(normalizeTitle(search))
           const matchesDecade = (item: RankableItem) => decadeFilter === null || (item.year !== null && item.year !== undefined && Math.floor(item.year / 10) * 10 === decadeFilter)
           const matchesTop = (item: RankableItem) => topIds === null || topIds.has(item.id)
-          const unclassifiedRaw = items.filter(item => !tierItems.some(i => i.id === item.id) && matchesSearch(item) && matchesDecade(item) && matchesTop(item))
+          const matchesKind = (item: RankableItem) =>
+            kindFilter === 'all' ||
+            (kindFilter === 'SAGA' ? item.kind === 'SAGA' : item.kind !== 'SAGA')
+          const unclassifiedRaw = items.filter(item => !tierItems.some(i => i.id === item.id) && matchesSearch(item) && matchesDecade(item) && matchesTop(item) && matchesKind(item))
           // Default ordering: best-ranked community picks first, so a new
           // user sees the most-valuable films to classify. Unrated films
           // (score === 0 and no votes) fall to the bottom in catalog order.
@@ -1293,19 +1319,51 @@ export function RankingEditor({
           // walk past the cap when they want to.
           const visibleUnclassified = unclassified.slice(0, unclassifiedLimit)
           const totalUnclassified = items.filter(item => !tierItems.some(i => i.id === item.id)).length
-          const filterActive = !!search.trim() || decadeFilter !== null || topFilter !== null
+          const filterActive = !!search.trim() || decadeFilter !== null || topFilter !== null || kindFilter !== 'all'
           const filterHints: string[] = []
           if (decadeFilter !== null) filterHints.push(`années ${decadeFilter}`)
           if (topFilter !== null) filterHints.push(topFilter.kind === 'popular' ? `top ${topFilter.count} populaires` : `top ${topFilter.count} mieux notés`)
+          if (kindFilter === 'SAGA') filterHints.push('collections uniquement')
+          else if (kindFilter === 'FILM') filterHints.push('films uniquement')
           const labelText = filterActive
             ? `${unclassified.length} résultat${unclassified.length !== 1 ? 's' : ''}${filterHints.length > 0 ? ` · ${filterHints.join(' · ')}` : ''}`
             : (totalUnclassified === 0
                 ? t.allClassified
                 : `${totalUnclassified} ${totalUnclassified > 1 ? 'films restent à classer' : 'film reste à classer'}`)
+          const kindChip = (value: 'all' | 'FILM' | 'SAGA', label: string) => {
+            const active = kindFilter === value
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setKindFilter(value)}
+                style={{
+                  padding: '3px 10px', borderRadius: 999,
+                  border: `1px solid ${active ? 'var(--accent-fg)' : 'var(--border)'}`,
+                  background: active ? 'var(--accent-faint)' : 'transparent',
+                  color: active ? 'var(--accent-fg)' : 'var(--fg-5)',
+                  fontWeight: active ? 700 : 500,
+                  fontSize: 11, fontFamily: 'inherit', cursor: 'pointer',
+                  whiteSpace: 'nowrap', lineHeight: 1.3,
+                }}
+              >
+                {label}
+              </button>
+            )
+          }
           return (
             <>
-              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--fg-6)', marginBottom: 5 }}>
-                {labelText}
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 5 }}>
+                <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--fg-6)', flex: 1, minWidth: 0 }}>
+                  {labelText}
+                </div>
+                {hasSagas && (
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    {kindChip('all', 'Tout')}
+                    {kindChip('FILM', 'Films')}
+                    {kindChip('SAGA', `Collections · ${sagaCount}`)}
+                  </div>
+                )}
               </div>
               <div
                 onDragOver={ev => ev.preventDefault()}
@@ -1350,6 +1408,25 @@ export function RankingEditor({
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 14, color: 'var(--fg-7)' }}>
                             {item.prefix ?? item.label.charAt(0).toUpperCase()}
                           </div>
+                        )}
+                        {item.kind === 'SAGA' && (
+                          <span
+                            aria-label="Collection"
+                            title="Collection — série de films"
+                            style={{
+                              position: 'absolute', bottom: 0, left: 0, right: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              padding: '2px 1px',
+                              background: 'rgba(79, 70, 229, 0.92)',
+                              color: '#fff',
+                              fontSize: 6.5, fontWeight: 800, letterSpacing: 0,
+                              textShadow: '0 1px 2px rgba(0,0,0,.5)',
+                              lineHeight: 1,
+                              pointerEvents: 'none',
+                            }}
+                          >
+                            COLLECTION
+                          </span>
                         )}
                       </div>
                     </div>
@@ -1489,7 +1566,12 @@ export function RankingEditor({
                 {item.cover && <img src={item.cover} alt="" style={{ width: 36, height: 52, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 10, color: 'var(--fg-6)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600 }}>Déplacer</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2, marginTop: 1 }}>{item.label}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 1 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2, minWidth: 0 }}>{item.label}</span>
+                    {item.kind !== 'SAGA' && item.year != null && (
+                      <span style={{ fontSize: 11, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{item.year}</span>
+                    )}
+                  </div>
                   {currentTier && (
                     <div style={{ fontSize: 11, color: TIER_COLOR[currentTier], marginTop: 2 }}>
                       {TIER_LABEL[currentTier]}
