@@ -13,7 +13,7 @@ import {
   saveGuestEntryLists,
 } from '@/lib/guestListAdapter'
 
-type EntryItem = { id: string; title: string; titleEn: string | null; year: number | null; cover: string | null; tierCount?: number; score?: number; kind?: 'FILM' | 'SAGA' }
+type EntryItem = { id: string; title: string; titleEn: string | null; year: number | null; cover: string | null; tierCount?: number; score?: number; kind?: 'FILM' | 'SAGA'; genres?: number[] }
 
 type ListItemData = {
   entryId: string
@@ -195,7 +195,7 @@ export function UserEntryListSection({
         </div>
       )}
       <RankingEditor
-        items={entries.map(e => ({ id: e.id, label: pickTitle(e, lang), suffix: e.year?.toString(), cover: e.cover, year: e.year, tierCount: e.tierCount, score: e.score, kind: e.kind }))}
+        items={entries.map(e => ({ id: e.id, label: pickTitle(e, lang), suffix: e.year?.toString(), cover: e.cover, year: e.year, tierCount: e.tierCount, score: e.score, kind: e.kind, genres: e.genres }))}
         initialTierItems={initTierItems}
         initialRankedTiers={initRankedTiers}
         hasExisting={!!myTierList}

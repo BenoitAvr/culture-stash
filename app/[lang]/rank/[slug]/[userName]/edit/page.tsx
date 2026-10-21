@@ -5,6 +5,8 @@ import { notFound, redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { unstable_cache } from 'next/cache'
 import { RankEditClientPage } from '@/app/rank/[slug]/RankEditClientPage'
+import { getCommunityData } from '@/lib/communityRankData'
+import { combinedScore } from '@/lib/communityRankScore'
 
 function getEditableTopic(slug: string) {
   return unstable_cache(
@@ -15,13 +17,13 @@ function getEditableTopic(slug: string) {
           id: true,
           rankable: true,
           entries: {
-            select: { id: true, title: true, titleEn: true, year: true, cover: true, kind: true },
+            select: { id: true, title: true, titleEn: true, year: true, cover: true, kind: true, genres: true },
             orderBy: { createdAt: 'asc' },
           },
         },
       })
     },
-    [`topic-editable-v2-${slug}`],
+    [`topic-editable-v3-${slug}`],
     { tags: [`rank-${slug}`] }
   )()
 }
@@ -84,14 +86,31 @@ async function RankEditInner({
       }]
     : []
 
-  const entries = topic.entries.map(e => ({
-    id: e.id,
-    title: e.title,
-    titleEn: e.titleEn,
-    year: e.year,
-    cover: e.cover,
-    kind: (e.kind === 'SAGA' ? 'SAGA' : 'FILM') as 'FILM' | 'SAGA',
-  }))
+  // Attach the community score + tierCount so the editor's catalog can
+  // surface the best-ranked films first — matches what the guest edit
+  // page already does.
+  const community = await getCommunityData(slug, lang)
+  const scoreById = new Map<string, { tierCount: number; score: number }>()
+  if (community) {
+    for (const ce of community.entries) {
+      if (ce.tierCount > 0) scoreById.set(ce.id, { tierCount: ce.tierCount, score: combinedScore(ce) })
+    }
+  }
+
+  const entries = topic.entries.map(e => {
+    const s = scoreById.get(e.id)
+    return {
+      id: e.id,
+      title: e.title,
+      titleEn: e.titleEn,
+      year: e.year,
+      cover: e.cover,
+      kind: (e.kind === 'SAGA' ? 'SAGA' : 'FILM') as 'FILM' | 'SAGA',
+      genres: (e.genres ?? '').split(',').map(s => parseInt(s, 10)).filter(Number.isFinite),
+      tierCount: s?.tierCount ?? 0,
+      score: s?.score ?? 0,
+    }
+  })
 
   return (
     <RankEditClientPage

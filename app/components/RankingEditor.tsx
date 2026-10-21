@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import type { Dict } from '@/dictionaries/client'
+import { genreById, genreLabel, GENRES } from '@/lib/genres'
 
 export type RankableItem = {
   id: string
@@ -16,6 +17,9 @@ export type RankableItem = {
   // the saga as a unit instead of individual films). Default assumption
   // is 'FILM' when the flag is missing.
   kind?: 'FILM' | 'SAGA'
+  // TMDB genre IDs — purely for client-side catalog filtering in the
+  // editor. Empty / missing means we don't know yet.
+  genres?: number[]
 }
 
 type TopFilter = { kind: 'popular' | 'rated'; count: number } | null
@@ -195,6 +199,141 @@ function EditorTopDropdown({
                   {opt.label}
                 </button>
               </React.Fragment>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EditorGenreDropdown({
+  genreCounts,
+  genre,
+  setGenre,
+}: {
+  genreCounts: Array<{ id: number; count: number }>
+  genre: number | null
+  setGenre: (g: number | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const total = genreCounts.reduce((s, g) => s + g.count, 0)
+  const active = genre !== null
+  const activeMeta = active ? genreById(genre) : null
+  // Alphabetical in the list so the user can scan it predictably.
+  const sorted = [...genreCounts].sort((a, b) => {
+    const la = genreById(a.id)?.fr ?? ''
+    const lb = genreById(b.id)?.fr ?? ''
+    return la.localeCompare(lb, 'fr')
+  })
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        title={active && activeMeta ? `Filtré : ${genreLabel(activeMeta, 'fr')}` : 'Filtrer les films restants par genre'}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '0 14px', height: '100%', minHeight: 40,
+          borderRadius: 9,
+          border: `1.5px solid ${active ? 'var(--accent-fg)' : 'var(--border)'}`,
+          background: active ? 'var(--accent-faint)' : 'var(--bg-input)',
+          color: active ? 'var(--accent-fg)' : 'var(--fg-3)',
+          fontSize: 13,
+          fontWeight: active ? 700 : 600,
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <span>Genre{active && activeMeta ? ` : ${genreLabel(activeMeta, 'fr')}` : ''}</span>
+        <span aria-hidden style={{ fontSize: 14, opacity: 0.75, lineHeight: 1 }}>▾</span>
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Filtrer par genre"
+          style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 6px)',
+            right: 0,
+            zIndex: 40,
+            background: 'var(--bg-card)',
+            borderRadius: 10,
+            border: '1px solid var(--border)',
+            boxShadow: '0 -6px 24px rgba(0,0,0,.14)',
+            minWidth: 220,
+            padding: 5,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            maxHeight: 340,
+            overflowY: 'auto',
+          }}
+        >
+          <button
+            type="button"
+            role="option"
+            aria-selected={genre === null}
+            onClick={() => { setGenre(null); setOpen(false) }}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, padding: '7px 12px', borderRadius: 6,
+              border: 'none', background: genre === null ? 'var(--bg-subtle)' : 'transparent',
+              color: genre === null ? 'var(--fg-2)' : 'var(--fg-3)',
+              fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+              fontWeight: genre === null ? 600 : 500,
+              textAlign: 'left',
+            }}
+          >
+            <span>Tous les genres</span>
+            <span style={{ fontSize: 11, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums' }}>{total}</span>
+          </button>
+          <div aria-hidden style={{ height: 1, background: 'var(--border)', margin: '3px 4px' }} />
+          {sorted.map(({ id, count }) => {
+            const meta = genreById(id)
+            if (!meta) return null
+            const isActive = genre === id
+            return (
+              <button
+                key={id}
+                type="button"
+                role="option"
+                aria-selected={isActive}
+                onClick={() => { setGenre(isActive ? null : id); setOpen(false) }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 12, padding: '7px 12px', borderRadius: 6,
+                  border: 'none', background: isActive ? 'var(--bg-subtle)' : 'transparent',
+                  color: isActive ? 'var(--fg-2)' : 'var(--fg-3)',
+                  fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+                  fontWeight: isActive ? 600 : 500,
+                  textAlign: 'left',
+                }}
+              >
+                <span>{meta.fr}</span>
+                <span style={{ fontSize: 11, color: 'var(--fg-6)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+              </button>
             )
           })}
         </div>
@@ -427,6 +566,9 @@ export function RankingEditor({
   // what gets created). Lets the user quickly browse just the SAGA
   // entries or just the FILM entries.
   const [kindFilter, setKindFilter] = useState<'all' | 'FILM' | 'SAGA'>('all')
+  // Catalog genre filter (TMDB genre id or null). Doesn't influence the
+  // list that gets saved — purely to find a specific film faster.
+  const [genreFilter, setGenreFilter] = useState<number | null>(null)
   // Fresh tier lists get pre-filtered to the community's Top 100 mieux notés
   // so a first-timer sees the most valuable films to rank first, not a random
   // slice of the catalogue. Existing lists keep the full catalogue visible
@@ -443,7 +585,7 @@ export function RankingEditor({
   // Reset the cap whenever the filter set changes, so a leftover "+18" chain
   // from a previous view doesn't balloon the render into a new (potentially
   // huge) match set.
-  useEffect(() => { setUnclassifiedLimit(18) }, [search, decadeFilter, topFilter, kindFilter])
+  useEffect(() => { setUnclassifiedLimit(18) }, [search, decadeFilter, topFilter, kindFilter, genreFilter])
 
   const decadeCounts = (() => {
     const unclassifiedItems = items.filter(item => !tierItems.some(i => i.id === item.id))
@@ -461,6 +603,19 @@ export function RankingEditor({
   const hasRatings = items.some(item => (item.tierCount ?? 0) > 0)
   const sagaCount = items.filter(item => item.kind === 'SAGA' && !tierItems.some(t => t.id === item.id)).length
   const hasSagas = sagaCount > 0
+
+  // Count unclassified items per TMDB genre id, for the Genre dropdown.
+  const genreCounts = (() => {
+    const map = new Map<number, number>()
+    for (const item of items) {
+      if (tierItems.some(t => t.id === item.id)) continue
+      for (const g of item.genres ?? []) map.set(g, (map.get(g) ?? 0) + 1)
+    }
+    return Array.from(map.entries())
+      .map(([id, count]) => ({ id, count }))
+      .sort((a, b) => b.count - a.count)
+  })()
+  const hasGenres = genreCounts.length > 0
 
   const topIds = (() => {
     if (topFilter === null) return null
@@ -480,6 +635,11 @@ export function RankingEditor({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!decadeCounts.some(d => d.decade === decadeFilter)) setDecadeFilter(null)
   }, [decadeFilter, decadeCounts])
+  useEffect(() => {
+    if (genreFilter === null) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!genreCounts.some(g => g.id === genreFilter)) setGenreFilter(null)
+  }, [genreFilter, genreCounts])
   // Keep the search text after a successful add: with it still typed, the
   // freshly-inserted entry (whose title matches what the user typed) stays
   // visible in the filtered strip, so they see what they just added.
@@ -1228,6 +1388,13 @@ export function RankingEditor({
               setDecade={setDecadeFilter}
             />
           ) : null
+          const GenreFilterEl = hasGenres ? (
+            <EditorGenreDropdown
+              genreCounts={genreCounts}
+              genre={genreFilter}
+              setGenre={setGenreFilter}
+            />
+          ) : null
           const TopFilterEl = hasRatings ? (
             <EditorTopDropdown top={topFilter} setTop={setTopFilter} />
           ) : null
@@ -1235,6 +1402,7 @@ export function RankingEditor({
             return (
               <form action={addFormAction} className="rank-add-form" style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 10 }}>
                 {SearchInput}
+                {GenreFilterEl}
                 {DecadeFilter}
                 {TopFilterEl}
                 {/* Film / Saga toggle. When the user flags their new entry
@@ -1284,6 +1452,7 @@ export function RankingEditor({
           return (
             <div className="rank-add-form" style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 10 }}>
               {SearchInput}
+              {GenreFilterEl}
               {DecadeFilter}
               {TopFilterEl}
             </div>
@@ -1296,7 +1465,8 @@ export function RankingEditor({
           const matchesKind = (item: RankableItem) =>
             kindFilter === 'all' ||
             (kindFilter === 'SAGA' ? item.kind === 'SAGA' : item.kind !== 'SAGA')
-          const unclassifiedRaw = items.filter(item => !tierItems.some(i => i.id === item.id) && matchesSearch(item) && matchesDecade(item) && matchesTop(item) && matchesKind(item))
+          const matchesGenre = (item: RankableItem) => genreFilter === null || (item.genres ?? []).includes(genreFilter)
+          const unclassifiedRaw = items.filter(item => !tierItems.some(i => i.id === item.id) && matchesSearch(item) && matchesDecade(item) && matchesTop(item) && matchesKind(item) && matchesGenre(item))
           // Default ordering: best-ranked community picks first, so a new
           // user sees the most-valuable films to classify. Unrated films
           // (score === 0 and no votes) fall to the bottom in catalog order.
@@ -1319,12 +1489,16 @@ export function RankingEditor({
           // walk past the cap when they want to.
           const visibleUnclassified = unclassified.slice(0, unclassifiedLimit)
           const totalUnclassified = items.filter(item => !tierItems.some(i => i.id === item.id)).length
-          const filterActive = !!search.trim() || decadeFilter !== null || topFilter !== null || kindFilter !== 'all'
+          const filterActive = !!search.trim() || decadeFilter !== null || topFilter !== null || kindFilter !== 'all' || genreFilter !== null
           const filterHints: string[] = []
           if (decadeFilter !== null) filterHints.push(`années ${decadeFilter}`)
           if (topFilter !== null) filterHints.push(topFilter.kind === 'popular' ? `top ${topFilter.count} populaires` : `top ${topFilter.count} mieux notés`)
           if (kindFilter === 'SAGA') filterHints.push('collections uniquement')
           else if (kindFilter === 'FILM') filterHints.push('films uniquement')
+          if (genreFilter !== null) {
+            const g = genreById(genreFilter)
+            if (g) filterHints.push(`genre ${genreLabel(g, 'fr').toLowerCase()}`)
+          }
           const labelText = filterActive
             ? `${unclassified.length} résultat${unclassified.length !== 1 ? 's' : ''}${filterHints.length > 0 ? ` · ${filterHints.join(' · ')}` : ''}`
             : (totalUnclassified === 0
