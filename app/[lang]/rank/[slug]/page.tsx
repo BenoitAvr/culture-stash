@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale, LOCALES } from '@/dictionaries'
 import { notFound } from 'next/navigation'
-import { getRankTopicHeader, getRankTopicStats, getCommunityEntries } from '@/lib/communityRankData'
+import { getRankTopicHeader, getRankTopicStats, getCommunityEntries, getGenreCounts } from '@/lib/communityRankData'
 import { getRankHost } from '@/lib/host'
 import {
   RankCommunityBody,
@@ -16,6 +16,7 @@ import {
   type PersonalRankData,
 } from '@/app/rank/[slug]/RankTopicPage'
 import { PersonalActions } from '@/app/rank/[slug]/PersonalActions'
+import { GenreChipRow } from '@/app/rank/[slug]/GenreChipRow'
 import type { UserEntryListData } from '@/app/rank/[slug]/UserEntryListSection'
 
 async function getUserList(topicId: string, userId: string): Promise<UserEntryListData[]> {
@@ -162,9 +163,10 @@ async function RankSlugInner({
   const { lang, slug } = await params
   if (!hasLocale(lang)) notFound()
 
-  const [header, stats] = await Promise.all([
+  const [header, stats, genreCounts] = await Promise.all([
     getRankTopicHeader(slug, lang),
     getRankTopicStats(slug),
+    getGenreCounts(slug),
   ])
   if (!header) notFound()
 
@@ -224,6 +226,10 @@ async function RankSlugInner({
           </span>
         </div>
       </div>
+
+      {genreCounts && genreCounts.length > 0 && (
+        <GenreChipRow genres={genreCounts} slug={slug} lang={lang} />
+      )}
 
       {/* Community body — suspended (creates personalDataPromise inside) */}
       <div style={{ paddingTop: 16 }}>

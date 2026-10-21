@@ -152,6 +152,10 @@ model Entry {
   // instead of (or in addition to) individual films. Year is optional for
   // sagas since there isn't a single release date.
   kind        String      @default("FILM")
+  // Comma-separated TMDB genre IDs ("35,18"), stable across locales. Null
+  // for entries whose source API doesn't carry genres yet (e.g. older
+  // backfills) or for SAGA entries where no single TMDB record applies.
+  genres      String?
   createdAt   DateTime    @default(now())
   topic              Topic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
   addedBy            User?           @relation(fields: [addedById], references: [id])

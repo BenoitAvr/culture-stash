@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { unstable_cache } from 'next/cache'
 import { combinedScore } from '@/lib/communityRankScore'
+import { parseGenreIds } from '@/lib/genres'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
 const TIER_SCORE: Record<string, number> = { EX: 7, TB: 6, BO: 5, AB: 4, PA: 3, IN: 2, MA: 1 }
@@ -14,6 +15,8 @@ export type RankEntry = {
   cover: string | null
   // 'FILM' or 'SAGA' — SAGA entries represent a whole franchise.
   kind: 'FILM' | 'SAGA'
+  // TMDB genre IDs, parsed from Entry.genres. Empty when unknown.
+  genres: number[]
   avgRank: number | null
   rankCount: number
   avgTierScore: number | null
@@ -106,9 +109,11 @@ export function getRankTopicHeader(slug: string, lang: string): Promise<RankTopi
   )()
 }
 
-export function getCommunityData(slug: string, lang: string): Promise<CommunityData | null> {
-  return unstable_cache(
-    async () => {
+async function computeCommunityData(
+  slug: string,
+  lang: string,
+  filterGenreId: number | null,
+): Promise<CommunityData | null> {
       const topic = await prisma.topic.findUnique({
         where: { slug },
         include: {
@@ -128,15 +133,37 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
       })
       if (!topic || !topic.rankable) return null
 
+      // When filtering by genre, restrict the entry set up front so the
+      // aggregation below (which also walks each user's items) only sees
+      // the subset. User items referencing a filtered-out entry are
+      // dropped so avgRank/rankPositions reflect positions WITHIN the
+      // subset, not the global list.
+      const parsedGenres = new Map(
+        topic.entries.map(e => [e.id, parseGenreIds(e.genres)] as const),
+      )
+      const filteredEntries = filterGenreId === null
+        ? topic.entries
+        : topic.entries.filter(e => parsedGenres.get(e.id)?.includes(filterGenreId))
+      const allowedIds = new Set(filteredEntries.map(e => e.id))
+
       const rankData: Record<string, { sumLog: number; count: number }> = {}
       const tierData: Record<string, { totalScore: number; count: number }> = {}
       const favoriteData: Record<string, number> = {}
       const tierDistData: Record<string, Record<string, number>> = {}
       const rankPositionsData: Record<string, number[]> = {}
 
-      for (const list of topic.userEntryLists) {
-        if (list.type !== 'TIER') continue
-        const rts = (list.rankedTiers ?? '').split(',').filter(Boolean)
+      for (const rawList of topic.userEntryLists) {
+        if (rawList.type !== 'TIER') continue
+        const rts = (rawList.rankedTiers ?? '').split(',').filter(Boolean)
+        // Drop items whose entry isn't in the current (possibly filtered)
+        // subset. Local-rank + global-frac-rank recomputation below then
+        // naturally produces positions within the subset.
+        const list = {
+          ...rawList,
+          items: filterGenreId === null
+            ? rawList.items
+            : rawList.items.filter(i => allowedIds.has(i.entryId)),
+        }
 
         // For each tier, normalize the stored positions to a contiguous local
         // 1-based scale (preserving ties). Legacy rows may have globalized
@@ -226,7 +253,7 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
         topicEmoji: topic.emoji,
         topicTitle: tr?.title ?? topic.title,
         topicBadge: tr?.badge ?? topic.badge,
-        entries: topic.entries.map(e => {
+        entries: filteredEntries.map(e => {
           const rd = rankData[e.id]
           const td = tierData[e.id]
           return {
@@ -236,6 +263,7 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
             year: e.year,
             cover: e.cover || null,
             kind: (e.kind === 'SAGA' ? 'SAGA' : 'FILM') as 'FILM' | 'SAGA',
+            genres: parsedGenres.get(e.id) ?? [],
             avgRank: rd && rd.count > 0 ? Math.exp(rd.sumLog / rd.count) : null,
             rankCount: rd?.count ?? 0,
             avgTierScore: td && td.count > 0 ? td.totalScore / td.count : null,
@@ -246,8 +274,24 @@ export function getCommunityData(slug: string, lang: string): Promise<CommunityD
           }
         }),
       }
-    },
+}
+
+export function getCommunityData(slug: string, lang: string): Promise<CommunityData | null> {
+  return unstable_cache(
+    async () => computeCommunityData(slug, lang, null),
     [`rank-community-${slug}-${lang}`],
+    { tags: [`rank-${slug}`] }
+  )()
+}
+
+export function getCommunityDataForGenre(
+  slug: string,
+  lang: string,
+  genreId: number,
+): Promise<CommunityData | null> {
+  return unstable_cache(
+    async () => computeCommunityData(slug, lang, genreId),
+    [`rank-community-${slug}-${lang}-g${genreId}`],
     { tags: [`rank-${slug}`] }
   )()
 }
@@ -261,4 +305,48 @@ export async function getCommunityEntries(slug: string, lang: string): Promise<C
     initialEntries: sorted.slice(0, INITIAL_COUNT),
     totalEntries: sorted.length,
   }
+}
+
+export async function getCommunityEntriesForGenre(
+  slug: string,
+  lang: string,
+  genreId: number,
+): Promise<CommunityEntries | null> {
+  const data = await getCommunityDataForGenre(slug, lang, genreId)
+  if (!data) return null
+
+  const sorted = [...data.entries].sort((a, b) => combinedScore(b) - combinedScore(a))
+  return {
+    initialEntries: sorted.slice(0, INITIAL_COUNT),
+    totalEntries: sorted.length,
+  }
+}
+
+// Returns [{ id, slug, label, count }] for every genre represented in the
+// topic — used to render the chip row on the main /rank/[slug] page.
+export function getGenreCounts(slug: string): Promise<Array<{ id: number; count: number }> | null> {
+  return unstable_cache(
+    async () => {
+      const topic = await prisma.topic.findUnique({
+        where: { slug },
+        select: {
+          rankable: true,
+          entries: { select: { genres: true } },
+        },
+      })
+      if (!topic || !topic.rankable) return null
+
+      const counts = new Map<number, number>()
+      for (const e of topic.entries) {
+        for (const id of parseGenreIds(e.genres)) {
+          counts.set(id, (counts.get(id) ?? 0) + 1)
+        }
+      }
+      return Array.from(counts.entries())
+        .map(([id, count]) => ({ id, count }))
+        .sort((a, b) => b.count - a.count)
+    },
+    [`rank-genres-${slug}`],
+    { tags: [`rank-${slug}`] }
+  )()
 }

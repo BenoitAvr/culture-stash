@@ -1209,6 +1209,7 @@ function UserAwareEntryList({
   quickAddId,
   setQuickAddId,
   onApplyMyChange,
+  rankScopeIds,
 }: {
   personalDataPromise: Promise<PersonalRankData>
   entries: Entry[]
@@ -1216,6 +1217,10 @@ function UserAwareEntryList({
   quickAddId: string | null
   setQuickAddId: (id: string | null) => void
   onApplyMyChange: (prev: ListItemData[], next: ListItemData[], prevRanked: string[], nextRanked: string[]) => void
+  // When set, "my rank" is recomputed over this subset of entry ids
+  // (e.g. only the entries in the current genre). Undefined on the main
+  // page keeps the global rank behavior.
+  rankScopeIds?: Set<string>
 }) {
   const { userLists: initialLists, currentUserId, isLoggedIn } = use(personalDataPromise)
   const [lists, setLists] = useState(initialLists)
@@ -1372,7 +1377,10 @@ function UserAwareEntryList({
     const map = new Map<string, { globalRank: number; globalFracRank: number }>()
     if (!myTierList) return map
     const rankedTiers = (myTierList.rankedTiers ?? '').split(',').filter(Boolean)
-    for (const c of enrichUserList(myTierList.items, rankedTiers)) {
+    const scopedItems = rankScopeIds
+      ? myTierList.items.filter(i => rankScopeIds.has(i.entryId))
+      : myTierList.items
+    for (const c of enrichUserList(scopedItems, rankedTiers)) {
       map.set(c.entryId, { globalRank: c.globalRank, globalFracRank: c.globalFracRank })
     }
     return map
@@ -1425,10 +1433,15 @@ export function RankCommunityBody({
   topicSlug,
   entriesPromise,
   personalDataPromise,
+  genreId,
 }: {
   topicSlug: string
   entriesPromise: Promise<CommunityEntries | null>
   personalDataPromise: Promise<PersonalRankData>
+  // When set, the community data has been pre-filtered to a specific
+  // genre and the "load more" fetch must pass the same filter so pages
+  // past the first 100 don't suddenly show out-of-genre entries.
+  genreId?: number
 }) {
   const { lang } = useParams() as { lang: string }
   const dict = getDict(lang)
@@ -1448,7 +1461,7 @@ export function RankCommunityBody({
 
   useEffect(() => {
     if (!isLoadingFull) return
-    fetchAllRankEntries(topicSlug, lang).then(entries => {
+    fetchAllRankEntries(topicSlug, lang, genreId).then(entries => {
       setAllEntries(entries)
       setIsLoadingFull(false)
     })
@@ -1504,6 +1517,14 @@ export function RankCommunityBody({
 
   const visibleEntries = sorted.slice(0, displayCount)
 
+  // On a genre page the entries list has been pre-filtered server-side,
+  // so scope "my rank" to that subset too — otherwise a user ranked #17
+  // globally would still appear as #17 instead of #3 among comedies.
+  const rankScopeIds = React.useMemo(
+    () => genreId !== undefined ? new Set(allEntries.map(e => e.id)) : undefined,
+    [genreId, allEntries],
+  )
+
   const isFr = lang === 'fr'
   const emptyForDecade = decade !== null && sorted.length === 0 && allEntries.length > 0
 
@@ -1558,6 +1579,7 @@ export function RankCommunityBody({
               onApplyMyChange={(prev, next, prevR, nextR) =>
                 setAllEntries(curr => applyMyListChange(curr, prev, next, prevR, nextR))
               }
+              rankScopeIds={rankScopeIds}
             />
           </Suspense>
           {isLoadingFull && sorted.length <= displayCount && (

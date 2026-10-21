@@ -3,12 +3,15 @@
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { serializeGenreIds } from '@/lib/genres'
 
 type State = { error: string } | null
 
-async function fetchTmdbCover(title: string, year: number | null): Promise<string | null> {
+type TmdbLookup = { cover: string | null; genres: string | null }
+
+export async function fetchTmdbLookup(title: string, year: number | null): Promise<TmdbLookup> {
   const token = process.env.TMDB_READ_TOKEN
-  if (!token) return null
+  if (!token) return { cover: null, genres: null }
 
   const params = new URLSearchParams({ query: title, language: 'fr-FR', include_adult: 'false' })
   if (year) params.set('year', String(year))
@@ -18,12 +21,17 @@ async function fetchTmdbCover(title: string, year: number | null): Promise<strin
       headers: { Authorization: `Bearer ${token}` },
       next: { revalidate: 86400 },
     })
-    if (!res.ok) return null
+    if (!res.ok) return { cover: null, genres: null }
     const data = await res.json()
-    const poster = data.results?.[0]?.poster_path
-    return poster ? `https://image.tmdb.org/t/p/w500${poster}` : null
+    const first = data.results?.[0]
+    const poster = first?.poster_path
+    const genreIds: number[] = Array.isArray(first?.genre_ids) ? first.genre_ids : []
+    return {
+      cover: poster ? `https://image.tmdb.org/t/p/w500${poster}` : null,
+      genres: serializeGenreIds(genreIds),
+    }
   } catch {
-    return null
+    return { cover: null, genres: null }
   }
 }
 
@@ -45,12 +53,6 @@ async function fetchRawgCover(title: string, year: number | null): Promise<strin
     return null
   }
 }
-
-function pickCoverFetcher(topicSlug: string) {
-  if (topicSlug === 'jeux-video') return fetchRawgCover
-  return fetchTmdbCover
-}
-
 
 export async function addEntry(
   topicSlug: string,
@@ -74,12 +76,23 @@ export async function addEntry(
   const yearRaw = kind === 'SAGA' ? '' : (formData.get('year') as string)
   const year = yearRaw ? parseInt(yearRaw) || null : null
   const coverRaw = (formData.get('cover') as string)?.trim() || null
-  const cover = kind === 'SAGA'
-    ? coverRaw
-    : (coverRaw ?? await pickCoverFetcher(topicSlug)(title, year))
+
+  let cover: string | null = coverRaw
+  let genres: string | null = null
+  if (kind !== 'SAGA') {
+    if (topicSlug === 'jeux-video') {
+      cover = coverRaw ?? await fetchRawgCover(title, year)
+    } else {
+      const lookup = await fetchTmdbLookup(title, year)
+      cover = coverRaw ?? lookup.cover
+      // Only trust TMDB's `/search/movie` genre_ids for the films topic —
+      // series/anime names collide with films too often otherwise.
+      if (topicSlug === 'films') genres = lookup.genres
+    }
+  }
 
   await prisma.entry.create({
-    data: { topicId: topic.id, addedById: session.userId, title, year, cover, kind },
+    data: { topicId: topic.id, addedById: session.userId, title, year, cover, kind, genres },
   })
 
   revalidatePath(`/fr/rank/${topicSlug}`)
