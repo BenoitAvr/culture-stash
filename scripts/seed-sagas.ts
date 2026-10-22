@@ -49,6 +49,7 @@ const SAGAS: SagaDef[] = [
   { title: 'Batman', query: 'Batman Collection' },
   { title: 'Superman', query: 'Superman Collection' },
   { title: 'Conjuring', query: 'Conjuring Collection' },
+  { title: 'Kung Fu Panda', query: 'Kung Fu Panda Collection' },
 ]
 
 async function tmdb<T>(path: string): Promise<T | null> {
