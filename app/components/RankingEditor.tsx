@@ -1542,7 +1542,7 @@ export function RankingEditor({
               <div
                 onDragOver={ev => ev.preventDefault()}
                 onDrop={() => { if (tierDragId) dropOnUnclassified(tierDragId); setTierDragId(null); setDragOverTier(null) }}
-                style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 5, minHeight: visibleUnclassified.length === 0 ? 0 : 70 }}
+                style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 6, minHeight: visibleUnclassified.length === 0 ? 0 : 140 }}
               >
               {visibleUnclassified.length === 0 ? (
                 filterActive ? (
@@ -1573,13 +1573,13 @@ export function RankingEditor({
                       onDragStart={() => { setTierDragId(item.id); setQuickAddId(null) }}
                       onDragEnd={() => { setTierDragId(null); setDragOverTier(null) }}
                       title={item.label}
-                      style={{ width: 44, background: 'var(--bg-card)', border: `1px solid ${quickAddId === item.id ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 4, padding: 2, cursor: 'grab', opacity: tierDragId === item.id ? 0.4 : 1, userSelect: 'none', transition: 'opacity .1s, border-color .1s' }}
+                      style={{ width: 68, background: 'var(--bg-card)', border: `1px solid ${quickAddId === item.id ? 'var(--accent-muted)' : 'var(--border)'}`, borderRadius: 5, padding: 2, cursor: 'grab', opacity: tierDragId === item.id ? 0.4 : 1, userSelect: 'none', transition: 'opacity .1s, border-color .1s', display: 'flex', flexDirection: 'column' }}
                     >
                       <div style={{ position: 'relative', width: '100%', aspectRatio: '2 / 3', background: 'var(--bg-subtle)', borderRadius: 3, overflow: 'hidden' }}>
                         {item.cover ? (
                           <img src={item.cover} alt="" loading="lazy" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 14, color: 'var(--fg-7)' }}>
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Fraunces', serif", fontSize: 18, color: 'var(--fg-7)' }}>
                             {item.prefix ?? item.label.charAt(0).toUpperCase()}
                           </div>
                         )}
@@ -1593,7 +1593,7 @@ export function RankingEditor({
                               padding: '2px 1px',
                               background: 'rgba(79, 70, 229, 0.92)',
                               color: '#fff',
-                              fontSize: 6.5, fontWeight: 800, letterSpacing: 0,
+                              fontSize: 7.5, fontWeight: 800, letterSpacing: 0,
                               textShadow: '0 1px 2px rgba(0,0,0,.5)',
                               lineHeight: 1,
                               pointerEvents: 'none',
@@ -1602,6 +1602,23 @@ export function RankingEditor({
                             COLLECTION
                           </span>
                         )}
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 3,
+                          fontSize: 10,
+                          color: 'var(--fg-3)',
+                          lineHeight: 1.2,
+                          textAlign: 'center',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          wordBreak: 'break-word',
+                          padding: '0 1px',
+                        }}
+                      >
+                        {item.label}
                       </div>
                     </div>
                     {quickAddId === item.id && quickAddTier === null && (
