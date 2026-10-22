@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
-import { UserEntryListSection, type UserEntryListData } from './UserEntryListSection'
+import { UserEntryListSection, type UserEntryListData, type MemberBadge } from './UserEntryListSection'
 import { GroupBar } from '@/app/components/GroupBar'
 import { GroupMemberListView } from '@/app/components/GroupMemberListView'
 import { fetchGroupLists } from '@/app/actions/groups'
@@ -67,6 +67,24 @@ export function RankEditClientPage({
     ? groupPayload.members.find(m => m.userId === viewingUserId) ?? null
     : null
 
+  // Collect what each other member put each entry in, keyed by entryId.
+  // The editor shows these as small coloured pastilles on my tier cards so
+  // I can spot "ah, lui l'a mis en MA" without swapping views. Rebuilt
+  // whenever the polled payload updates.
+  const memberBadgesByEntryId = useMemo<Record<string, MemberBadge[]>>(() => {
+    if (!groupPayload) return {}
+    const map: Record<string, MemberBadge[]> = {}
+    for (const m of groupPayload.members) {
+      if (m.userId === currentUserId) continue
+      for (const item of m.items) {
+        if (!item.tier) continue
+        if (!map[item.entryId]) map[item.entryId] = []
+        map[item.entryId].push({ userId: m.userId, memberName: m.name, tier: item.tier })
+      }
+    }
+    return map
+  }, [groupPayload, currentUserId])
+
   return (
     <div className="rank-edit-shell page-lg" style={{ margin: '0 auto', padding: '24px 24px 60px' }}>
       {groupId && currentUserId && (
@@ -95,6 +113,7 @@ export function RankEditClientPage({
           isEditing={true}
           setIsEditing={handleSetIsEditing}
           t={t}
+          memberBadgesByEntryId={memberBadgesByEntryId}
         />
       )}
     </div>

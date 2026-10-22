@@ -30,7 +30,6 @@ model User {
   userTopicNotes  UserTopicNote[]
   ownedGroups     Group[]         @relation("GroupOwner")
   groupMemberships GroupMember[]
-  groupMessages   GroupMessage[]
 }
 
 model Topic {
@@ -268,7 +267,6 @@ model Group {
   topic      Topic          @relation(fields: [topicId], references: [id], onDelete: Cascade)
   owner      User           @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members    GroupMember[]
-  messages   GroupMessage[]
 }
 
 model GroupMember {
@@ -281,21 +279,4 @@ model GroupMember {
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, userId])
-}
-
-// Lightweight chat inside a group. When `entryId` is set, the message is a
-// per-film reaction (anchored to the ranking row); when null, it's a message
-// in the group's general chat.
-model GroupMessage {
-  id        String   @id @default(cuid())
-  groupId   String
-  authorId  String
-  entryId   String?
-  body      String
-  createdAt DateTime @default(now())
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([groupId, createdAt])
-  @@index([groupId, entryId, createdAt])
 }

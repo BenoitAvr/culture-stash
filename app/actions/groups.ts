@@ -163,3 +163,26 @@ export async function leaveGroup(groupId: string): Promise<{ ok: true } | { ok: 
   revalidateTag(`group-${group.id}`, 'max')
   return { ok: true }
 }
+
+export async function deleteGroup(groupId: string): Promise<{ ok: true } | { ok: false; error: 'not-logged-in' | 'group-not-found' | 'not-owner' }> {
+  const session = await getSession()
+  if (!session) return { ok: false, error: 'not-logged-in' }
+
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    select: {
+      id: true, ownerId: true,
+      members: { select: { userId: true } },
+    },
+  })
+  if (!group) return { ok: false, error: 'group-not-found' }
+  if (group.ownerId !== session.userId) return { ok: false, error: 'not-owner' }
+
+  // Members + messages are cascaded by the FK ON DELETE CASCADE in the schema.
+  await prisma.group.delete({ where: { id: group.id } })
+  // Invalidate the member list of each former member so their "my groups"
+  // dropdown reflects the deletion on their next navigation.
+  for (const m of group.members) revalidateTag(`groups-user-${m.userId}`, 'max')
+  revalidateTag(`group-${group.id}`, 'max')
+  return { ok: true }
+}

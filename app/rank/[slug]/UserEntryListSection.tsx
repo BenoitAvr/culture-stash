@@ -6,7 +6,7 @@ import { saveUserEntryLists } from '@/app/actions/entryLists'
 import { saveGuestServerList } from '@/app/actions/guestServerSave'
 import { addEntry } from '@/app/actions/entries'
 import { RankingEditor, type RankEditItem } from '@/app/components/RankingEditor'
-import { GroupCreateButton } from '@/app/components/GroupCreateButton'
+import { GroupSwitcher } from '@/app/components/GroupSwitcher'
 import { getDict, type Dict } from '@/dictionaries/client'
 import { pickTitle } from '@/lib/i18n'
 import {
@@ -39,9 +39,15 @@ export type UserEntryListData = {
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
 
+export type MemberBadge = {
+  userId: string
+  memberName: string
+  tier: string
+}
+
 export function UserEntryListSection({
   topicSlug, entries, lists, onListsChange, currentUserId,
-  isEditing, setIsEditing, t,
+  isEditing, setIsEditing, t, memberBadgesByEntryId,
 }: {
   topicSlug: string
   entries: EntryItem[]
@@ -51,6 +57,7 @@ export function UserEntryListSection({
   isEditing: boolean
   setIsEditing: (v: boolean) => void
   t: Dict['rankings']
+  memberBadgesByEntryId?: Record<string, MemberBadge[]>
 }) {
   const { lang } = useParams() as { lang: string }
   const tRank = getDict(lang).rank
@@ -226,7 +233,8 @@ export function UserEntryListSection({
         addPending={addPending}
         addError={addState?.error ?? null}
         addEntryLabel={tRank.addEntryTitle}
-        headerActions={!isGuest ? <GroupCreateButton topicSlug={topicSlug} lang={lang} /> : null}
+        headerActions={!isGuest ? <GroupSwitcher topicSlug={topicSlug} lang={lang} /> : null}
+        memberBadgesByEntryId={memberBadgesByEntryId}
       />
     </div>
   )

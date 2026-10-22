@@ -469,6 +469,83 @@ function EditorDecadeDropdown({
   )
 }
 
+const TIER_VALUE: Record<string, number> = { EX: 7, TB: 6, BO: 5, AB: 4, PA: 3, IN: 2, MA: 1 }
+
+// Tiny coloured dots showing where other group members ranked this entry.
+// Deliberately silent (no legend, no counts) — the user hovers for the name
+// and tier. Rendered both on inline cards (horizontal row next to the year)
+// and compact cards (horizontal row under the title); size follows `compact`.
+function MemberBadges({
+  badges,
+  myTier,
+  compact,
+}: {
+  badges: Array<{ userId: string; memberName: string; tier: string }> | undefined
+  myTier: string | null
+  compact: boolean
+}) {
+  if (!badges || badges.length === 0) return null
+  const max = compact ? 4 : 5
+  const shown = badges.slice(0, max)
+  const extra = badges.length - shown.length
+  const dotSize = compact ? 7 : 8
+  const gap = compact ? 2 : 3
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap,
+        marginTop: compact ? 1 : 0,
+        padding: compact ? '0 3px 3px' : 0,
+        justifyContent: compact ? 'center' : 'flex-end',
+        flexShrink: 0,
+        flexWrap: 'nowrap',
+      }}
+    >
+      {shown.map(b => {
+        const myVal = myTier ? TIER_VALUE[myTier] : null
+        const bVal = TIER_VALUE[b.tier]
+        const delta = myVal != null && bVal != null ? Math.abs(myVal - bVal) : 0
+        // Emphasise big disagreements with a thicker ring, so a "scandal"
+        // pastille (ami en MA, moi en EX) jumps out instantly.
+        const bigDisagree = delta >= 3
+        return (
+          <span
+            key={b.userId}
+            title={`${b.memberName} : ${TIER_LABEL[b.tier] ?? b.tier}`}
+            style={{
+              width: dotSize,
+              height: dotSize,
+              borderRadius: '50%',
+              background: TIER_COLOR[b.tier] ?? '#999',
+              boxShadow: bigDisagree
+                ? `0 0 0 1.5px #fff, 0 0 0 2.5px ${TIER_COLOR[b.tier] ?? '#999'}`
+                : '0 0 0 1px rgba(255,255,255,.65)',
+              flexShrink: 0,
+            }}
+          />
+        )
+      })}
+      {extra > 0 && (
+        <span
+          title={`${extra} de plus`}
+          style={{
+            fontSize: compact ? 7.5 : 9,
+            color: 'var(--fg-6)',
+            fontWeight: 700,
+            lineHeight: 1,
+            fontVariantNumeric: 'tabular-nums',
+            flexShrink: 0,
+          }}
+        >
+          +{extra}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export function RankingEditor({
   items,
   initialTierItems,
@@ -482,6 +559,7 @@ export function RankingEditor({
   addError,
   addEntryLabel,
   headerActions,
+  memberBadgesByEntryId,
 }: {
   items: RankableItem[]
   initialTierItems: RankEditItem[]
@@ -495,6 +573,10 @@ export function RankingEditor({
   addError?: string | null
   addEntryLabel?: string
   headerActions?: React.ReactNode
+  // Optional per-entry badges — one per other group member who ranked this
+  // entry. Rendered as small coloured dots on each card to surface
+  // disagreements at a glance without swapping to the member's view.
+  memberBadgesByEntryId?: Record<string, Array<{ userId: string; memberName: string; tier: string }>>
 }) {
   const [tierItems, setTierItems] = useState<RankEditItem[]>(initialTierItems)
 
@@ -1311,6 +1393,7 @@ export function RankingEditor({
                                         Collection
                                       </span>
                                     ) : null
+                                    const badges = memberBadgesByEntryId?.[rankItem.id]
                                     if (showInline) {
                                       // Flex-grow fills the whole row width:
                                       // 1 solo card → takes everything;
@@ -1319,7 +1402,7 @@ export function RankingEditor({
                                       // marooned 1000px apart.
                                       const solo = g.items.length === 1
                                       return (
-                                        <div key={rankItem.id} {...dragProps} style={{ ...unifiedCardStyle, display: 'flex', alignItems: 'stretch', flex: '1 1 0', minWidth: 220, maxWidth: solo ? 900 : 480 }}>
+                                        <div key={rankItem.id} {...dragProps} style={{ ...unifiedCardStyle, position: 'relative', display: 'flex', alignItems: 'stretch', flex: '1 1 0', minWidth: 220, maxWidth: solo ? 900 : 480 }}>
                                           {posterInner}
                                           <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1, padding: '0 10px', gap: 6 }}>
                                             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-2)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
@@ -1331,6 +1414,7 @@ export function RankingEditor({
                                                 {item.year}
                                               </span>
                                             )}
+                                            <MemberBadges badges={badges} myTier={rankItem.tier ?? null} compact={false} />
                                           </div>
                                         </div>
                                       )
@@ -1341,6 +1425,7 @@ export function RankingEditor({
                                         <div style={{ padding: '2px 3px 3px', fontSize: 8.5, color: 'var(--fg-4)', lineHeight: 1.15, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                           {item.label}
                                         </div>
+                                        <MemberBadges badges={badges} myTier={rankItem.tier ?? null} compact={true} />
                                       </div>
                                     )
                                   })}
