@@ -14,6 +14,7 @@ import {
   saveGuestEntryLists,
 } from '@/lib/guestListAdapter'
 import { getGuestUserId, setGuestUserId } from '@/lib/guestList'
+import { trackEvent } from '@/lib/analytics'
 
 type EntryItem = { id: string; title: string; titleEn: string | null; year: number | null; cover: string | null; tierCount?: number; score?: number; kind?: 'FILM' | 'SAGA'; genres?: number[] }
 
@@ -120,11 +121,13 @@ export function UserEntryListSection({
       const anonId = getGuestUserId()
       const res = await saveGuestServerList(topicSlug, anonId, payload, activeTiers)
       if (res.ok) setGuestUserId(res.guestUserId)
+      trackEvent({ name: 'rank_save', props: { mode: 'guest', topic: topicSlug, items: payload.length, source: 'editor' } })
       return
     }
 
     const updated = await saveUserEntryLists(topicSlug, [], payload, activeTiers)
     onListsChange([...lists.filter(l => l.userId !== currentUserId), ...updated])
+    trackEvent({ name: 'rank_save', props: { mode: 'logged_in', topic: topicSlug, items: payload.length, source: 'editor' } })
   }
 
   if (!isEditing) return null

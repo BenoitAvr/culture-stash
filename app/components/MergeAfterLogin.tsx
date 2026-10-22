@@ -20,6 +20,7 @@ import {
   getGuestUserId,
   readAllGuestLists,
 } from '@/lib/guestList'
+import { trackEvent } from '@/lib/analytics'
 
 // Mounted in the lang layout for logged-in users. On first render after login,
 // surfaces any tier list built before signing in (localStorage stash) and
@@ -62,6 +63,10 @@ export function MergeAfterLogin({ lang }: { lang: 'fr' | 'en' }) {
         if (preview.conflicts.length === 0) {
           const claim = await claimAnonymousAccount(anonId, 'merge')
           if (claim.ok) {
+            trackEvent({
+              name: 'guest_claim_completed',
+              props: { strategy: 'simple', applied: claim.applied.length, kept: claim.kept.length },
+            })
             clearGuestUserId()
             clearAllGuestLists()
             router.refresh()
@@ -124,6 +129,10 @@ export function MergeAfterLogin({ lang }: { lang: 'fr' | 'en' }) {
     if (anonUserId) {
       const claim = await claimAnonymousAccount(anonUserId, choice)
       if (claim.ok) {
+        trackEvent({
+          name: 'guest_claim_completed',
+          props: { strategy: choice, applied: claim.applied.length, kept: claim.kept.length },
+        })
         clearGuestUserId()
         clearAllGuestLists()
         router.refresh()

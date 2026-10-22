@@ -16,6 +16,7 @@ import {
   saveGuestEntryLists,
 } from '@/lib/guestListAdapter'
 import { getGuestUserId, setGuestUserId } from '@/lib/guestList'
+import { trackEvent } from '@/lib/analytics'
 import Link from 'next/link'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
@@ -1355,6 +1356,10 @@ function UserAwareEntryList({
     )
     setLists(prev => [...prev.filter(l => l.userId !== ownerId), ...updated])
     setQuickAddId(null)
+    trackEvent({
+      name: 'rank_save',
+      props: { mode: isGuest ? 'guest' : 'logged_in', topic: topicSlug, items: payload.length, source: 'quick_add' },
+    })
   }
 
   async function handleRemove(entryId: string) {
@@ -1383,6 +1388,10 @@ function UserAwareEntryList({
     )
     setLists(prev => [...prev.filter(l => l.userId !== ownerId), ...updated])
     setQuickAddId(null)
+    trackEvent({
+      name: 'rank_save',
+      props: { mode: isGuest ? 'guest' : 'logged_in', topic: topicSlug, items: payload.length, source: 'remove' },
+    })
   }
 
   // Pre-compute per-entry rank info using the tie-aware aggregation so the
