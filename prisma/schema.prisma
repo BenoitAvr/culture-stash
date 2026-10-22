@@ -28,6 +28,9 @@ model User {
   userEntries     UserEntry[]
   userEntryLists  UserEntryList[]
   userTopicNotes  UserTopicNote[]
+  ownedGroups     Group[]         @relation("GroupOwner")
+  groupMemberships GroupMember[]
+  groupMessages   GroupMessage[]
 }
 
 model Topic {
@@ -54,6 +57,7 @@ model Topic {
   entries         Entry[]
   userEntryLists  UserEntryList[]
   userTopicNotes  UserTopicNote[]
+  groups          Group[]
 }
 
 model Concept {
@@ -247,4 +251,51 @@ model UserTopicNote {
   topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   @@unique([userId, topicId])
+}
+
+// Private tier-list groups. A group is scoped to a single topic (films, series,
+// etc.) so members compare their tier lists for that topic. People who want to
+// rank several topics with the same friends create one group per topic. The
+// inviteSlug is the share token that lands people on /g/<slug> and auto-joins
+// them if they're signed in.
+model Group {
+  id         String         @id @default(cuid())
+  name       String
+  inviteSlug String         @unique
+  topicId    String
+  ownerId    String
+  createdAt  DateTime       @default(now())
+  topic      Topic          @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  owner      User           @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members    GroupMember[]
+  messages   GroupMessage[]
+}
+
+model GroupMember {
+  id       String   @id @default(cuid())
+  groupId  String
+  userId   String
+  role     String   @default("MEMBER") // 'OWNER' | 'MEMBER'
+  joinedAt DateTime @default(now())
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+// Lightweight chat inside a group. When `entryId` is set, the message is a
+// per-film reaction (anchored to the ranking row); when null, it's a message
+// in the group's general chat.
+model GroupMessage {
+  id        String   @id @default(cuid())
+  groupId   String
+  authorId  String
+  entryId   String?
+  body      String
+  createdAt DateTime @default(now())
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+  @@index([groupId, entryId, createdAt])
 }

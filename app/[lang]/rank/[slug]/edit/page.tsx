@@ -34,15 +34,25 @@ function getEditableTopic(slug: string) {
 
 async function GuestRankEditInner({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string; slug: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { lang, slug } = await params
   if (!hasLocale(lang)) notFound()
 
   const session = await getSession()
   if (session) {
-    redirect(`/${lang}/rank/${slug}/${encodeURIComponent(session.username)}/edit`)
+    // Preserve the ?group=<id> query (and any future deep-link context) so
+    // following a group invite link lands the user in the right group view.
+    const sp = await searchParams
+    const qs = new URLSearchParams()
+    for (const [k, v] of Object.entries(sp)) {
+      if (typeof v === 'string') qs.set(k, v)
+    }
+    const suffix = qs.toString() ? `?${qs.toString()}` : ''
+    redirect(`/${lang}/rank/${slug}/${encodeURIComponent(session.username)}/edit${suffix}`)
   }
 
   const topic = await getEditableTopic(slug)
@@ -85,12 +95,14 @@ async function GuestRankEditInner({
 
 export default function RankEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string; slug: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   return (
     <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
-      <GuestRankEditInner params={params} />
+      <GuestRankEditInner params={params} searchParams={searchParams} />
     </Suspense>
   )
 }

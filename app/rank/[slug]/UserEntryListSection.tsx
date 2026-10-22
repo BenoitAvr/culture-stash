@@ -6,6 +6,7 @@ import { saveUserEntryLists } from '@/app/actions/entryLists'
 import { saveGuestServerList } from '@/app/actions/guestServerSave'
 import { addEntry } from '@/app/actions/entries'
 import { RankingEditor, type RankEditItem } from '@/app/components/RankingEditor'
+import { GroupCreateButton } from '@/app/components/GroupCreateButton'
 import { getDict, type Dict } from '@/dictionaries/client'
 import { pickTitle } from '@/lib/i18n'
 import {
@@ -225,6 +226,7 @@ export function UserEntryListSection({
         addPending={addPending}
         addError={addState?.error ?? null}
         addEntryLabel={tRank.addEntryTitle}
+        headerActions={!isGuest ? <GroupCreateButton topicSlug={topicSlug} lang={lang} /> : null}
       />
     </div>
   )

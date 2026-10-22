@@ -481,6 +481,7 @@ export function RankingEditor({
   addPending,
   addError,
   addEntryLabel,
+  headerActions,
 }: {
   items: RankableItem[]
   initialTierItems: RankEditItem[]
@@ -493,6 +494,7 @@ export function RankingEditor({
   addPending?: boolean
   addError?: string | null
   addEntryLabel?: string
+  headerActions?: React.ReactNode
 }) {
   const [tierItems, setTierItems] = useState<RankEditItem[]>(initialTierItems)
 
@@ -864,6 +866,7 @@ export function RankingEditor({
         >
           {statusContent.text}
         </button>
+        {headerActions}
         {!isImporting && (
           <button
             onClick={() => setIsImporting(true)}
