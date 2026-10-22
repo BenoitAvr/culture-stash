@@ -8,6 +8,11 @@
 
 const KEY_PREFIX = 'cs-guest-list:'
 const INDEX_KEY = 'cs-guest-topics'
+// Server-assigned anonymous User.id, persisted so repeat guest-saves update
+// the same server row and the login-time claim can transfer it to the real
+// account. The server returns this id on first save; see
+// saveGuestServerList + claimAnonymousAccount.
+const GUEST_USER_ID_KEY = 'cs-guest-user-id'
 
 export type GuestListItem = {
   entryId: string
@@ -124,4 +129,27 @@ export function totalGuestItems(): number {
   let total = 0
   for (const { payload } of readAllGuestLists()) total += payload.items.length
   return total
+}
+
+export function getGuestUserId(): string | null {
+  if (!isBrowser()) return null
+  try {
+    return window.localStorage.getItem(GUEST_USER_ID_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setGuestUserId(userId: string) {
+  if (!isBrowser()) return
+  try {
+    window.localStorage.setItem(GUEST_USER_ID_KEY, userId)
+  } catch {}
+}
+
+export function clearGuestUserId() {
+  if (!isBrowser()) return
+  try {
+    window.localStorage.removeItem(GUEST_USER_ID_KEY)
+  } catch {}
 }

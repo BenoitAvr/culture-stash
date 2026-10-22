@@ -10,8 +10,14 @@ import {
   type GuestTopicPayload,
 } from '@/app/actions/guestMerge'
 import {
+  claimAnonymousAccount,
+  previewAnonymousClaim,
+} from '@/app/actions/guestServerSave'
+import {
   clearAllGuestLists,
   clearGuestList,
+  clearGuestUserId,
+  getGuestUserId,
   readAllGuestLists,
 } from '@/lib/guestList'
 
@@ -26,51 +32,104 @@ export function MergeAfterLogin({ lang }: { lang: 'fr' | 'en' }) {
   const [conflicts, setConflicts] = useState<ConflictSummary[]>([])
   const [open, setOpen] = useState(false)
   const [choice, setChoice] = useState<GuestMergeStrategy>('keep')
+  // If the guest previously saved to the server under an anonymous User, the
+  // claim path transfers those rows server-side without re-uploading. Falls
+  // back to the pure-localStorage path for guests who built a list in an
+  // older version of the app (or in a browser that failed to persist the id).
+  const [anonUserId, setAnonUserId] = useState<string | null>(null)
 
   useEffect(() => {
     if (ranRef.current) return
     ranRef.current = true
 
+    const anonId = getGuestUserId()
     const stash = readAllGuestLists()
-    if (stash.length === 0) return
 
-    const built: GuestTopicPayload[] = stash.map(({ topicSlug, payload }) => ({
-      topicSlug,
-      items: payload.items.map(i => ({
-        entryId: i.entryId,
-        tier: i.tier ?? null,
-        position: i.position ?? null,
-        note: i.note ?? null,
-      })),
-      rankedTiers: payload.rankedTiers,
-    }))
-
-    void (async () => {
-      const result = await previewGuestStash(built.map(p => p.topicSlug))
-      if (!result.ok) return
-      for (const slug of result.missing) clearGuestList(slug)
-
-      if (result.conflicts.length === 0) {
-        const apply = await applyGuestStash(built, 'merge')
-        if (apply.ok) {
-          clearAllGuestLists()
-          router.refresh()
+    if (anonId) {
+      // Server already has the data under the anonymous user. Preview to find
+      // conflicts with the real account, then claim.
+      void (async () => {
+        const preview = await previewAnonymousClaim(anonId)
+        if (!preview.ok) {
+          // Stale anon id (user deleted on the server, or guestMode logged out
+          // after a previous claim) — clear and fall back to the localStorage
+          // path below if there is still a stash.
+          clearGuestUserId()
+          if (stash.length === 0) return
+          void runLocalStorageFlow(stash)
+          return
         }
-        return
-      }
-      // Annotate conflicts with the local guest count for the modal copy.
-      const guestCountBySlug = new Map(built.map(p => [p.topicSlug, p.items.length]))
-      setPayloads(built)
-      setConflicts(result.conflicts.map(c => ({
-        ...c,
-        guestCount: guestCountBySlug.get(c.topicSlug) ?? 0,
-      })))
-      setOpen(true)
-    })()
+        if (preview.conflicts.length === 0) {
+          const claim = await claimAnonymousAccount(anonId, 'merge')
+          if (claim.ok) {
+            clearGuestUserId()
+            clearAllGuestLists()
+            router.refresh()
+          }
+          return
+        }
+        setAnonUserId(anonId)
+        setConflicts(preview.conflicts.map(c => ({
+          topicSlug: c.topicSlug,
+          topicTitle: c.topicTitle,
+          existingCount: c.existingCount,
+          guestCount: c.guestCount,
+        })))
+        setOpen(true)
+      })()
+      return
+    }
+
+    if (stash.length === 0) return
+    void runLocalStorageFlow(stash)
+
+    function runLocalStorageFlow(stash: ReturnType<typeof readAllGuestLists>) {
+      const built: GuestTopicPayload[] = stash.map(({ topicSlug, payload }) => ({
+        topicSlug,
+        items: payload.items.map(i => ({
+          entryId: i.entryId,
+          tier: i.tier ?? null,
+          position: i.position ?? null,
+          note: i.note ?? null,
+        })),
+        rankedTiers: payload.rankedTiers,
+      }))
+
+      return (async () => {
+        const result = await previewGuestStash(built.map(p => p.topicSlug))
+        if (!result.ok) return
+        for (const slug of result.missing) clearGuestList(slug)
+
+        if (result.conflicts.length === 0) {
+          const apply = await applyGuestStash(built, 'merge')
+          if (apply.ok) {
+            clearAllGuestLists()
+            router.refresh()
+          }
+          return
+        }
+        const guestCountBySlug = new Map(built.map(p => [p.topicSlug, p.items.length]))
+        setPayloads(built)
+        setConflicts(result.conflicts.map(c => ({
+          ...c,
+          guestCount: guestCountBySlug.get(c.topicSlug) ?? 0,
+        })))
+        setOpen(true)
+      })()
+    }
   }, [router])
 
   async function confirm() {
     setOpen(false)
+    if (anonUserId) {
+      const claim = await claimAnonymousAccount(anonUserId, choice)
+      if (claim.ok) {
+        clearGuestUserId()
+        clearAllGuestLists()
+        router.refresh()
+      }
+      return
+    }
     const apply = await applyGuestStash(payloads, choice)
     if (apply.ok) {
       clearAllGuestLists()

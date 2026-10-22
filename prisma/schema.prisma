@@ -14,6 +14,11 @@ model User {
   email        String     @unique
   passwordHash String?
   googleId     String?    @unique
+  // Set to true for ad-hoc users created server-side when a guest saves a
+  // tier list without being logged in. Lets analytics filter real users
+  // from anonymous contributors, and the login-time "claim" flow transfer
+  // their lists onto a real account.
+  anonymous    Boolean    @default(false)
   createdAt    DateTime   @default(now())
   notes        Note[]
   likes        Like[]

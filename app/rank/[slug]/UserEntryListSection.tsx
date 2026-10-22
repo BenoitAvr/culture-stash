@@ -3,6 +3,7 @@
 import React, { useActionState, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
+import { saveGuestServerList } from '@/app/actions/guestServerSave'
 import { addEntry } from '@/app/actions/entries'
 import { RankingEditor, type RankEditItem } from '@/app/components/RankingEditor'
 import { getDict, type Dict } from '@/dictionaries/client'
@@ -12,6 +13,7 @@ import {
   hydrateGuestList,
   saveGuestEntryLists,
 } from '@/lib/guestListAdapter'
+import { getGuestUserId, setGuestUserId } from '@/lib/guestList'
 
 type EntryItem = { id: string; title: string; titleEn: string | null; year: number | null; cover: string | null; tierCount?: number; score?: number; kind?: 'FILM' | 'SAGA'; genres?: number[] }
 
@@ -77,7 +79,13 @@ export function UserEntryListSection({
     if (tier.length === 0) {
       if (myTierList) {
         if (isGuest) {
+          // Mirror the deletion both locally (fast UI) and server-side (so
+          // the public anonymous contribution is withdrawn).
           saveGuestEntryLists(topicSlug, entries, [], [])
+          const anonId = getGuestUserId()
+          if (anonId) {
+            void saveGuestServerList(topicSlug, anonId, [], [])
+          }
         } else {
           await saveUserEntryLists(topicSlug, [], [], [])
         }
@@ -102,8 +110,16 @@ export function UserEntryListSection({
     }))
 
     if (isGuest) {
+      // Keep the fast localStorage copy for instant hydration on refresh,
+      // AND publish to the server under an anonymous User so the list
+      // contributes to the community ranking. The server returns the
+      // anonymous user id — we stash it so the next save updates the same
+      // row (and the login-time claim knows which account to transfer).
       const guestList = saveGuestEntryLists(topicSlug, entries, payload, activeTiers)
       onListsChange(guestList ? [guestList] : lists.filter(l => l.userId !== ownerId))
+      const anonId = getGuestUserId()
+      const res = await saveGuestServerList(topicSlug, anonId, payload, activeTiers)
+      if (res.ok) setGuestUserId(res.guestUserId)
       return
     }
 
@@ -179,8 +195,8 @@ export function UserEntryListSection({
           <span aria-hidden style={{ fontSize: 15 }}>💾</span>
           <span style={{ flex: 1, minWidth: 220 }}>
             {lang === 'fr'
-              ? 'Mode invité — ta liste est sauvegardée dans ce navigateur. Connecte-toi pour la garder pour de bon et la partager.'
-              : 'Guest mode — your list is saved in this browser. Sign in to keep it across devices and share it.'}
+              ? 'Mode invité — ta liste est publiée en anonyme et compte dans le classement. Connecte-toi pour la garder sur ton profil et la partager.'
+              : 'Guest mode — your list is published anonymously and counts toward the ranking. Sign in to keep it on your profile and share it.'}
           </span>
           <a
             href={`/${lang}/auth/login?redirect=${encodeURIComponent(`/${lang}/rank/${topicSlug}`)}`}
