@@ -40,10 +40,11 @@ export function combinedScore(e: RankEntry) {
   const rawScore = rawTier + rawRankBonus
 
   // Final shrinkage: Bayesian pull of the raw score toward PRIOR_SCORE.
-  // 1-vote films get a heavier prior (K = 1.8 vs the usual 0.7) so a
-  // solitary rating keeps roughly a third of its raw score and can't
-  // crown the chart.
+  // 1-vote films still get a heavier prior (K = 1.0 vs the usual 0.7) so a
+  // solitary rating can't crown the chart, but with equal weight to the
+  // vote and the prior the final score ≈ (rawScore + PRIOR_SCORE) / 2 —
+  // enough for a single opinion to show meaningful movement.
   const n = e.tierCount
-  const k = n === 1 ? 1.8 : SCORE_SHRINKAGE_K
+  const k = n === 1 ? 1.0 : SCORE_SHRINKAGE_K
   return (rawScore * n + PRIOR_SCORE * k) / (n + k)
 }
