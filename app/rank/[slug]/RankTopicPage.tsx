@@ -4,6 +4,7 @@ import React, { use, useState, useEffect, useRef, useContext, createContext, Sus
 import { useParams } from 'next/navigation'
 import { getDict } from '@/dictionaries/client'
 import { saveUserEntryLists } from '@/app/actions/entryLists'
+import { saveGuestServerList } from '@/app/actions/guestServerSave'
 import { fetchAllRankEntries } from '@/app/actions/rankEntries'
 import { type UserEntryListData } from './UserEntryListSection'
 import type { RankEntry, CommunityEntries } from '@/lib/communityRankData'
@@ -14,6 +15,7 @@ import {
   hydrateGuestList,
   saveGuestEntryLists,
 } from '@/lib/guestListAdapter'
+import { getGuestUserId, setGuestUserId } from '@/lib/guestList'
 import Link from 'next/link'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
@@ -1243,7 +1245,20 @@ function UserAwareEntryList({
     rankedTiers: string[],
   ): Promise<UserEntryListData[]> {
     if (isGuest) {
+      // localStorage first for instant local UI, then publish to the server
+      // under the anonymous user so quick-add / remove from the ranking view
+      // also contribute to the community ranking — same contract as the full
+      // editor's handleSave in UserEntryListSection.
       const guestList = saveGuestEntryLists(topicSlug, entries, newItems, rankedTiers)
+      const payload = newItems.map(i => ({
+        entryId: i.entryId,
+        tier: i.tier ?? null,
+        position: i.position ?? null,
+        note: i.note ?? null,
+      }))
+      const anonId = getGuestUserId()
+      const res = await saveGuestServerList(topicSlug, anonId, payload, rankedTiers)
+      if (res.ok) setGuestUserId(res.guestUserId)
       return guestList ? [guestList] : []
     }
     return saveUserEntryLists(topicSlug, [], newItems, rankedTiers, { revalidate: false })
