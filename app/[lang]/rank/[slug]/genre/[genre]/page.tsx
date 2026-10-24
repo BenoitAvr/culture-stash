@@ -17,11 +17,9 @@ import {
   RankCommunityBody,
   CommunityListSkeleton,
   RankSortProvider,
-  MentionLegend,
   type PersonalRankData,
 } from '@/app/rank/[slug]/RankTopicPage'
 import { PersonalActions } from '@/app/rank/[slug]/PersonalActions'
-import { GenreChipRow } from '@/app/rank/[slug]/GenreChipRow'
 import type { UserEntryListData } from '@/app/rank/[slug]/UserEntryListSection'
 import { genreBySlug, genreLabel } from '@/lib/genres'
 
@@ -136,12 +134,18 @@ function CommunityBody({
   slug,
   lang,
   genreId,
+  userCount,
+  voteCount,
+  genreCounts,
 }: {
   topicId: string
   topicSlug: string
   slug: string
   lang: string
   genreId: number
+  userCount: number
+  voteCount: number
+  genreCounts: Array<{ id: number; count: number }>
 }) {
   const entriesPromise = getCommunityEntriesForGenre(slug, lang, genreId)
   const personalDataPromise = getPersonalRankData(topicId)
@@ -152,6 +156,9 @@ function CommunityBody({
       entriesPromise={entriesPromise}
       personalDataPromise={personalDataPromise}
       genreId={genreId}
+      userCount={userCount}
+      voteCount={voteCount}
+      genreCounts={genreCounts}
     />
   )
 }
@@ -235,15 +242,8 @@ async function RankGenreInner({
               </span>
             </>
           )}
-          <span style={{ marginLeft: 'auto' }}>
-            <MentionLegend lang={lang as 'fr' | 'en'} />
-          </span>
         </div>
       </div>
-
-      {genreCounts && genreCounts.length > 0 && (
-        <GenreChipRow genres={genreCounts} slug={slug} lang={lang} activeGenreId={g.id} />
-      )}
 
       <div style={{ paddingTop: 16 }}>
         <Suspense fallback={<CommunityListSkeleton />}>
@@ -253,6 +253,9 @@ async function RankGenreInner({
             slug={slug}
             lang={lang}
             genreId={g.id}
+            userCount={stats?.userCount ?? 0}
+            voteCount={stats?.voteCount ?? 0}
+            genreCounts={genreCounts ?? []}
           />
         </Suspense>
       </div>

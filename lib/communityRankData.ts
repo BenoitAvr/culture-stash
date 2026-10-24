@@ -350,3 +350,34 @@ export function getGenreCounts(slug: string): Promise<Array<{ id: number; count:
     { tags: [`rank-${slug}`] }
   )()
 }
+
+export type RankTopicTab = {
+  slug: string
+  emoji: string
+  title: string
+}
+
+// All rankable topics, with their localised title, for the tab bar at the top
+// of each ranking page. Shared payload — cached per lang and invalidated by
+// the same `rank-topics` tag that owns the catalogue.
+export function getRankableTopicsForTabs(lang: string): Promise<RankTopicTab[]> {
+  return unstable_cache(
+    async () => {
+      const topics = await prisma.topic.findMany({
+        where: { rankable: true },
+        select: {
+          slug: true, emoji: true, title: true,
+          translations: { where: { lang }, select: { title: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      })
+      return topics.map(t => ({
+        slug: t.slug,
+        emoji: t.emoji,
+        title: t.translations[0]?.title ?? t.title,
+      }))
+    },
+    [`rank-topics-tabs-${lang}`],
+    { tags: ['rank-topics'] }
+  )()
+}

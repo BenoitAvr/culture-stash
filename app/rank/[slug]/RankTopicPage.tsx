@@ -18,6 +18,7 @@ import {
 import { getGuestUserId, setGuestUserId } from '@/lib/guestList'
 import { trackEvent } from '@/lib/analytics'
 import Link from 'next/link'
+import { GenreChipRow } from './GenreChipRow'
 
 const TIERS = ['EX', 'TB', 'BO', 'AB', 'PA', 'IN', 'MA']
 const TIER_LABEL: Record<string, string> = {
@@ -744,8 +745,18 @@ function DecadeDropdown({
 
 function RankToolbar({
   decadeCounts,
+  userCount,
+  voteCount,
+  topicSlug,
+  genreCounts,
+  activeGenreId,
 }: {
   decadeCounts: Array<{ decade: number; count: number }>
+  userCount: number
+  voteCount: number
+  topicSlug: string
+  genreCounts: Array<{ id: number; count: number }>
+  activeGenreId?: number
 }) {
   const { lang } = useParams() as { lang: string }
   const isFr = lang === 'fr'
@@ -799,12 +810,48 @@ function RankToolbar({
           </button>
         )
       })}
-      {decadeCounts.length > 0 && (
-        <>
-          <span aria-hidden style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', margin: '0 4px' }} />
-          <DecadeDropdown decadeCounts={decadeCounts} decade={decade} setDecade={setDecade} isFr={isFr} />
-        </>
+      {(decadeCounts.length > 0 || genreCounts.length > 0) && (
+        <span aria-hidden style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', margin: '0 4px' }} />
       )}
+      {decadeCounts.length > 0 && (
+        <DecadeDropdown decadeCounts={decadeCounts} decade={decade} setDecade={setDecade} isFr={isFr} />
+      )}
+      {genreCounts.length > 0 && (
+        <GenreChipRow genres={genreCounts} slug={topicSlug} lang={lang} activeGenreId={activeGenreId} />
+      )}
+
+      {/* Right side — social-proof bubble + mention legend. Pushed to the end
+          with margin-left:auto so the sort group stays left-anchored and the
+          bubble floats to the right of the row. */}
+      <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {voteCount === 0 ? (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 11px', borderRadius: 999,
+            background: 'var(--bg-subtle)', border: '1px solid var(--border)',
+            fontSize: 12, color: 'var(--fg-5)', fontStyle: 'italic',
+          }}>
+            {isFr ? 'En attente du premier avis' : 'Awaiting first ratings'}
+          </span>
+        ) : (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '4px 11px', borderRadius: 999,
+            background: 'var(--bg-subtle)', border: '1px solid var(--border)',
+            fontSize: 12, color: 'var(--fg-4)', whiteSpace: 'nowrap',
+          }}>
+            <span aria-hidden style={{ fontSize: 11 }}>👥</span>
+            <strong style={{ color: 'var(--fg-2)', fontWeight: 700 }}>{userCount}</strong>
+            {isFr
+              ? (userCount > 1 ? 'contributeurs' : 'contributeur')
+              : (userCount > 1 ? 'contributors' : 'contributor')}
+            <span style={{ color: 'var(--fg-7)' }}>·</span>
+            <strong style={{ color: 'var(--fg-2)', fontWeight: 700 }}>{voteCount}</strong>
+            {isFr ? 'avis' : (voteCount > 1 ? 'ratings' : 'rating')}
+          </span>
+        )}
+        <MentionLegend lang={lang as 'fr' | 'en'} />
+      </div>
     </div>
   )
 }
@@ -1458,6 +1505,9 @@ export function RankCommunityBody({
   entriesPromise,
   personalDataPromise,
   genreId,
+  userCount,
+  voteCount,
+  genreCounts,
 }: {
   topicSlug: string
   entriesPromise: Promise<CommunityEntries | null>
@@ -1466,6 +1516,11 @@ export function RankCommunityBody({
   // genre and the "load more" fetch must pass the same filter so pages
   // past the first 100 don't suddenly show out-of-genre entries.
   genreId?: number
+  // Social-proof stats rendered in the toolbar bubble.
+  userCount: number
+  voteCount: number
+  // Genre filter counts rendered as a dropdown inside the toolbar.
+  genreCounts: Array<{ id: number; count: number }>
 }) {
   const { lang } = useParams() as { lang: string }
   const dict = getDict(lang)
@@ -1554,7 +1609,14 @@ export function RankCommunityBody({
 
   return (
     <>
-      <RankToolbar decadeCounts={decadeCounts} />
+      <RankToolbar
+        decadeCounts={decadeCounts}
+        userCount={userCount}
+        voteCount={voteCount}
+        topicSlug={topicSlug}
+        genreCounts={genreCounts}
+        activeGenreId={genreId}
+      />
       {sorted.length === 0 ? (
         emptyForDecade ? (
           <div style={{ padding: '40px 0', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>

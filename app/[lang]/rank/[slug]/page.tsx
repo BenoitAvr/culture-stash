@@ -6,17 +6,15 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { getDictionary, hasLocale, LOCALES } from '@/dictionaries'
 import { notFound } from 'next/navigation'
-import { getRankTopicHeader, getRankTopicStats, getCommunityEntries, getGenreCounts } from '@/lib/communityRankData'
+import { getRankTopicHeader, getRankTopicStats, getCommunityEntries, getGenreCounts, getRankableTopicsForTabs } from '@/lib/communityRankData'
 import { getRankHost } from '@/lib/host'
 import {
   RankCommunityBody,
   CommunityListSkeleton,
   RankSortProvider,
-  MentionLegend,
   type PersonalRankData,
 } from '@/app/rank/[slug]/RankTopicPage'
-import { PersonalActions } from '@/app/rank/[slug]/PersonalActions'
-import { GenreChipRow } from '@/app/rank/[slug]/GenreChipRow'
+import { StartTierListCTA } from '@/app/rank/[slug]/StartTierListCTA'
 import type { UserEntryListData } from '@/app/rank/[slug]/UserEntryListSection'
 
 async function getUserList(topicId: string, userId: string): Promise<UserEntryListData[]> {
@@ -86,49 +84,18 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   }
 }
 
-type Dict = ReturnType<typeof getDictionary>
-
-function PersonalActionsWrapper({
+function StartTierListCTAWrapper({
+  lang,
   topicId,
   topicSlug,
-  topicTitle,
-  topicEmoji,
-  lang,
-  dict,
 }: {
+  lang: string
   topicId: string
   topicSlug: string
-  topicTitle: string
-  topicEmoji: string
-  lang: string
-  dict: Dict
 }) {
   const personalDataPromise = getPersonalRankData(topicId)
   return (
-    <PersonalActions
-      topicSlug={topicSlug}
-      topicTitle={topicTitle}
-      topicEmoji={topicEmoji}
-      lang={lang}
-      personalDataPromise={personalDataPromise}
-      labels={{
-        create: dict.rankings.createList,
-        edit: dict.rankings.editList,
-        login: dict.rank.loginToRate,
-        share: dict.rank.share,
-        copyList: dict.rank.copyList,
-        import: dict.rank.import,
-        shareCopied: dict.rank.shareCopied,
-        listCopied: dict.rank.listCopied,
-        importInvalid: dict.rank.importInvalid,
-        importTitle: dict.rank.importTitle,
-        importHelp: dict.rank.importHelp,
-        importFormatHint: dict.rank.importFormatHint,
-        importPlaceholder: dict.rank.importPlaceholder,
-        importSubmit: dict.rank.importSubmit,
-        importCancel: dict.rank.importCancel,
-      }}
-    />
+    <StartTierListCTA lang={lang} topicSlug={topicSlug} personalDataPromise={personalDataPromise} />
   )
 }
 
@@ -137,11 +104,17 @@ function CommunityBody({
   topicSlug,
   slug,
   lang,
+  userCount,
+  voteCount,
+  genreCounts,
 }: {
   topicId: string
   topicSlug: string
   slug: string
   lang: string
+  userCount: number
+  voteCount: number
+  genreCounts: Array<{ id: number; count: number }>
 }) {
   const entriesPromise = getCommunityEntries(slug, lang)
   const personalDataPromise = getPersonalRankData(topicId)
@@ -151,6 +124,9 @@ function CommunityBody({
       topicSlug={topicSlug}
       entriesPromise={entriesPromise}
       personalDataPromise={personalDataPromise}
+      userCount={userCount}
+      voteCount={voteCount}
+      genreCounts={genreCounts}
     />
   )
 }
@@ -163,10 +139,11 @@ async function RankSlugInner({
   const { lang, slug } = await params
   if (!hasLocale(lang)) notFound()
 
-  const [header, stats, genreCounts] = await Promise.all([
+  const [header, stats, genreCounts, topicTabs] = await Promise.all([
     getRankTopicHeader(slug, lang),
     getRankTopicStats(slug),
     getGenreCounts(slug),
+    getRankableTopicsForTabs(lang),
   ])
   if (!header) notFound()
 
@@ -174,12 +151,6 @@ async function RankSlugInner({
   const userCount = stats?.userCount ?? 0
   const voteCount = stats?.voteCount ?? 0
   const isFr = lang === 'fr'
-  const userLabel = isFr
-    ? (userCount > 1 ? 'contributeurs' : 'contributeur')
-    : (userCount > 1 ? 'contributors' : 'contributor')
-  const voteLabel = isFr
-    ? 'avis'
-    : (voteCount > 1 ? 'ratings' : 'rating')
 
   return (
     <div className="page-md" style={{ margin: '0 auto', padding: '24px 24px 60px' }}>
@@ -187,49 +158,88 @@ async function RankSlugInner({
 
       {/* Header */}
       <div style={{ padding: '8px 0 0' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--fg-5)' }}>
-            <Link href={`/${lang}/rank`} style={{ color: 'var(--fg-5)', textDecoration: 'none' }}>
-              {lang === 'fr' ? 'Classer' : 'Rank'}
-            </Link>
-            <span style={{ color: 'var(--fg-7)' }}>/</span>
-            <span>{header.topicBadge}</span>
-          </div>
+        {/* Topic tabs — the primary navigation now that /rank/ redirects
+            straight here. Active tab = this page's topic. "Bientôt" tabs
+            are placeholders for topics not yet rankable; they'll turn into
+            real tabs automatically once their slug is live. */}
+        <div
+          role="tablist"
+          aria-label={isFr ? 'Catégorie de classement' : 'Ranking category'}
+          style={{
+            display: 'flex', flexWrap: 'wrap', gap: 8,
+            marginBottom: 22,
+          }}
+        >
+          {topicTabs.map(tab => {
+            const isActive = tab.slug === slug
+            return (
+              <Link
+                key={tab.slug}
+                href={`/${lang}/rank/${tab.slug}`}
+                role="tab"
+                aria-selected={isActive}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  padding: '9px 16px', borderRadius: 999,
+                  background: isActive ? 'var(--accent-faint)' : 'var(--bg-card)',
+                  border: `1.5px solid ${isActive ? 'var(--accent-fg)' : 'var(--border)'}`,
+                  color: isActive ? 'var(--accent-fg)' : 'var(--fg-3)',
+                  fontSize: 14, fontWeight: isActive ? 800 : 600, textDecoration: 'none',
+                  whiteSpace: 'nowrap',
+                  boxShadow: isActive ? '0 4px 12px rgba(22,163,74,.12)' : undefined,
+                  transition: 'transform .12s, border-color .12s, background .12s',
+                }}
+                className={isActive ? '' : 'hover:[border-color:var(--accent-muted)] hover:[transform:translateY(-1px)]'}
+              >
+                <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>{tab.emoji}</span>
+                {tab.title}
+              </Link>
+            )
+          })}
+        </div>
 
-          <Suspense fallback={<div style={{ width: 320, height: 42, borderRadius: 9, background: 'var(--bg-subtle)' }} />}>
-            <PersonalActionsWrapper topicId={header.topicId} topicSlug={slug} topicTitle={header.topicTitle} topicEmoji={header.topicEmoji} lang={lang} dict={dict} />
+        {/* Hero — the hook is the main H1 since this is the landing page.
+            One green CTA below acts as both "start a list" (newcomers) and
+            "my list" (returners); no top-right duplicate needed. */}
+        <h1 style={{
+          fontFamily: "'Fraunces', serif",
+          fontSize: 46, fontWeight: 800, fontStyle: 'italic',
+          color: 'var(--fg)', letterSpacing: -1, lineHeight: 1.05,
+          margin: '0 0 14px', maxWidth: 760,
+        }}>
+            {isFr ? 'Et si on classait autrement ?' : 'What if we ranked differently?'}
+        </h1>
+
+        <p style={{
+          fontSize: 16, lineHeight: 1.55, color: 'var(--fg-3)',
+          margin: '0 0 20px', maxWidth: 720,
+        }}>
+          {isFr
+            ? <>Classe tes œuvres préférées, et découvre ce que la communauté aime vraiment, selon la place qu&apos;elles occupent dans les classements de chacun.</>
+            : <>Rank your favourite works, and discover what the community truly loves — based on where they sit in each person&apos;s rankings.</>}
+        </p>
+
+        {/* Primary CTA — same green button for everyone; label + destination
+            swap between "Faire ma tier list" (newcomers → /edit) and "Ma
+            liste" (returners → /<username>/edit) so the primary action never
+            moves on screen. */}
+        <div style={{ marginBottom: 36 }}>
+          <Suspense fallback={<div style={{ height: 48 }} />}>
+            <StartTierListCTAWrapper lang={lang} topicId={header.topicId} topicSlug={slug} />
           </Suspense>
         </div>
 
-        <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 42, fontWeight: 900, color: 'var(--fg)', letterSpacing: -0.8, lineHeight: 1.05, marginBottom: 10 }}>
+        {/* Section header for the ranking table — demoted from H1 since the
+            hook now owns that slot. */}
+        <h2 style={{
+          fontFamily: "'Fraunces', serif",
+          fontSize: 26, fontWeight: 800,
+          color: 'var(--fg-2)', letterSpacing: -0.4, lineHeight: 1.15,
+          margin: '0 0 2px',
+        }}>
           {dict.rank.communityTitle.replace('{topic}', header.topicTitle.toLowerCase())}
-        </h1>
-
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, fontSize: 14, color: 'var(--fg-5)', marginBottom: 24 }}>
-          {voteCount === 0 ? (
-            <span style={{ fontStyle: 'italic' }}>
-              {isFr ? 'En attente du premier avis · sois le premier' : 'Awaiting first ratings · be the first'}
-            </span>
-          ) : (
-            <>
-              <span style={{ color: '#a16207', fontStyle: 'italic' }}>
-                {isFr ? 'en construction' : 'under construction'}
-              </span>
-              <span style={{ color: 'var(--fg-7)' }}>·</span>
-              <span>{userCount} {userLabel}</span>
-              <span style={{ color: 'var(--fg-7)' }}>·</span>
-              <span>{voteCount} {voteLabel}</span>
-            </>
-          )}
-          <span style={{ marginLeft: 'auto' }}>
-            <MentionLegend lang={lang as 'fr' | 'en'} />
-          </span>
-        </div>
+        </h2>
       </div>
-
-      {genreCounts && genreCounts.length > 0 && (
-        <GenreChipRow genres={genreCounts} slug={slug} lang={lang} />
-      )}
 
       {/* Community body — suspended (creates personalDataPromise inside) */}
       <div style={{ paddingTop: 16 }}>
@@ -239,9 +249,83 @@ async function RankSlugInner({
             topicSlug={slug}
             slug={slug}
             lang={lang}
+            userCount={userCount}
+            voteCount={voteCount}
+            genreCounts={genreCounts ?? []}
           />
         </Suspense>
       </div>
+
+      {/* Comment ça marche — collapsed by default, native <details> so it
+          works without JS. For the curious; everyone else got the ranking. */}
+      <details style={{
+        marginTop: 40,
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+        padding: '14px 18px',
+      }}>
+        <summary style={{
+          cursor: 'pointer',
+          fontFamily: "'Fraunces', serif",
+          fontSize: 15, fontWeight: 800,
+          color: 'var(--fg-2)',
+          letterSpacing: -0.3,
+          listStyle: 'revert',
+        }}>
+          {isFr ? 'Comment ça marche ?' : 'How does it work?'}
+        </summary>
+        <div style={{
+          marginTop: 18,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 12,
+        }}>
+          {[
+            isFr
+              ? { emoji: '🎬', title: 'Choisis un film', desc: 'de la liste — ou ajoute-en un qui manque.' }
+              : { emoji: '🎬', title: 'Pick a film', desc: 'from the list — or add one that’s missing.' },
+            isFr
+              ? { emoji: '🏷️', title: 'Donne-lui une mention', desc: 'de Excellent à Mauvais, à ta sauce.' }
+              : { emoji: '🏷️', title: 'Give it a mention', desc: 'from Excellent to Bad, your call.' },
+            isFr
+              ? { emoji: '📊', title: 'Classe-les entre eux', desc: 'dans chaque mention. Ton rang personnel pèse dans le classement global.' }
+              : { emoji: '📊', title: 'Rank them against each other', desc: 'within each mention. Your personal rank feeds the global ranking.' },
+          ].map((step, i) => (
+            <div
+              key={i}
+              style={{
+                position: 'relative',
+                padding: '14px 14px 12px',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}
+            >
+              <span aria-hidden style={{
+                position: 'absolute', top: 8, right: 10,
+                fontFamily: "'Fraunces', serif",
+                fontSize: 28, fontWeight: 900, lineHeight: 1,
+                color: 'var(--accent-fg)', opacity: 0.12,
+              }}>
+                {i + 1}
+              </span>
+              <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>{step.emoji}</span>
+              <span style={{
+                fontFamily: "'Fraunces', serif",
+                fontSize: 14, fontWeight: 800, color: 'var(--fg)',
+                letterSpacing: -0.2, lineHeight: 1.25,
+              }}>
+                {step.title}
+              </span>
+              <span style={{ fontSize: 12.5, color: 'var(--fg-4)', lineHeight: 1.5 }}>
+                {step.desc}
+              </span>
+            </div>
+          ))}
+        </div>
+      </details>
 
       </RankSortProvider>
     </div>
